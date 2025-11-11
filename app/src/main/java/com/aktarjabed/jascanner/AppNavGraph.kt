@@ -1,12 +1,12 @@
 package com.aktarjabed.jascanner
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3Crom
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import com.aktarjabed.jascanner.screens.*
+import com.aktarjabed.jascanner.ui.navigation.JAScannerAnimatedNavHost
+import com.aktarjabed.jascanner.ui.navigation.animatedComposable
 
 object Routes {
     const val HOME = "home"
@@ -18,6 +18,7 @@ object Routes {
     const val CATEGORIES = "categories"
     const val RECYCLE_BIN = "recycle_bin"
     const val RECYCLE_BIN_DASHBOARD = "recycle_bin_dashboard"
+    const val SETTINGS = "settings"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,30 +27,20 @@ fun AppNavGraph(
     navController: NavHostController,
     snackbarHostState: SnackbarHostState
 ) {
-    NavHost(
+    JAScannerAnimatedNavHost(
         navController = navController,
         startDestination = Routes.HOME
     ) {
-        composable(Routes.HOME) {
-            HomeScreen(
+        animatedComposable(Routes.HOME) {
+            ModernHomeScreen(
                 navController = navController,
+                photos = emptyList(), // Replace with your photos
                 onPhotoClick = { id -> navController.navigate("viewer/$id") },
-                onVaultClick = { navController.navigate(Routes.VAULT) },
-                onSearchClick = { navController.navigate(Routes.SEARCH) },
-                onStoriesClick = { navController.navigate(Routes.STORIES) },
-                onCategoriesClick = { navController.navigate(Routes.CATEGORIES) },
                 snackbarHostState = snackbarHostState
             )
         }
 
-        composable(Routes.CATEGORIES) {
-            CategoriesScreen(
-                navController = navController,
-                snackbarHostState = snackbarHostState
-            )
-        }
-
-        composable(Routes.VIEWER) { backStackEntry ->
+        animatedComposable(Routes.VIEWER) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: ""
             ViewerScreen(
                 id = id,
@@ -59,7 +50,7 @@ fun AppNavGraph(
             )
         }
 
-        composable(Routes.EDITOR) { backStackEntry ->
+        animatedComposable(Routes.EDITOR) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: ""
             EditorScreen(
                 id = id,
@@ -69,31 +60,40 @@ fun AppNavGraph(
             )
         }
 
-        composable(Routes.VAULT) {
+        animatedComposable(Routes.VAULT) {
             VaultScreen(
                 onBack = { navController.popBackStack() }
             )
         }
 
-        composable(Routes.SEARCH) {
+        animatedComposable(Routes.SEARCH) {
             SearchScreen(
                 onBack = { navController.popBackStack() },
                 onPhotoClick = { id -> navController.navigate("viewer/$id") }
             )
         }
 
-        composable(Routes.STORIES) {
+        animatedComposable(Routes.STORIES) {
             StoriesScreen(
                 onBack = { navController.popBackStack() }
             )
         }
-        composable(Routes.RECYCLE_BIN) {
+
+        animatedComposable(Routes.CATEGORIES) {
+            CategoriesScreen(
+                navController = navController,
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        animatedComposable(Routes.RECYCLE_BIN) {
             RecycleBinScreen(
                 onBack = { navController.popBackStack() },
                 snackbarHostState = snackbarHostState
             )
         }
-        composable(Routes.RECYCLE_BIN_DASHBOARD) {
+
+        animatedComposable(Routes.RECYCLE_BIN_DASHBOARD) {
             RecycleBinDashboard(
                 onBack = { navController.popBackStack() },
                 onViewRecycleBin = { navController.navigate(Routes.RECYCLE_BIN) },
