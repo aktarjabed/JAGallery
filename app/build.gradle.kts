@@ -1,14 +1,15 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp") version "1.9.22-1.0.17"
 }
 
 android {
-    namespace = "com.aktarjabed.jascanner"
+    namespace = "com.aktarjabed.jagallery"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aktarjabed.jascanner"
+        applicationId = "com.aktarjabed.jagallery"
         minSdk = 32
         targetSdk = 35
         versionCode = 1
@@ -29,24 +30,19 @@ android {
             )
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-
     kotlinOptions {
         jvmTarget = "1.8"
     }
-
     buildFeatures {
         compose = true
     }
-
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"
     }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -55,41 +51,76 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.coil.compose)
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.security.crypto)
-    implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
-    implementation(libs.androidx.biometric)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation(libs.androidx.paging.compose)
-    implementation(libs.androidx.paging.runtime.ktx)
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.startup.runtime)
-    implementation(libs.accompanist.navigation.animation)
-    implementation(libs.accompanist.systemuicontroller)
-    implementation(libs.androidx.palette.ktx)
-    implementation(libs.androidx.compose.animation)
-    implementation(libs.androidx.compose.foundation)
+    // Modules
+    implementation(project(":core-data"))
+    implementation(project(":core-ai"))
+    implementation(project(":core-security"))
+    implementation(project(":core-sync"))
+    implementation(project(":core-ui"))
+    implementation(project(":feature-album"))
+    implementation(project(":feature-camera"))
+    implementation(project(":feature-details"))
+    implementation(project(":feature-duplicates"))
+    implementation(project(":feature-editor"))
+    implementation(project(":feature-search"))
+    implementation(project(":feature-settings"))
+    implementation(project(":feature-timeline"))
+    implementation(project(":feature-vault"))
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Compose
+    implementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Core
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
+    // UI
+    implementation("com.google.android.material:material:1.10.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
+    // WorkManager for background tasks
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Security
+    implementation("androidx.security:security-crypto:1.0.0")
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // AI
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
+    implementation("com.google.mlkit:face-detection:16.1.6")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+
+    // Exif for metadata
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+dependencies {
+// ... existing dependencies ...
+
+// Add for enhanced features
+implementation("androidx.exifinterface:exifinterface:1.3.7")
+implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 }

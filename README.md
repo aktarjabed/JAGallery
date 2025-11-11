@@ -1,4 +1,5 @@
 # JAGallery
+# JAGallery
 
 JAGallery is a full-featured, production-ready gallery application for Android, built with Kotlin and Jetpack Compose.
 
