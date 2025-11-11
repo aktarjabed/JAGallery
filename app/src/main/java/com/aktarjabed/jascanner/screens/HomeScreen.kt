@@ -39,7 +39,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("JAGallery") }
+                title = { Text("JAScanner") }
             )
         },
         floatingActionButton = {
