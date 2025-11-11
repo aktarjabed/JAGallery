@@ -72,7 +72,6 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
