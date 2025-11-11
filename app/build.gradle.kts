@@ -57,6 +57,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -72,6 +74,11 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.paging.runtime.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.startup.runtime)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

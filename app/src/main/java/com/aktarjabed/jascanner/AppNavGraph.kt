@@ -15,6 +15,9 @@ object Routes {
     const val VAULT = "vault"
     const val SEARCH = "search"
     const val STORIES = "stories"
+    const val CATEGORIES = "categories"
+    const val RECYCLE_BIN = "recycle_bin"
+    const val RECYCLE_BIN_DASHBOARD = "recycle_bin_dashboard"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,10 +32,19 @@ fun AppNavGraph(
     ) {
         composable(Routes.HOME) {
             HomeScreen(
+                navController = navController,
                 onPhotoClick = { id -> navController.navigate("viewer/$id") },
                 onVaultClick = { navController.navigate(Routes.VAULT) },
                 onSearchClick = { navController.navigate(Routes.SEARCH) },
                 onStoriesClick = { navController.navigate(Routes.STORIES) },
+                onCategoriesClick = { navController.navigate(Routes.CATEGORIES) },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Routes.CATEGORIES) {
+            CategoriesScreen(
+                navController = navController,
                 snackbarHostState = snackbarHostState
             )
         }
@@ -73,6 +85,19 @@ fun AppNavGraph(
         composable(Routes.STORIES) {
             StoriesScreen(
                 onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.RECYCLE_BIN) {
+            RecycleBinScreen(
+                onBack = { navController.popBackStack() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+        composable(Routes.RECYCLE_BIN_DASHBOARD) {
+            RecycleBinDashboard(
+                onBack = { navController.popBackStack() },
+                onViewRecycleBin = { navController.navigate(Routes.RECYCLE_BIN) },
+                snackbarHostState = snackbarHostState
             )
         }
     }

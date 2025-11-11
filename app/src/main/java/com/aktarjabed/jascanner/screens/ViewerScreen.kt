@@ -32,6 +32,8 @@ import androidx.fragment.app.FragmentActivity
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.aktarjabed.jascanner.components.DeleteConfirmationDialog
+import com.aktarjabed.jascanner.datastore.SettingsDataStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +49,7 @@ fun ViewerScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var showInfoSheet by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val transformState: TransformableState = rememberTransformableState { zoomChange, panChange, _ ->
         scale = (scale * zoomChange).coerceIn(0.1f, 10f)
@@ -289,19 +292,7 @@ fun ViewerScreen(
                         .padding(16.dp)
                 ) {
                     FilledTonalButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    repository.deletePhoto(uri)
-                                    snackbarHostState.showSnackbar("Image deleted successfully")
-                                    onBack()
-                                } catch (e: RecoverableDeleteException) {
-                                    deleteLauncher.launch(IntentSenderRequest.Builder(e.sender).build())
-                                } catch (t: Throwable) {
-                                    snackbarHostState.showSnackbar("Delete failed: ${t.message ?: ""}")
-                                }
-                            }
-                        },
+                        onClick = { showDeleteDialog = true },
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -313,6 +304,30 @@ fun ViewerScreen(
                     }
                 }
             }
+        }
+
+        val settingsDataStore = remember { SettingsDataStore(context) }
+        val settings by settingsDataStore.allSettings.collectAsState(initial = com.aktarjabed.jascanner.datastore.AppSettings())
+
+        if (showDeleteDialog && photo != null) {
+            DeleteConfirmationDialog(
+                photoName = photo!!.displayName,
+                settings = settings,
+                onDismiss = { showDeleteDialog = false },
+                onDelete = { useSecureDelete, useRecycleBin ->
+                    scope.launch {
+                        val (success, message) = repository.deletePhotoAdvanced(
+                            photo!!.id,
+                            useSecureDelete = useSecureDelete,
+                            useRecycleBin = useRecycleBin
+                        )
+                        snackbarHostState.showSnackbar(message)
+                        if (success) {
+                            onBack()
+                        }
+                    }
+                }
+            )
         }
 
         // Image Information Bottom Sheet
