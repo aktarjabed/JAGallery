@@ -23,11 +23,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -45,7 +49,23 @@ android {
     }
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
+            pickFirsts += setOf(
+                "lib/x86/libtensorflowlite_jni.so",
+                "lib/x86_64/libtensorflowlite_jni.so",
+                "lib/armeabi-v7a/libtensorflowlite_jni.so",
+                "lib/arm64-v8a/libtensorflowlite_jni.so"
+            )
+        }
+    }
+
+    // Optional: generate per-ABI APKs to reduce download size
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
         }
     }
 }
@@ -116,11 +136,4 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
-dependencies {
-// ... existing dependencies ...
-
-// Add for enhanced features
-implementation("androidx.exifinterface:exifinterface:1.3.7")
-implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 }
