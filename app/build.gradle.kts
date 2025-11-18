@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp") version "1.9.22-1.0.17"
+    id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -10,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aktarjabed.jagallery"
-        minSdk = 32
+        minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -23,11 +24,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     compileOptions {
@@ -41,11 +40,24 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.11"
     }
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
+            pickFirsts += setOf(
+                "lib/x86/libtensorflowlite_jni.so",
+                "lib/x86_64/libtensorflowlite_jni.so",
+                "lib/armeabi-v7a/libtensorflowlite_jni.so",
+                "lib/arm64-v8a/libtensorflowlite_jni.so"
+            )
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
         }
     }
 }
@@ -66,6 +78,7 @@ dependencies {
     implementation(project(":feature-settings"))
     implementation(project(":feature-timeline"))
     implementation(project(":feature-vault"))
+    implementation(project(":feature-ai"))
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2024.02.02"))
@@ -102,8 +115,7 @@ dependencies {
     // AI
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
-    implementation("com.google.mlkit:face-detection:16.1.6")
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 
     // Exif for metadata
     implementation("androidx.exifinterface:exifinterface:1.3.7")
@@ -116,11 +128,4 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
-dependencies {
-// ... existing dependencies ...
-
-// Add for enhanced features
-implementation("androidx.exifinterface:exifinterface:1.3.7")
-implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 }
