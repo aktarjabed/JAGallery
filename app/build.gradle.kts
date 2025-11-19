@@ -42,6 +42,9 @@ android {
             isMinifyEnabled = false
             isDebuggable = true
         }
+        debug {
+            isMinifyEnabled = false
+        }
     }
 
     compileOptions {
@@ -79,6 +82,7 @@ android {
                 "/META-INF/INDEX.LIST",
                 "/META-INF/*.kotlin_module"
             )
+            excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
             pickFirsts += setOf(
                 "lib/x86/libtensorflowlite_jni.so",
                 "lib/x86_64/libtensorflowlite_jni.so",
@@ -88,6 +92,7 @@ android {
         }
     }
 
+    // Optional: generate per-ABI APKs to reduce download size
     splits {
         abi {
             isEnable = true
@@ -182,4 +187,7 @@ dependencies {
 // Optional: Configure Android Test options
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
