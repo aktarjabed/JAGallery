@@ -1,24 +1,22 @@
 package com.example.advancedgallery.ui.screens.favorites
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.advancedgallery.ui.common.components.MediaThumbnail
+import com.example.advancedgallery.ui.common.components.DeleteConfirmationDialog
+import com.example.advancedgallery.ui.common.components.MediaGrid
 import com.example.advancedgallery.ui.common.components.SelectionToolbar
 import com.example.advancedgallery.util.FileUtils
 
@@ -34,12 +32,13 @@ fun FavoritesScreen(
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
 
     val context = LocalContext.current
+    val currentSelectedIds = rememberUpdatedState(selectedIds)
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            viewModel.removeDeletedItems(selectedIds.toList())
+            viewModel.removeDeletedItems(currentSelectedIds.value.toList())
             selectionMode = false
             selectedIds = emptySet()
         }
@@ -48,31 +47,22 @@ fun FavoritesScreen(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     if (showDeleteConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Media") },
-            text = { Text("Are you sure you want to delete ${selectedIds.size} items?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirmation = false
-                    val urisToDelete = favoriteItems.filter { selectedIds.contains(it.id) }.map { it.uri }
-                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, urisToDelete)
-                    if (pendingIntent != null) {
-                        deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
-                    } else {
-                        viewModel.removeDeletedItems(selectedIds.toList())
-                        selectionMode = false
-                        selectedIds = emptySet()
-                    }
-                }) {
-                    Text("Delete")
+        DeleteConfirmationDialog(
+            count = selectedIds.size,
+            onConfirm = {
+                showDeleteConfirmation = false
+                val urisToDelete = favoriteItems.filter { selectedIds.contains(it.id) }.map { it.uri }
+                val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, urisToDelete)
+                if (pendingIntent != null) {
+                    deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                } else {
+                    FileUtils.deleteMediaItems(context.contentResolver, urisToDelete)
+                    viewModel.removeDeletedItems(selectedIds.toList())
+                    selectionMode = false
+                    selectedIds = emptySet()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { showDeleteConfirmation = false }
         )
     }
 
@@ -93,6 +83,17 @@ fun FavoritesScreen(
                     onSelectAll = {
                         selectedIds = favoriteItems.map { it.id }.toSet()
                     },
+                    onShareSelected = {
+                        val selectedUris = ArrayList(favoriteItems.filter { selectedIds.contains(it.id) }.map { it.uri })
+                        if (selectedUris.isNotEmpty()) {
+                            val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                                type = "*/*"
+                                putParcelableArrayListExtra(Intent.EXTRA_STREAM, selectedUris)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Media"))
+                        }
+                    },
                     onDeleteSelected = {
                         if (selectedIds.isNotEmpty()) {
                             showDeleteConfirmation = true
@@ -111,40 +112,35 @@ fun FavoritesScreen(
             }
         }
     ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+        MediaGrid(
+            items = favoriteItems,
+            selectedIds = selectedIds,
+            selectionMode = selectionMode,
+            emptyIcon = Icons.Default.FavoriteBorder,
+            emptyMessage = "No favorite media items yet",
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(2.dp)
-        ) {
-            items(favoriteItems, key = { it.id }) { item ->
-                MediaThumbnail(
-                    mediaItem = item,
-                    isSelected = selectedIds.contains(item.id),
-                    selectionMode = selectionMode,
-                    onClick = {
-                        if (selectionMode) {
-                            val newSelection = selectedIds.toMutableSet()
-                            if (newSelection.contains(item.id)) {
-                                newSelection.remove(item.id)
-                                if (newSelection.isEmpty()) selectionMode = false
-                            } else {
-                                newSelection.add(item.id)
-                            }
-                            selectedIds = newSelection
-                        } else {
-                            onNavigateToViewer(item.id)
-                        }
-                    },
-                    onLongClick = {
-                        if (!selectionMode) {
-                            selectionMode = true
-                            selectedIds = setOf(item.id)
-                        }
+            onItemClick = { item ->
+                if (selectionMode) {
+                    val newSelection = selectedIds.toMutableSet()
+                    if (newSelection.contains(item.id)) {
+                        newSelection.remove(item.id)
+                        if (newSelection.isEmpty()) selectionMode = false
+                    } else {
+                        newSelection.add(item.id)
                     }
-                )
+                    selectedIds = newSelection
+                } else {
+                    onNavigateToViewer(item.id)
+                }
+            },
+            onItemLongClick = { item ->
+                if (!selectionMode) {
+                    selectionMode = true
+                    selectedIds = setOf(item.id)
+                }
             }
-        }
+        )
     }
 }

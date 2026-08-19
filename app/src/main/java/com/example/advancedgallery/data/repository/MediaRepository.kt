@@ -6,6 +6,7 @@ import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.Album
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.util.MediaStoreHelper
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class MediaRepository @Inject constructor(
     private val contentResolver: ContentResolver,
-    private val mediaDao: MediaDao
+    private val mediaDao: MediaDao,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val _mediaItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
@@ -30,12 +32,12 @@ class MediaRepository @Inject constructor(
     }
 
     suspend fun loadMedia() {
-        val items = MediaStoreHelper.getMediaItems(contentResolver)
+        val items = MediaStoreHelper.getMediaItems(contentResolver, ioDispatcher)
         _mediaItems.update { items }
     }
 
     suspend fun toggleFavorite(mediaItem: MediaItem) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val isFav = !mediaItem.isFavorite
             if (isFav) {
                 mediaDao.insert(
@@ -53,7 +55,7 @@ class MediaRepository @Inject constructor(
     }
 
     suspend fun removeDeletedItems(deletedIds: List<Long>) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             mediaDao.removeFavorites(deletedIds)
         }
     }
