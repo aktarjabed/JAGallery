@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.example.advancedgallery.R
 
 @Composable
 fun DeleteConfirmationDialog(
@@ -13,21 +15,21 @@ fun DeleteConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Media") },
+        title = { Text(stringResource(R.string.delete_media_title)) },
         text = {
             Text(
-                if (count > 1) "Are you sure you want to delete $count items?"
-                else "Are you sure you want to delete this item?"
+                if (count > 1) stringResource(R.string.delete_confirm_message, count)
+                else stringResource(R.string.delete_single_confirm_message)
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete")
+                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

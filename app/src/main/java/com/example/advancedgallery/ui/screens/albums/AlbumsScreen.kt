@@ -16,9 +16,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.Album
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,13 +36,13 @@ fun AlbumsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("J.A Gallery") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_hint))
                     }
                     IconButton(onClick = onNavigateToFavorites) {
-                        Icon(Icons.Default.Favorite, contentDescription = "Favorites")
+                        Icon(Icons.Default.Favorite, contentDescription = stringResource(R.string.tab_favorites))
                     }
                 }
             )
@@ -62,7 +64,7 @@ fun AlbumsScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No media files found",
+                        text = stringResource(R.string.no_media_found),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -78,7 +80,7 @@ fun AlbumsScreen(
             ) {
                 item {
                     AlbumItem(
-                        album = Album(bucketId = -1L, name = "All Media", mediaCount = albums.sumOf { it.mediaCount }, coverUri = albums.firstOrNull()?.coverUri ?: android.net.Uri.EMPTY),
+                        album = Album(bucketId = -1L, name = stringResource(R.string.tab_all_media), mediaCount = albums.sumOf { it.mediaCount }, coverUri = albums.firstOrNull()?.coverUri ?: android.net.Uri.EMPTY),
                         onClick = { onNavigateToGrid(null) }
                     )
                 }

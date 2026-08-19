@@ -15,7 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.advancedgallery.R
 import com.example.advancedgallery.ui.common.components.DeleteConfirmationDialog
 import com.example.advancedgallery.ui.common.components.MediaGrid
 import com.example.advancedgallery.ui.common.components.SelectionToolbar
@@ -108,7 +110,7 @@ fun SearchScreen(
                         TextField(
                             value = query,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = { Text("Search by name...") },
+                            placeholder = { Text(stringResource(R.string.search_hint)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -127,7 +129,7 @@ fun SearchScreen(
             selectedIds = selectedIds,
             selectionMode = selectionMode,
             emptyIcon = Icons.Default.Search,
-            emptyMessage = if (query.isBlank()) "Type to search media..." else "No matching media found",
+            emptyMessage = if (query.isBlank()) stringResource(R.string.search_hint) else stringResource(R.string.no_search_results),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
