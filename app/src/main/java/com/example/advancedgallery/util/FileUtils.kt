@@ -14,4 +14,18 @@ object FileUtils {
             null
         }
     }
+
+    fun deleteMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
+        var success = true
+        for (uri in uris) {
+            try {
+                val rows = contentResolver.delete(uri, null, null)
+                if (rows <= 0) success = false
+            } catch (e: Exception) {
+                e.printStackTrace()
+                success = false
+            }
+        }
+        return success
+    }
 }

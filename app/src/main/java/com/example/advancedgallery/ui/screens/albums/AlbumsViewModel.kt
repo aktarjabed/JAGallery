@@ -23,7 +23,7 @@ class AlbumsViewModel @Inject constructor(
                 val firstItem = bucketItems.first()
                 Album(
                     bucketId = bucketId,
-                    name = firstItem.bucketName,
+                    name = firstItem.bucketName.ifBlank { "Internal Storage" },
                     mediaCount = bucketItems.size,
                     coverUri = firstItem.uri
                 )

@@ -8,8 +8,13 @@ import com.example.advancedgallery.data.model.MediaItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import kotlinx.coroutines.CoroutineDispatcher
+
 object MediaStoreHelper {
-    suspend fun getMediaItems(contentResolver: ContentResolver): List<MediaItem> = withContext(Dispatchers.IO) {
+    suspend fun getMediaItems(
+        contentResolver: ContentResolver,
+        dispatcher: CoroutineDispatcher = Dispatchers.IO
+    ): List<MediaItem> = withContext(dispatcher) {
         val mediaItems = mutableListOf<MediaItem>()
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
@@ -29,8 +34,14 @@ object MediaStoreHelper {
 
         val sortOrder = "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
 
+        val externalUri = try {
+            MediaStore.Files.getContentUri("external")
+        } catch (e: Throwable) {
+            null
+        } ?: return@withContext emptyList()
+
         val query = contentResolver.query(
-            MediaStore.Files.getContentUri("external"),
+            externalUri,
             projection,
             selection,
             null,

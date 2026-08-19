@@ -7,8 +7,16 @@ sealed class Screen(val route: String) {
     }
     object Favorites : Screen("favorites")
     object Search : Screen("search")
-    object Viewer : Screen("viewer/{mediaId}?bucketId={bucketId}") {
-        fun createRoute(mediaId: Long, bucketId: Long?) =
-            if (bucketId != null) "viewer/$mediaId?bucketId=$bucketId" else "viewer/$mediaId"
+    object Viewer : Screen("viewer/{mediaId}?bucketId={bucketId}&searchQuery={searchQuery}") {
+        fun createRoute(mediaId: Long, bucketId: Long?, searchQuery: String? = null): String {
+            val builder = StringBuilder("viewer/$mediaId")
+            val params = mutableListOf<String>()
+            if (bucketId != null) params.add("bucketId=$bucketId")
+            if (!searchQuery.isNullOrBlank()) params.add("searchQuery=${android.net.Uri.encode(searchQuery)}")
+            if (params.isNotEmpty()) {
+                builder.append("?").append(params.joinToString("&"))
+            }
+            return builder.toString()
+        }
     }
 }

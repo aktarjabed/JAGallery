@@ -20,18 +20,30 @@ class ViewerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _bucketId = MutableStateFlow<Long?>(null)
+    private val _searchQuery = MutableStateFlow<String?>(null)
 
-    val mediaItems: StateFlow<List<MediaItem>> = combine(repository.mediaItems, _bucketId) { items, bucket ->
+    val mediaItems: StateFlow<List<MediaItem>> = combine(repository.mediaItems, _bucketId, _searchQuery) { items, bucket, query ->
         when (bucket) {
             Constants.BUCKET_ID_FAVORITES -> items.filter { it.isFavorite }
-            Constants.BUCKET_ID_SEARCH -> items // Searching context - will show all for now since passing the query via bundle is complex for this task
+            Constants.BUCKET_ID_SEARCH -> {
+                if (!query.isNullOrBlank()) {
+                    items.filter { it.name.contains(query, ignoreCase = true) }
+                } else {
+                    items
+                }
+            }
             null -> items
             else -> items.filter { it.bucketId == bucket }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun setBucketId(bucketId: Long?) {
+    fun setParams(bucketId: Long?, searchQuery: String? = null) {
         _bucketId.value = bucketId
+        _searchQuery.value = searchQuery
+    }
+
+    fun setBucketId(bucketId: Long?) {
+        setParams(bucketId, null)
     }
 
     fun toggleFavorite(mediaItem: MediaItem) {

@@ -7,11 +7,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -44,24 +46,48 @@ fun AlbumsScreen(
             )
         }
     ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(4.dp)
-        ) {
-            item {
-                AlbumItem(
-                    album = Album(bucketId = -1L, name = "All Media", mediaCount = albums.sumOf { it.mediaCount }, coverUri = albums.firstOrNull()?.coverUri ?: android.net.Uri.EMPTY),
-                    onClick = { onNavigateToGrid(null) }
-                )
+        if (albums.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No media files found",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            items(albums) { album ->
-                AlbumItem(
-                    album = album,
-                    onClick = { onNavigateToGrid(album.bucketId) }
-                )
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(4.dp)
+            ) {
+                item {
+                    AlbumItem(
+                        album = Album(bucketId = -1L, name = "All Media", mediaCount = albums.sumOf { it.mediaCount }, coverUri = albums.firstOrNull()?.coverUri ?: android.net.Uri.EMPTY),
+                        onClick = { onNavigateToGrid(null) }
+                    )
+                }
+                items(albums) { album ->
+                    AlbumItem(
+                        album = album,
+                        onClick = { onNavigateToGrid(album.bucketId) }
+                    )
+                }
             }
         }
     }

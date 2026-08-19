@@ -11,18 +11,26 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 
+import androidx.compose.foundation.gestures.detectTapGestures
+
 @Composable
 fun ImageViewer(
     uri: android.net.Uri,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTap: () -> Unit = {}
 ) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var scale by remember(uri) { mutableFloatStateOf(1f) }
+    var offset by remember(uri) { mutableStateOf(Offset.Zero) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(uri) {
+                detectTapGestures(
+                    onTap = { onTap() }
+                )
+            }
+            .pointerInput(uri) {
                 detectTransformGestures { _, pan, zoom, _ ->
                     scale = (scale * zoom).coerceIn(1f, 5f)
                     val maxOffsetX = (size.width * (scale - 1)) / 2

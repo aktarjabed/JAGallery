@@ -12,30 +12,41 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import android.content.Intent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.advancedgallery.ui.screens.viewer.components.ImageViewer
 import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
 import com.example.advancedgallery.util.FileUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ViewerScreen(
     initialMediaId: Long,
     bucketId: Long?,
+    searchQuery: String? = null,
     onBack: () -> Unit,
     viewModel: ViewerViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(bucketId) {
-        viewModel.setBucketId(bucketId)
+    LaunchedEffect(bucketId, searchQuery) {
+        viewModel.setParams(bucketId, searchQuery)
     }
 
     val mediaItems by viewModel.mediaItems.collectAsState()
@@ -55,19 +66,55 @@ fun ViewerScreen(
 
     val currentItem = mediaItems.getOrNull(pagerState.currentPage) ?: return
 
+    var showControls by remember { mutableStateOf(true) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
+    val currentDeletingId = rememberUpdatedState(currentItem.id)
+    val currentDeletingUri = rememberUpdatedState(currentItem.uri)
+
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            viewModel.removeDeletedItem(currentItem.id)
+            viewModel.removeDeletedItem(currentDeletingId.value)
             if (mediaItems.size <= 1) {
                 onBack()
             }
         }
     }
 
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    if (showInfoDialog) {
+        val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
+        val dateStr = remember(currentItem.dateAdded) {
+            val millis = if (currentItem.dateAdded > 10000000000L) currentItem.dateAdded else currentItem.dateAdded * 1000
+            dateFormat.format(Date(millis))
+        }
+
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            title = { Text("Media Info") },
+            text = {
+                Column {
+                    Text(text = "Name: ${currentItem.name}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "MIME Type: ${currentItem.mimeType.ifEmpty { if (currentItem.isVideo) "video/*" else "image/*" }}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Date Added: $dateStr")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Album: ${currentItem.bucketName.ifEmpty { "Internal Storage" }}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "URI: ${currentItem.uri}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showInfoDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     if (showDeleteConfirmation) {
         AlertDialog(
@@ -77,11 +124,12 @@ fun ViewerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirmation = false
-                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, listOf(currentItem.uri))
+                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, listOf(currentDeletingUri.value))
                     if (pendingIntent != null) {
                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                     } else {
-                        viewModel.removeDeletedItem(currentItem.id)
+                        val deleted = FileUtils.deleteMediaItems(context.contentResolver, listOf(currentDeletingUri.value))
+                        viewModel.removeDeletedItem(currentDeletingId.value)
                         if (mediaItems.size <= 1) {
                             onBack()
                         }
@@ -100,32 +148,47 @@ fun ViewerScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(currentItem.name) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.toggleFavorite(currentItem) }) {
-                        Icon(
-                            imageVector = if (currentItem.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (currentItem.isFavorite) Color.Red else LocalContentColor.current
-                        )
-                    }
-                    IconButton(onClick = { showDeleteConfirmation = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.5f),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+            if (showControls) {
+                TopAppBar(
+                    title = { Text(currentItem.name) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = if (currentItem.isVideo) "video/*" else "image/*"
+                                putExtra(Intent.EXTRA_STREAM, currentItem.uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Media"))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Share")
+                        }
+                        IconButton(onClick = { showInfoDialog = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "Info")
+                        }
+                        IconButton(onClick = { viewModel.toggleFavorite(currentItem) }) {
+                            Icon(
+                                imageVector = if (currentItem.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (currentItem.isFavorite) Color.Red else LocalContentColor.current
+                            )
+                        }
+                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Black.copy(alpha = 0.5f),
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White,
+                        actionIconContentColor = Color.White
+                    )
                 )
-            )
+            }
         }
     ) { padding ->
         Box(
@@ -139,10 +202,18 @@ fun ViewerScreen(
                 beyondBoundsPageCount = 1
             ) { page ->
                 val item = mediaItems[page]
+                val isPageVisible = (page == pagerState.currentPage)
                 if (item.isVideo) {
-                    VideoPlayer(uri = item.uri)
+                    VideoPlayer(
+                        uri = item.uri,
+                        isPageVisible = isPageVisible,
+                        onTap = { showControls = !showControls }
+                    )
                 } else {
-                    ImageViewer(uri = item.uri)
+                    ImageViewer(
+                        uri = item.uri,
+                        onTap = { showControls = !showControls }
+                    )
                 }
             }
         }

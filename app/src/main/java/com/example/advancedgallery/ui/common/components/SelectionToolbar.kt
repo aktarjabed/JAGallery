@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,6 +21,7 @@ fun SelectionToolbar(
     selectedCount: Int,
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
+    onShareSelected: (() -> Unit)? = null,
     onDeleteSelected: () -> Unit
 ) {
     TopAppBar(
@@ -30,6 +32,11 @@ fun SelectionToolbar(
             }
         },
         actions = {
+            if (onShareSelected != null) {
+                IconButton(onClick = onShareSelected) {
+                    Icon(Icons.Default.Share, contentDescription = "Share Selected")
+                }
+            }
             IconButton(onClick = onSelectAll) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Select All")
             }

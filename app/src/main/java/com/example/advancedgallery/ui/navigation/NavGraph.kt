@@ -60,8 +60,8 @@ fun NavGraph() {
         }
         composable(Screen.Search.route) {
             SearchScreen(
-                onNavigateToViewer = { mediaId ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, Constants.BUCKET_ID_SEARCH))
+                onNavigateToViewer = { mediaId, query ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, Constants.BUCKET_ID_SEARCH, query))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -73,15 +73,21 @@ fun NavGraph() {
                 navArgument("bucketId") {
                     type = NavType.StringType
                     nullable = true
+                },
+                navArgument("searchQuery") {
+                    type = NavType.StringType
+                    nullable = true
                 }
             )
         ) { backStackEntry ->
             val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: return@composable
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
+            val searchQuery = backStackEntry.arguments?.getString("searchQuery")
             ViewerScreen(
                 initialMediaId = mediaId,
                 bucketId = bucketId,
+                searchQuery = searchQuery,
                 onBack = { navController.popBackStack() }
             )
         }
