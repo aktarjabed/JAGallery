@@ -2,6 +2,7 @@ package com.example.advancedgallery.ui.screens.viewer
 
 import android.content.ContentResolver
 import android.net.Uri
+import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
@@ -52,5 +53,16 @@ class ViewerViewModelTest {
         val favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
         assertEquals(10L, favorites[0].id)
+    }
+
+    @Test
+    fun removeDeletedItem_clearsFromFavorites() = runTest {
+        fakeDao.insert(MediaEntity(10L, "uri10", true, 500L))
+        val viewModel = ViewerViewModel(repository)
+
+        viewModel.removeDeletedItem(10L)
+
+        val favorites = fakeDao.getFavorites().first()
+        assertEquals(0, favorites.size)
     }
 }

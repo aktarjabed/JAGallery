@@ -1,5 +1,7 @@
 package com.example.advancedgallery.ui.screens.viewer.components
 
+import android.net.Uri
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,11 +13,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 
-import androidx.compose.foundation.gestures.detectTapGestures
-
 @Composable
 fun ImageViewer(
-    uri: android.net.Uri,
+    uri: Uri,
     modifier: Modifier = Modifier,
     onTap: () -> Unit = {}
 ) {
@@ -27,7 +27,16 @@ fun ImageViewer(
             .fillMaxSize()
             .pointerInput(uri) {
                 detectTapGestures(
-                    onTap = { onTap() }
+                    onTap = { onTap() },
+                    onDoubleTap = {
+                        if (scale > 1f) {
+                            scale = 1f
+                            offset = Offset.Zero
+                        } else {
+                            scale = 2.5f
+                            offset = Offset.Zero
+                        }
+                    }
                 )
             }
             .pointerInput(uri) {

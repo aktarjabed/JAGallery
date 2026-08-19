@@ -1,3 +1,24 @@
 <resources>
     <string name="app_name">J.A Gallery</string>
+    <string name="tab_all_media">All Media</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="search_hint">Search media...</string>
+    <string name="delete_media_title">Delete Media</string>
+    <string name="delete_confirm_message">Are you sure you want to delete %1$d selected items?</string>
+    <string name="delete_single_confirm_message">Are you sure you want to delete this item?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="share">Share</string>
+    <string name="info">Info</string>
+    <string name="favorite">Favorite</string>
+    <string name="media_info_title">Media Info</string>
+    <string name="no_media_found">No media items found</string>
+    <string name="no_favorites_found">No favorite media items yet</string>
+    <string name="no_search_results">No media items matching your search</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="manage_selection">Manage Selection</string>
+    <string name="showing_selected_photos">Showing selected photos only.</string>
 </resources>

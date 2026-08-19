@@ -1,21 +1,22 @@
 package com.example.advancedgallery.ui.screens.viewer
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Parcelable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import android.content.Intent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -23,18 +24,27 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.advancedgallery.R
 import com.example.advancedgallery.ui.screens.viewer.components.ImageViewer
 import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
 import com.example.advancedgallery.util.FileUtils
+import kotlinx.parcelize.Parcelize
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+@Parcelize
+data class PendingDelete(
+    val id: Long,
+    val uri: Uri
+) : Parcelable
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -68,20 +78,21 @@ fun ViewerScreen(
 
     var showControls by remember { mutableStateOf(true) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var pendingDeleteTransaction by rememberSaveable { mutableStateOf<PendingDelete?>(null) }
 
     val context = LocalContext.current
-    val currentDeletingId = rememberUpdatedState(currentItem.id)
-    val currentDeletingUri = rememberUpdatedState(currentItem.uri)
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            viewModel.removeDeletedItem(currentDeletingId.value)
-            if (mediaItems.size <= 1) {
-                onBack()
+        pendingDeleteTransaction?.let { pending ->
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                viewModel.removeDeletedItem(pending.id)
+                if (mediaItems.size <= 1) {
+                    onBack()
+                }
             }
+            pendingDeleteTransaction = null
         }
     }
 
@@ -94,7 +105,7 @@ fun ViewerScreen(
 
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
-            title = { Text("Media Info") },
+            title = { Text(stringResource(R.string.media_info_title)) },
             text = {
                 Column {
                     Text(text = "Name: ${currentItem.name}")
@@ -110,37 +121,37 @@ fun ViewerScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showInfoDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
     }
 
-    if (showDeleteConfirmation) {
+    pendingDeleteTransaction?.let { pending ->
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Media") },
-            text = { Text("Are you sure you want to delete this item?") },
+            onDismissRequest = { pendingDeleteTransaction = null },
+            title = { Text(stringResource(R.string.delete_media_title)) },
+            text = { Text(stringResource(R.string.delete_single_confirm_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    showDeleteConfirmation = false
-                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, listOf(currentDeletingUri.value))
+                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, listOf(pending.uri))
                     if (pendingIntent != null) {
                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                     } else {
-                        val deleted = FileUtils.deleteMediaItems(context.contentResolver, listOf(currentDeletingUri.value))
-                        viewModel.removeDeletedItem(currentDeletingId.value)
+                        FileUtils.deleteMediaItems(context.contentResolver, listOf(pending.uri))
+                        viewModel.removeDeletedItem(pending.id)
+                        pendingDeleteTransaction = null
                         if (mediaItems.size <= 1) {
                             onBack()
                         }
                     }
                 }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                TextButton(onClick = { pendingDeleteTransaction = null }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -177,7 +188,9 @@ fun ViewerScreen(
                                 tint = if (currentItem.isFavorite) Color.Red else LocalContentColor.current
                             )
                         }
-                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                        IconButton(onClick = {
+                            pendingDeleteTransaction = PendingDelete(currentItem.id, currentItem.uri)
+                        }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                     },
@@ -199,7 +212,7 @@ fun ViewerScreen(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                beyondBoundsPageCount = 1
+                beyondViewportPageCount = 1
             ) { page ->
                 val item = mediaItems[page]
                 val isPageVisible = (page == pagerState.currentPage)

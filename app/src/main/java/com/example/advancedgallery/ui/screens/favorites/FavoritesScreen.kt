@@ -14,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.advancedgallery.R
 import com.example.advancedgallery.ui.common.components.DeleteConfirmationDialog
 import com.example.advancedgallery.ui.common.components.MediaGrid
 import com.example.advancedgallery.ui.common.components.SelectionToolbar
@@ -102,7 +104,7 @@ fun FavoritesScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("Favorites") },
+                    title = { Text(stringResource(R.string.tab_favorites)) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -117,7 +119,7 @@ fun FavoritesScreen(
             selectedIds = selectedIds,
             selectionMode = selectionMode,
             emptyIcon = Icons.Default.FavoriteBorder,
-            emptyMessage = "No favorite media items yet",
+            emptyMessage = stringResource(R.string.no_favorites_found),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),

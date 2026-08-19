@@ -2,90 +2,123 @@ package com.example.advancedgallery.util
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.database.Cursor
 import android.net.Uri
 import android.provider.MediaStore
 import com.example.advancedgallery.data.model.MediaItem
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-import kotlinx.coroutines.CoroutineDispatcher
 
 object MediaStoreHelper {
     suspend fun getMediaItems(
         contentResolver: ContentResolver,
         dispatcher: CoroutineDispatcher = Dispatchers.IO
     ): List<MediaItem> = withContext(dispatcher) {
-        val mediaItems = mutableListOf<MediaItem>()
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.DATE_ADDED,
-            MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.BUCKET_ID,
-            MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME,
-            MediaStore.Files.FileColumns.MEDIA_TYPE
-        )
+        val items = mutableListOf<MediaItem>()
 
-        val selection = (MediaStore.Files.FileColumns.MEDIA_TYPE + "="
-                + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
-                + " OR "
-                + MediaStore.Files.FileColumns.MEDIA_TYPE + "="
-                + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO)
-
-        val sortOrder = "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
-
-        val externalUri = try {
-            MediaStore.Files.getContentUri("external")
+        val imageCollectionUri = try {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         } catch (e: Throwable) {
             null
-        } ?: return@withContext emptyList()
+        }
 
-        val query = contentResolver.query(
-            externalUri,
-            projection,
-            selection,
-            null,
-            sortOrder
+        val videoCollectionUri = try {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        } catch (e: Throwable) {
+            null
+        }
+
+        if (imageCollectionUri != null) {
+            items.addAll(
+                queryCollection(
+                    contentResolver = contentResolver,
+                    contentUri = imageCollectionUri,
+                    isVideo = false
+                )
+            )
+        }
+
+        if (videoCollectionUri != null) {
+            items.addAll(
+                queryCollection(
+                    contentResolver = contentResolver,
+                    contentUri = videoCollectionUri,
+                    isVideo = true
+                )
+            )
+        }
+
+        items.sortedByDescending { it.dateAdded }
+    }
+
+    private fun queryCollection(
+        contentResolver: ContentResolver,
+        contentUri: Uri,
+        isVideo: Boolean
+    ): List<MediaItem> {
+        val items = mutableListOf<MediaItem>()
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.BUCKET_ID,
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME
         )
 
+        val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+
+        val query: Cursor? = try {
+            contentResolver.query(
+                contentUri,
+                projection,
+                null,
+                null,
+                sortOrder
+            )
+        } catch (e: Exception) {
+            null
+        }
+
         query?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-            val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-            val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-            val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-            val bucketIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
-            val bucketNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
-            val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+            val nameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+            val dateAddedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
+            val mimeTypeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+            val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
+            val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+
+            if (idColumn == -1) return items
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val name = cursor.getString(nameColumn) ?: ""
-                val dateAdded = cursor.getLong(dateAddedColumn)
-                val mimeType = cursor.getString(mimeTypeColumn) ?: ""
-                val bucketId = cursor.getLong(bucketIdColumn)
-                val bucketName = cursor.getString(bucketNameColumn) ?: ""
-                val mediaType = cursor.getInt(mediaTypeColumn)
+                val name = if (nameColumn != -1) cursor.getString(nameColumn) ?: "" else ""
+                val dateAdded = if (dateAddedColumn != -1) cursor.getLong(dateAddedColumn) else 0L
+                val mimeType = if (mimeTypeColumn != -1) cursor.getString(mimeTypeColumn) ?: "" else ""
+                val bucketId = if (bucketIdColumn != -1) cursor.getLong(bucketIdColumn) else 0L
+                val bucketName = if (bucketNameColumn != -1) cursor.getString(bucketNameColumn) ?: "" else ""
 
-                val contentUri: Uri = if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO) {
-                    ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-                } else {
-                    ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                val uri = try {
+                    ContentUris.withAppendedId(contentUri, id)
+                } catch (e: Throwable) {
+                    contentUri
                 }
 
-                mediaItems.add(
+                items.add(
                     MediaItem(
                         id = id,
-                        uri = contentUri,
+                        uri = uri,
                         name = name,
                         dateAdded = dateAdded,
                         mimeType = mimeType,
                         bucketId = bucketId,
                         bucketName = bucketName,
-                        isVideo = mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
+                        isVideo = isVideo
                     )
                 )
             }
         }
-        mediaItems
+        return items
     }
 }
