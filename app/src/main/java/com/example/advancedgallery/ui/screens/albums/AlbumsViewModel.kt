@@ -39,11 +39,11 @@ class AlbumsViewModel @Inject constructor(
                 if (items.isEmpty()) {
                     AlbumsUiState.Empty
                 } else {
-                    val albumsList = items.groupBy { it.bucketId }
-                        .map { (bucketId, bucketItems) ->
+                    val albumsList = items.groupBy { it.albumKey }
+                        .map { (albumKey, bucketItems) ->
                             val firstItem = bucketItems.first()
                             Album(
-                                bucketId = bucketId,
+                                key = albumKey,
                                 name = firstItem.bucketName.ifBlank { context.getString(com.example.advancedgallery.R.string.internal_storage) },
                                 mediaCount = bucketItems.size,
                                 coverUri = firstItem.uri

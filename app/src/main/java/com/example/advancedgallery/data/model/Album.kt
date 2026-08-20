@@ -1,8 +1,19 @@
 package com.example.advancedgallery.data.model
 
+import android.net.Uri
+
 data class Album(
-    val bucketId: Long,
+    val key: AlbumKey,
     val name: String,
     val mediaCount: Int,
-    val coverUri: android.net.Uri
-)
+    val coverUri: Uri
+) {
+    val bucketId: Long
+        get() = key.bucketId
+
+    val volumeName: String
+        get() = key.volumeName
+
+    val id: String
+        get() = "${key.volumeName}:${key.bucketId}"
+}

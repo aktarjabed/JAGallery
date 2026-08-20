@@ -18,6 +18,7 @@ import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import kotlin.coroutines.coroutineContext
 
 data class TransformationPlan(
@@ -67,8 +68,17 @@ object ImageEditorUtils {
             } else {
                 bitmap
             }
-        } catch (e: Throwable) {
+        } catch (e: IOException) {
             Log.e(TAG, "Failed to decode sampled bitmap", e)
+            null
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException decoding sampled bitmap", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "IllegalArgumentException decoding sampled bitmap", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "OutOfMemoryError decoding sampled bitmap", e)
             null
         }
     }
@@ -101,8 +111,14 @@ object ImageEditorUtils {
         } catch (e: OutOfMemoryError) {
             Log.w(TAG, "OOM decoding full resolution bitmap with sample size $inSampleSize")
             null
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to decode full resolution bitmap", e)
+        } catch (e: IOException) {
+            Log.e(TAG, "IOException decoding full resolution bitmap", e)
+            null
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException decoding full resolution bitmap", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "IllegalArgumentException decoding full resolution bitmap", e)
             null
         }
     }
@@ -210,12 +226,12 @@ object ImageEditorUtils {
                     continue
                 }
 
-                exportDimensions = "${fullRes.width}x${fullRes.height}"
-
                 val edited = applyTransformationPlan(
                     sourceBitmap = fullRes,
                     plan = plan
                 )
+
+                exportDimensions = "${edited.width}x${edited.height}"
 
                 resultUri = saveEditedImage(context, edited, uri)
 
@@ -230,8 +246,14 @@ object ImageEditorUtils {
             } catch (e: OutOfMemoryError) {
                 Log.w(TAG, "OOM during export at sample size $sampleSize, falling back")
                 sampleSize *= 2
-            } catch (e: Throwable) {
+            } catch (e: IOException) {
                 Log.e(TAG, "Export error at sample size $sampleSize", e)
+                break
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Export security exception at sample size $sampleSize", e)
+                break
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Export illegal argument exception at sample size $sampleSize", e)
                 break
             }
         }
@@ -266,7 +288,19 @@ object ImageEditorUtils {
             }
         }
 
-        val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && sourceUri != null) {
+            try {
+                val volumeName = MediaStore.getVolumeName(sourceUri)
+                MediaStore.Images.Media.getContentUri(volumeName)
+            } catch (e: IllegalArgumentException) {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            } catch (e: SecurityException) {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            }
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
         var newUri: Uri? = null
 
         try {
@@ -289,7 +323,15 @@ object ImageEditorUtils {
             if (success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 contentValues.clear()
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                resolver.update(newUri, contentValues, null, null)
+                val updatedRows = resolver.update(newUri, contentValues, null, null)
+                if (updatedRows != 1) {
+                    try {
+                        resolver.delete(newUri, null, null)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                    return@withContext null
+                }
             }
 
             if (!success) {
@@ -298,8 +340,28 @@ object ImageEditorUtils {
             } else {
                 newUri
             }
-        } catch (e: Throwable) {
+        } catch (e: IOException) {
             Log.e(TAG, "Failed to save edited image", e)
+            if (newUri != null) {
+                try {
+                    resolver.delete(newUri, null, null)
+                } catch (delEx: Exception) {
+                    // ignore
+                }
+            }
+            null
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException saving edited image", e)
+            if (newUri != null) {
+                try {
+                    resolver.delete(newUri, null, null)
+                } catch (delEx: Exception) {
+                    // ignore
+                }
+            }
+            null
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "IllegalArgumentException saving edited image", e)
             if (newUri != null) {
                 try {
                     resolver.delete(newUri, null, null)

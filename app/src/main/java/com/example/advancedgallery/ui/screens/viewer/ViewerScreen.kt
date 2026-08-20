@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.model.PendingDeleteBatch
+import com.example.advancedgallery.ui.common.OperationEvent
 import com.example.advancedgallery.ui.common.selection.shareMediaItems
 import com.example.advancedgallery.ui.screens.viewer.components.ImageViewer
 import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
@@ -46,8 +46,22 @@ fun ViewerScreen(
     onNavigateToEditor: (String) -> Unit = {},
     viewModel: ViewerViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(source) {
-        viewModel.setSource(source)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel.navigationEvent) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                is ViewerNavigationEvent.PopBack -> onBack()
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel.operationEvent) {
+        viewModel.operationEvent.collect { event ->
+            when (event) {
+                is OperationEvent.Error -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
     }
 
     val viewerState by viewModel.state.collectAsState()
@@ -159,9 +173,6 @@ fun ViewerScreen(
         if (currentState is com.example.advancedgallery.ui.common.selection.DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
                 viewModel.removeDeletedItem(currentState.batch.ids.first())
-                if (mediaItems.size <= 1) {
-                    onBack()
-                }
             }
         }
         deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle
@@ -215,9 +226,6 @@ fun ViewerScreen(
                             if (success) {
                                 viewModel.removeDeletedItem(currentState.batch.ids.first())
                                 deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle
-                                if (mediaItems.size <= 1) {
-                                    onBack()
-                                }
                             } else {
                                 android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
                                 deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
@@ -243,6 +251,7 @@ fun ViewerScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (showControls) {
                 TopAppBar(

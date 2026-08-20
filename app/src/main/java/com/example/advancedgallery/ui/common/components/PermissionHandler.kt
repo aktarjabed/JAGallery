@@ -27,6 +27,14 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.advancedgallery.R
 
+enum class PermissionAccessMode {
+    DENIED,
+    SELECTED,
+    FULL,
+    IMAGES_ONLY,
+    VIDEOS_ONLY
+}
+
 enum class PermissionState {
     FULL,
     PARTIAL,
@@ -42,28 +50,41 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-fun checkGalleryPermissionState(context: Context): PermissionState {
+fun checkGalleryPermissionAccessMode(context: Context): PermissionAccessMode {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         val hasImages = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
         val hasVideo = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
         val hasSelected = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
 
         when {
-            hasImages && hasVideo -> PermissionState.FULL
-            hasSelected || hasImages || hasVideo -> PermissionState.PARTIAL
-            else -> PermissionState.DENIED
+            hasImages && hasVideo -> PermissionAccessMode.FULL
+            hasSelected -> PermissionAccessMode.SELECTED
+            hasImages -> PermissionAccessMode.IMAGES_ONLY
+            hasVideo -> PermissionAccessMode.VIDEOS_ONLY
+            else -> PermissionAccessMode.DENIED
         }
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val hasImages = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
         val hasVideo = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
         when {
-            hasImages && hasVideo -> PermissionState.FULL
-            hasImages || hasVideo -> PermissionState.PARTIAL
-            else -> PermissionState.DENIED
+            hasImages && hasVideo -> PermissionAccessMode.FULL
+            hasImages -> PermissionAccessMode.IMAGES_ONLY
+            hasVideo -> PermissionAccessMode.VIDEOS_ONLY
+            else -> PermissionAccessMode.DENIED
         }
     } else {
         val hasStorage = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        if (hasStorage) PermissionState.FULL else PermissionState.DENIED
+        if (hasStorage) PermissionAccessMode.FULL else PermissionAccessMode.DENIED
+    }
+}
+
+fun checkGalleryPermissionState(context: Context): PermissionState {
+    return when (checkGalleryPermissionAccessMode(context)) {
+        PermissionAccessMode.FULL -> PermissionState.FULL
+        PermissionAccessMode.SELECTED,
+        PermissionAccessMode.IMAGES_ONLY,
+        PermissionAccessMode.VIDEOS_ONLY -> PermissionState.PARTIAL
+        PermissionAccessMode.DENIED -> PermissionState.DENIED
     }
 }
 

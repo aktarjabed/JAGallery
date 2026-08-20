@@ -3,11 +3,15 @@ package com.example.advancedgallery.ui.screens.albums
 import android.content.ContentResolver
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.example.advancedgallery.data.model.AlbumKey
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
+import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -40,5 +44,31 @@ class AlbumsViewModelTest {
         val viewModel = AlbumsViewModel(repository, context)
         val state = viewModel.uiState.value
         assertTrue(state is AlbumsUiState.Loading || state is AlbumsUiState.Empty)
+    }
+
+    @Test
+    fun sameBucketIdAcrossDifferentVolumes_createsDistinctAlbums() = runTest {
+        val itemPrimary = MediaTestData.image(
+            id = 1L,
+            uriString = "content://media/external_primary/images/media/1",
+            bucketId = 100L,
+            bucketName = "Camera",
+            volumeName = "external_primary"
+        )
+        val itemSd = MediaTestData.image(
+            id = 2L,
+            uriString = "content://media/1234-5678/images/media/2",
+            bucketId = 100L,
+            bucketName = "Camera",
+            volumeName = "1234-5678"
+        )
+
+        // Directly test grouping logic via AlbumKey
+        val items = listOf(itemPrimary, itemSd)
+        val albumsList = items.groupBy { it.albumKey }
+
+        assertEquals(2, albumsList.size)
+        assertTrue(albumsList.containsKey(AlbumKey("external_primary", 100L)))
+        assertTrue(albumsList.containsKey(AlbumKey("1234-5678", 100L)))
     }
 }
