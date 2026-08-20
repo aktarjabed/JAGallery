@@ -1,5 +1,6 @@
 package com.example.advancedgallery.ui.screens.albums
 
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -32,6 +33,8 @@ fun AlbumsScreen(
     onNavigateToSearch: () -> Unit
 ) {
     val albums by viewModel.albums.collectAsState()
+    val totalMediaCount by viewModel.totalMediaCount.collectAsState()
+    val coverUri by viewModel.coverUri.collectAsState()
 
     Scaffold(
         topBar = {
@@ -48,7 +51,7 @@ fun AlbumsScreen(
             )
         }
     ) { padding ->
-        if (albums.isEmpty()) {
+        if (albums.isEmpty() && totalMediaCount == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -79,14 +82,18 @@ fun AlbumsScreen(
                 contentPadding = PaddingValues(4.dp)
             ) {
                 item {
-                    AlbumItem(
-                        album = Album(bucketId = -1L, name = stringResource(R.string.tab_all_media), mediaCount = albums.sumOf { it.mediaCount }, coverUri = albums.firstOrNull()?.coverUri ?: android.net.Uri.EMPTY),
+                    AlbumCard(
+                        title = stringResource(R.string.tab_all_media),
+                        count = totalMediaCount,
+                        coverUri = coverUri ?: Uri.EMPTY,
                         onClick = { onNavigateToGrid(null) }
                     )
                 }
                 items(albums) { album ->
-                    AlbumItem(
-                        album = album,
+                    AlbumCard(
+                        title = album.name,
+                        count = album.mediaCount,
+                        coverUri = album.coverUri,
                         onClick = { onNavigateToGrid(album.bucketId) }
                     )
                 }
@@ -96,7 +103,12 @@ fun AlbumsScreen(
 }
 
 @Composable
-fun AlbumItem(album: Album, onClick: () -> Unit) {
+fun AlbumCard(
+    title: String,
+    count: Int,
+    coverUri: Uri,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .padding(4.dp)
@@ -105,16 +117,16 @@ fun AlbumItem(album: Album, onClick: () -> Unit) {
     ) {
         Column {
             AsyncImage(
-                model = album.coverUri,
-                contentDescription = album.name,
+                model = coverUri,
+                contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
             )
             Column(modifier = Modifier.padding(8.dp)) {
-                Text(text = album.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(text = "${album.mediaCount} items", style = MaterialTheme.typography.bodyMedium)
+                Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Text(text = "$count items", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

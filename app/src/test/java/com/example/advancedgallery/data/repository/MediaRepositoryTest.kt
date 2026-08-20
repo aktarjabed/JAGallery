@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -25,7 +26,8 @@ class MediaRepositoryTest {
     private lateinit var fakeDao: FakeMediaDao
     private lateinit var repository: MediaRepository
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
-    private val mockUri: Uri = mock(Uri::class.java)
+    private val mockImageUri: Uri = mock(Uri::class.java)
+    private val mockVideoUri: Uri = mock(Uri::class.java)
 
     @Before
     fun setUp() {
@@ -36,8 +38,9 @@ class MediaRepositoryTest {
     @Test
     fun toggleFavorite_addsAndRemovesFavorite() = runTest {
         val testItem = MediaItem(
-            id = 100L,
-            uri = mockUri,
+            id = "content://media/external/images/media/100",
+            mediaStoreId = 100L,
+            uri = mockImageUri,
             name = "test_image.jpg",
             dateAdded = 1000L,
             mimeType = "image/jpeg",
@@ -51,7 +54,7 @@ class MediaRepositoryTest {
         repository.toggleFavorite(testItem)
         var favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
-        assertEquals(100L, favorites[0].id)
+        assertEquals("content://media/external/images/media/100", favorites[0].id)
         assertTrue(favorites[0].isFavorite)
 
         // Toggle to false
@@ -63,15 +66,55 @@ class MediaRepositoryTest {
 
     @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
-        fakeDao.insert(MediaEntity(1L, "uri1", true, 100L))
-        fakeDao.insert(MediaEntity(2L, "uri2", true, 200L))
+        fakeDao.insert(MediaEntity("content://media/external/images/media/1", true, 100L))
+        fakeDao.insert(MediaEntity("content://media/external/video/media/2", true, 200L))
 
         assertEquals(2, fakeDao.getFavorites().first().size)
 
-        repository.removeDeletedItems(listOf(1L))
+        repository.removeDeletedItems(listOf("content://media/external/images/media/1"))
 
         val remaining = fakeDao.getFavorites().first()
         assertEquals(1, remaining.size)
-        assertEquals(2L, remaining[0].id)
+        assertEquals("content://media/external/video/media/2", remaining[0].id)
+    }
+
+    @Test
+    fun idCollision_imageAndVideoWithSameMediaStoreId_areDistinct() = runTest {
+        val imageItem = MediaItem(
+            id = "content://media/external/images/media/123",
+            mediaStoreId = 123L,
+            uri = mockImageUri,
+            name = "photo.jpg",
+            dateAdded = 1000L,
+            mimeType = "image/jpeg",
+            bucketId = 10L,
+            bucketName = "Camera",
+            isVideo = false
+        )
+
+        val videoItem = MediaItem(
+            id = "content://media/external/video/media/123",
+            mediaStoreId = 123L,
+            uri = mockVideoUri,
+            name = "video.mp4",
+            dateAdded = 2000L,
+            mimeType = "video/mp4",
+            bucketId = 10L,
+            bucketName = "Camera",
+            isVideo = true
+        )
+
+        assertNotEquals(imageItem.id, videoItem.id)
+
+        // Toggle favorite on image only
+        repository.toggleFavorite(imageItem)
+        var favorites = fakeDao.getFavorites().first()
+        assertEquals(1, favorites.size)
+        assertEquals("content://media/external/images/media/123", favorites[0].id)
+
+        // Toggle favorite on video as well
+        repository.toggleFavorite(videoItem)
+        favorites = fakeDao.getFavorites().first()
+        assertEquals(2, favorites.size)
     }
 }

@@ -17,17 +17,17 @@ class FakeMediaDao : MediaDao {
         favoritesFlow.value = current
     }
 
-    override suspend fun removeFavorite(id: Long) {
+    override suspend fun removeFavorite(id: String) {
         val current = favoritesFlow.value.toMutableList()
         current.removeAll { it.id == id }
         favoritesFlow.value = current
     }
 
-    override suspend fun getFavoriteById(id: Long): MediaEntity? {
+    override suspend fun getFavoriteById(id: String): MediaEntity? {
         return favoritesFlow.value.find { it.id == id }
     }
 
-    override suspend fun removeFavorites(ids: List<Long>) {
+    override suspend fun removeFavorites(ids: List<String>) {
         val current = favoritesFlow.value.toMutableList()
         current.removeAll { ids.contains(it.id) }
         favoritesFlow.value = current

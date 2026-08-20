@@ -21,7 +21,7 @@ class FavoritesViewModel @Inject constructor(
         items.filter { it.isFavorite }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun removeDeletedItems(deletedIds: List<Long>) {
+    fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
             repository.removeDeletedItems(deletedIds)
             repository.loadMedia()

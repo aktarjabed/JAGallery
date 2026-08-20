@@ -9,7 +9,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -95,8 +94,6 @@ fun PermissionHandler(
                 if (newState != permissionState) {
                     permissionState = newState
                     onPermissionChanged()
-                } else if (permissionState == PermissionState.DENIED && !shouldShowRationale) {
-                    launcher.launch(permissionsToRequest)
                 }
             }
         }
@@ -116,7 +113,7 @@ fun PermissionHandler(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Media access is required to display your gallery.",
+                    text = stringResource(R.string.media_access_required),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -128,11 +125,11 @@ fun PermissionHandler(
                         }
                         context.startActivity(intent)
                     }) {
-                        Text("Open Settings")
+                        Text(stringResource(R.string.open_settings))
                     }
                 } else {
                     Button(onClick = { launcher.launch(permissionsToRequest) }) {
-                        Text("Grant Permission")
+                        Text(stringResource(R.string.grant_permission))
                     }
                 }
             }
@@ -153,12 +150,12 @@ fun PermissionHandler(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Showing selected photos only.",
+                            text = stringResource(R.string.showing_selected_photos),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { launcher.launch(permissionsToRequest) }) {
-                            Text("Manage Selection")
+                            Text(stringResource(R.string.manage_selection))
                         }
                     }
                 }
