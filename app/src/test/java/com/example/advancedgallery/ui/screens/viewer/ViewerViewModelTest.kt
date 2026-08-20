@@ -14,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,6 +30,7 @@ class ViewerViewModelTest {
 
     @Before
     fun setUp() {
+        `when`(mockUri.toString()).thenReturn("content://media/external/images/media/10")
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
     }
@@ -37,7 +39,6 @@ class ViewerViewModelTest {
     fun toggleFavorite_invokesRepositoryToggle() = runTest {
         val viewModel = ViewerViewModel(repository)
         val item = MediaItem(
-            id = "content://media/external/images/media/10",
             mediaStoreId = 10L,
             uri = mockUri,
             name = "pic.png",
@@ -53,7 +54,7 @@ class ViewerViewModelTest {
 
         val favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
-        assertEquals("content://media/external/images/media/10", favorites[0].id)
+        assertEquals("content://media/external/images/media/10", favorites[0].uri)
     }
 
     @Test

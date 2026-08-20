@@ -19,40 +19,34 @@ class ViewerViewModel @Inject constructor(
     private val repository: MediaRepository
 ) : ViewModel() {
 
-    private val _source = MutableStateFlow(MediaSource.ALL)
-    private val _bucketId = MutableStateFlow<Long?>(null)
-    private val _searchQuery = MutableStateFlow<String?>(null)
+    private val _source = MutableStateFlow<MediaSource>(MediaSource.All)
 
     val mediaItems: StateFlow<List<MediaItem>> = combine(
         repository.mediaItems,
-        _source,
-        _bucketId,
-        _searchQuery
-    ) { items, source, bucket, query ->
+        _source
+    ) { items, source ->
         when (source) {
-            MediaSource.FAVORITES -> items.filter { it.isFavorite }
-            MediaSource.SEARCH -> {
-                if (!query.isNullOrBlank()) {
-                    items.filter { it.name.contains(query, ignoreCase = true) }
+            is MediaSource.Favorites -> items.filter { it.isFavorite }
+            is MediaSource.Search -> {
+                if (source.query.isNotBlank()) {
+                    items.filter { it.name.contains(source.query, ignoreCase = true) }
                 } else {
                     items
                 }
             }
-            MediaSource.ALBUM -> {
-                if (bucket != null) {
-                    items.filter { it.bucketId == bucket }
+            is MediaSource.Album -> {
+                if (source.bucketId != null) {
+                    items.filter { it.bucketId == source.bucketId }
                 } else {
                     items
                 }
             }
-            MediaSource.ALL -> items
+            is MediaSource.All -> items
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun setParams(source: MediaSource, bucketId: Long? = null, searchQuery: String? = null) {
+    fun setSource(source: MediaSource) {
         _source.value = source
-        _bucketId.value = bucketId
-        _searchQuery.value = searchQuery
     }
 
     fun toggleFavorite(mediaItem: MediaItem) {

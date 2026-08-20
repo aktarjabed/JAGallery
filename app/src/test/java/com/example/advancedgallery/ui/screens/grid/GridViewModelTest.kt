@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.grid
 
 import android.content.ContentResolver
+import androidx.lifecycle.SavedStateHandle
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
@@ -32,7 +33,7 @@ class GridViewModelTest {
 
     @Test
     fun setBucketId_filtersByBucketIdCorrectly() = runTest {
-        val viewModel = GridViewModel(repository)
+        val viewModel = GridViewModel(repository, SavedStateHandle())
         viewModel.setBucketId(10L)
 
         assertEquals(0, viewModel.mediaItems.value.size)
@@ -41,7 +42,7 @@ class GridViewModelTest {
     @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
         fakeDao.insert(MediaEntity("content://media/external/images/media/100", true, 1000L))
-        val viewModel = GridViewModel(repository)
+        val viewModel = GridViewModel(repository, SavedStateHandle())
 
         viewModel.removeDeletedItems(listOf("content://media/external/images/media/100"))
 

@@ -46,6 +46,6 @@ class FavoritesViewModelTest {
 
         val remaining = fakeDao.getFavorites().first()
         assertEquals(1, remaining.size)
-        assertEquals("content://media/external/images/media/2", remaining[0].id)
+        assertEquals("content://media/external/images/media/2", remaining[0].uri)
     }
 }

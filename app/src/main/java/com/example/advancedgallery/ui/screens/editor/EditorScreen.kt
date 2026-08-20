@@ -46,7 +46,7 @@ fun EditorScreen(
     val saturation by viewModel.saturation.collectAsState()
     val saveState by viewModel.saveState.collectAsState()
 
-    var activeTab by remember { mutableIntStateOf(0) } // 0: Rotate, 1: Adjust
+    var activeTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(saveState) {
         when (val state = saveState) {
@@ -94,7 +94,6 @@ fun EditorScreen(
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     if (activeTab == 0) {
-                        // Rotate Tab
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -103,30 +102,29 @@ fun EditorScreen(
                             Button(onClick = { viewModel.rotateLeft() }) {
                                 Icon(Icons.AutoMirrored.Filled.RotateLeft, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("90° CCW")
+                                Text(stringResource(R.string.ccw_90))
                             }
                             Button(onClick = { viewModel.rotateRight() }) {
                                 Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("90° CW")
+                                Text(stringResource(R.string.cw_90))
                             }
                         }
                     } else {
-                        // Adjust Tab
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            Text("Brightness", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.brightness), style = MaterialTheme.typography.bodySmall)
                             Slider(
                                 value = brightness,
                                 onValueChange = { viewModel.updateBrightness(it) },
                                 valueRange = -100f..100f
                             )
-                            Text("Contrast", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.contrast), style = MaterialTheme.typography.bodySmall)
                             Slider(
                                 value = contrast,
                                 onValueChange = { viewModel.updateContrast(it) },
                                 valueRange = 0.5f..2.0f
                             )
-                            Text("Saturation", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.saturation), style = MaterialTheme.typography.bodySmall)
                             Slider(
                                 value = saturation,
                                 onValueChange = { viewModel.updateSaturation(it) },
@@ -141,13 +139,13 @@ fun EditorScreen(
                         Tab(
                             selected = activeTab == 0,
                             onClick = { activeTab = 0 },
-                            text = { Text("Rotate") },
+                            text = { Text(stringResource(R.string.rotate)) },
                             icon = { Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null) }
                         )
                         Tab(
                             selected = activeTab == 1,
                             onClick = { activeTab = 1 },
-                            text = { Text("Adjust") },
+                            text = { Text(stringResource(R.string.adjust)) },
                             icon = { Icon(Icons.Default.Tune, contentDescription = null) }
                         )
                     }
@@ -173,7 +171,7 @@ fun EditorScreen(
                 )
             } else {
                 Text(
-                    text = "Unable to load photo",
+                    text = stringResource(R.string.unable_to_load_photo),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge
                 )

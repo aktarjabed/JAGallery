@@ -1,7 +1,9 @@
 package com.example.advancedgallery.ui.common.components
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -18,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -28,6 +31,15 @@ enum class PermissionState {
     FULL,
     PARTIAL,
     DENIED
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
 
 fun checkGalleryPermissionState(context: Context): PermissionState {
@@ -59,7 +71,7 @@ fun PermissionHandler(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var permissionState by remember { mutableStateOf(checkGalleryPermissionState(context)) }
-    var shouldShowRationale by remember { mutableStateOf(false) }
+    var hasRequestedOnce by remember { mutableStateOf(false) }
 
     val permissionsToRequest = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -78,13 +90,10 @@ fun PermissionHandler(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
+        hasRequestedOnce = true
         val newState = checkGalleryPermissionState(context)
         permissionState = newState
-        if (newState == PermissionState.DENIED) {
-            shouldShowRationale = true
-        } else {
-            onPermissionChanged()
-        }
+        onPermissionChanged()
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -104,6 +113,12 @@ fun PermissionHandler(
     }
 
     if (permissionState == PermissionState.DENIED) {
+        val activity = context.findActivity()
+        val showRationale = activity != null && permissionsToRequest.any { perm ->
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
+        }
+        val isPermanentlyDenied = hasRequestedOnce && !showRationale
+
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -118,7 +133,7 @@ fun PermissionHandler(
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                if (shouldShowRationale) {
+                if (isPermanentlyDenied) {
                     Button(onClick = {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.fromParts("package", context.packageName, null)

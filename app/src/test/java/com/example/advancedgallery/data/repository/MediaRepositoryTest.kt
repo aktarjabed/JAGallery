@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -31,6 +32,8 @@ class MediaRepositoryTest {
 
     @Before
     fun setUp() {
+        `when`(mockImageUri.toString()).thenReturn("content://media/external/images/media/100")
+        `when`(mockVideoUri.toString()).thenReturn("content://media/external/video/media/123")
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
     }
@@ -38,7 +41,6 @@ class MediaRepositoryTest {
     @Test
     fun toggleFavorite_addsAndRemovesFavorite() = runTest {
         val testItem = MediaItem(
-            id = "content://media/external/images/media/100",
             mediaStoreId = 100L,
             uri = mockImageUri,
             name = "test_image.jpg",
@@ -54,7 +56,7 @@ class MediaRepositoryTest {
         repository.toggleFavorite(testItem)
         var favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
-        assertEquals("content://media/external/images/media/100", favorites[0].id)
+        assertEquals("content://media/external/images/media/100", favorites[0].uri)
         assertTrue(favorites[0].isFavorite)
 
         // Toggle to false
@@ -75,15 +77,19 @@ class MediaRepositoryTest {
 
         val remaining = fakeDao.getFavorites().first()
         assertEquals(1, remaining.size)
-        assertEquals("content://media/external/video/media/2", remaining[0].id)
+        assertEquals("content://media/external/video/media/2", remaining[0].uri)
     }
 
     @Test
     fun idCollision_imageAndVideoWithSameMediaStoreId_areDistinct() = runTest {
+        val imageUri: Uri = mock(Uri::class.java)
+        val videoUri: Uri = mock(Uri::class.java)
+        `when`(imageUri.toString()).thenReturn("content://media/external/images/media/123")
+        `when`(videoUri.toString()).thenReturn("content://media/external/video/media/123")
+
         val imageItem = MediaItem(
-            id = "content://media/external/images/media/123",
             mediaStoreId = 123L,
-            uri = mockImageUri,
+            uri = imageUri,
             name = "photo.jpg",
             dateAdded = 1000L,
             mimeType = "image/jpeg",
@@ -93,9 +99,8 @@ class MediaRepositoryTest {
         )
 
         val videoItem = MediaItem(
-            id = "content://media/external/video/media/123",
             mediaStoreId = 123L,
-            uri = mockVideoUri,
+            uri = videoUri,
             name = "video.mp4",
             dateAdded = 2000L,
             mimeType = "video/mp4",
@@ -110,7 +115,7 @@ class MediaRepositoryTest {
         repository.toggleFavorite(imageItem)
         var favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
-        assertEquals("content://media/external/images/media/123", favorites[0].id)
+        assertEquals("content://media/external/images/media/123", favorites[0].uri)
 
         // Toggle favorite on video as well
         repository.toggleFavorite(videoItem)

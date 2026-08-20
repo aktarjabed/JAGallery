@@ -13,14 +13,19 @@ sealed class Screen(val route: String) {
     object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&bucketId={bucketId}&searchQuery={searchQuery}") {
         fun createRoute(
             mediaId: String,
-            source: MediaSource,
-            bucketId: Long? = null,
-            searchQuery: String? = null
+            source: MediaSource
         ): String {
             val encodedMediaId = Uri.encode(mediaId)
             val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=${source.name}")
-            if (bucketId != null) builder.append("&bucketId=$bucketId")
-            if (!searchQuery.isNullOrBlank()) builder.append("&searchQuery=${Uri.encode(searchQuery)}")
+            when (source) {
+                is MediaSource.Album -> {
+                    if (source.bucketId != null) builder.append("&bucketId=${source.bucketId}")
+                }
+                is MediaSource.Search -> {
+                    if (source.query.isNotBlank()) builder.append("&searchQuery=${Uri.encode(source.query)}")
+                }
+                else -> {}
+            }
             return builder.toString()
         }
     }

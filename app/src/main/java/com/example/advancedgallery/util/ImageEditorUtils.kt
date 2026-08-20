@@ -45,7 +45,11 @@ object ImageEditorUtils {
             val exifDegrees = getExifOrientationDegrees(context, uri)
             if (exifDegrees != 0) {
                 val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
-                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                if (rotated != bitmap) {
+                    bitmap.recycle()
+                }
+                rotated
             } else {
                 bitmap
             }
@@ -84,9 +88,13 @@ object ImageEditorUtils {
             postRotate(rotationDegrees)
         }
 
-        val rotated = Bitmap.createBitmap(
-            sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
-        )
+        val rotated = if (rotationDegrees != 0f) {
+            Bitmap.createBitmap(
+                sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
+            )
+        } else {
+            sourceBitmap
+        }
 
         val cm = ColorMatrix()
 
@@ -95,7 +103,6 @@ object ImageEditorUtils {
         cm.postConcat(satMatrix)
 
         // Contrast & Brightness
-        // contrast: c, brightness: b -> scale c, shift b
         val contrastMatrix = ColorMatrix(
             floatArrayOf(
                 contrast, 0f, 0f, 0f, brightness,
@@ -113,12 +120,17 @@ object ImageEditorUtils {
         }
         canvas.drawBitmap(rotated, 0f, 0f, paint)
 
+        if (rotated != sourceBitmap) {
+            rotated.recycle()
+        }
+
         return result
     }
 
     suspend fun saveEditedImage(
         context: Context,
-        bitmap: Bitmap
+        bitmap: Bitmap,
+        sourceUri: Uri? = null
     ): Uri? = withContext(Dispatchers.IO) {
         val resolver: ContentResolver = context.contentResolver
         val contentValues = ContentValues().apply {
@@ -137,6 +149,15 @@ object ImageEditorUtils {
             resolver.openOutputStream(newUri)?.use { outputStream ->
                 success = bitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
             }
+
+            if (success && sourceUri != null) {
+                try {
+                    copyExifAttributes(context, sourceUri, newUri)
+                } catch (e: Exception) {
+                    // Ignore non-fatal EXIF copy errors
+                }
+            }
+
             if (success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 contentValues.clear()
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
@@ -155,6 +176,51 @@ object ImageEditorUtils {
             null
         } else {
             newUri
+        }
+    }
+
+    fun copyExifAttributes(context: Context, sourceUri: Uri, destinationUri: Uri) {
+        try {
+            val sourceExif = context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+                ExifInterface(stream)
+            } ?: return
+
+            context.contentResolver.openFileDescriptor(destinationUri, "rw")?.use { pfd ->
+                val destExif = ExifInterface(pfd.fileDescriptor)
+
+                val attributes = arrayOf(
+                    ExifInterface.TAG_DATETIME,
+                    ExifInterface.TAG_DATETIME_DIGITIZED,
+                    ExifInterface.TAG_DATETIME_ORIGINAL,
+                    ExifInterface.TAG_MAKE,
+                    ExifInterface.TAG_MODEL,
+                    ExifInterface.TAG_FLASH,
+                    ExifInterface.TAG_FOCAL_LENGTH,
+                    ExifInterface.TAG_WHITE_BALANCE,
+                    ExifInterface.TAG_EXPOSURE_TIME,
+                    ExifInterface.TAG_F_NUMBER,
+                    ExifInterface.TAG_ISO_SPEED_RATINGS,
+                    ExifInterface.TAG_GPS_LATITUDE,
+                    ExifInterface.TAG_GPS_LATITUDE_REF,
+                    ExifInterface.TAG_GPS_LONGITUDE,
+                    ExifInterface.TAG_GPS_LONGITUDE_REF,
+                    ExifInterface.TAG_GPS_ALTITUDE,
+                    ExifInterface.TAG_GPS_ALTITUDE_REF,
+                    ExifInterface.TAG_GPS_TIMESTAMP,
+                    ExifInterface.TAG_GPS_DATESTAMP
+                )
+
+                for (attr in attributes) {
+                    val value = sourceExif.getAttribute(attr)
+                    if (value != null) {
+                        destExif.setAttribute(attr, value)
+                    }
+                }
+                destExif.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+                destExif.saveAttributes()
+            }
+        } catch (e: Exception) {
+            // Ignore
         }
     }
 

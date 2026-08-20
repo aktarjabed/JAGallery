@@ -12,24 +12,24 @@ class FakeMediaDao : MediaDao {
 
     override suspend fun insert(mediaEntity: MediaEntity) {
         val current = favoritesFlow.value.toMutableList()
-        current.removeAll { it.id == mediaEntity.id }
+        current.removeAll { it.uri == mediaEntity.uri }
         current.add(mediaEntity)
         favoritesFlow.value = current
     }
 
-    override suspend fun removeFavorite(id: String) {
+    override suspend fun removeFavorite(uri: String) {
         val current = favoritesFlow.value.toMutableList()
-        current.removeAll { it.id == id }
+        current.removeAll { it.uri == uri }
         favoritesFlow.value = current
     }
 
-    override suspend fun getFavoriteById(id: String): MediaEntity? {
-        return favoritesFlow.value.find { it.id == id }
+    override suspend fun getFavoriteById(uri: String): MediaEntity? {
+        return favoritesFlow.value.find { it.uri == uri }
     }
 
-    override suspend fun removeFavorites(ids: List<String>) {
+    override suspend fun removeFavorites(uris: List<String>) {
         val current = favoritesFlow.value.toMutableList()
-        current.removeAll { ids.contains(it.id) }
+        current.removeAll { uris.contains(it.uri) }
         favoritesFlow.value = current
     }
 }

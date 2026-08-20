@@ -1,8 +1,5 @@
 package com.example.advancedgallery.ui.screens.viewer
 
-import android.content.ClipData
-import android.content.Intent
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.model.PendingDeleteBatch
+import com.example.advancedgallery.ui.common.selection.shareMediaItems
 import com.example.advancedgallery.ui.screens.viewer.components.ImageViewer
 import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
 import com.example.advancedgallery.util.FileUtils
@@ -44,14 +42,12 @@ import java.util.Locale
 fun ViewerScreen(
     initialMediaId: String,
     source: MediaSource,
-    bucketId: Long? = null,
-    searchQuery: String? = null,
     onBack: () -> Unit,
     onNavigateToEditor: (String) -> Unit = {},
     viewModel: ViewerViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(source, bucketId, searchQuery) {
-        viewModel.setParams(source, bucketId, searchQuery)
+    LaunchedEffect(source) {
+        viewModel.setSource(source)
     }
 
     val mediaItems by viewModel.mediaItems.collectAsState()
@@ -120,15 +116,15 @@ fun ViewerScreen(
             title = { Text(stringResource(R.string.media_info_title)) },
             text = {
                 Column {
-                    Text(text = "Name: ${currentItem.name}")
+                    Text(text = "${stringResource(R.string.media_info_name)} ${currentItem.name}")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "MIME Type: ${currentItem.mimeType.ifEmpty { if (currentItem.isVideo) "video/*" else "image/*" }}")
+                    Text(text = "${stringResource(R.string.media_info_mime_type)} ${currentItem.mimeType.ifEmpty { if (currentItem.isVideo) "video/*" else "image/*" }}")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Date Added: $dateStr")
+                    Text(text = "${stringResource(R.string.media_info_date_added)} $dateStr")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Album: ${currentItem.bucketName.ifEmpty { "Internal Storage" }}")
+                    Text(text = "${stringResource(R.string.media_info_album)} ${currentItem.bucketName.ifEmpty { stringResource(R.string.internal_storage) }}")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "URI: ${currentItem.uri}")
+                    Text(text = "${stringResource(R.string.media_info_uri)} ${currentItem.uri}")
                 }
             },
             confirmButton = {
@@ -186,17 +182,7 @@ fun ViewerScreen(
                             }
                         }
                         IconButton(onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = if (currentItem.isVideo) "video/*" else "image/*"
-                                putExtra(Intent.EXTRA_STREAM, currentItem.uri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                clipData = ClipData.newRawUri("Media", currentItem.uri)
-                            }
-                            try {
-                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
-                            } catch (e: Exception) {
-                                Toast.makeText(context, context.getString(R.string.no_app_to_handle_share), Toast.LENGTH_SHORT).show()
-                            }
+                            shareMediaItems(context, listOf(currentItem))
                         }) {
                             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         }
