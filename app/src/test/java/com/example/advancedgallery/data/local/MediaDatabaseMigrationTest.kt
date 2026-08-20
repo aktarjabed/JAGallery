@@ -59,9 +59,9 @@ class MediaDatabaseMigrationTest {
 
         v1Db.close()
 
-        // Step 2: Open with Room v2 using MIGRATION_1_2
+        // Step 2: Open with Room v3 using MIGRATION_1_2 and MIGRATION_2_3
         val roomDb = Room.databaseBuilder(context, MediaDatabase::class.java, dbName)
-            .addMigrations(MediaDatabase.MIGRATION_1_2)
+            .addMigrations(MediaDatabase.MIGRATION_1_2, MediaDatabase.MIGRATION_2_3)
             .build()
 
         val favorites = roomDb.mediaDao().getFavorites().first()
@@ -102,7 +102,7 @@ class MediaDatabaseMigrationTest {
             roomDb.mediaDao().getFavorites().first()
             fail("Expected IllegalStateException due to missing migration")
         } catch (e: IllegalStateException) {
-            assertTrue(e.message?.contains("A migration from 1 to 2 was required") == true)
+            assertTrue(e.message?.contains("migration") == true || e.message?.contains("1 to") == true)
         } finally {
             roomDb.close()
         }

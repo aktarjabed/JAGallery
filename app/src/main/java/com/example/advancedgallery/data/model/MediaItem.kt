@@ -12,7 +12,10 @@ data class MediaItem(
     val bucketName: String,
     val isVideo: Boolean,
     val isFavorite: Boolean = false,
-    val volumeName: String = ""
+    val volumeName: String = "",
+    val size: Long = 0L,
+    val isTrashed: Boolean = false,
+    val dateTrashed: Long = 0L
 ) {
     val id: String
         get() = uri.toString()

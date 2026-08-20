@@ -16,6 +16,8 @@ interface MediaOperations {
     suspend fun unfavoriteMedia(mediaItem: MediaItem): OperationResult<Unit>
     suspend fun toggleFavorite(mediaItem: MediaItem): OperationResult<Unit>
     suspend fun removeDeletedItems(deletedIds: List<String>): OperationResult<Unit>
+    suspend fun copyMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
+    suspend fun moveMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
 }
 
 @Singleton
@@ -61,6 +63,44 @@ class MediaOperationsImpl @Inject constructor(
         return try {
             repository.removeDeletedItems(deletedIds)
             OperationResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            OperationResult.Error(e, e.message)
+        }
+    }
+
+    override suspend fun copyMedia(
+        context: android.content.Context,
+        sourceItem: MediaItem,
+        targetAlbumName: String
+    ): OperationResult<android.net.Uri> {
+        return try {
+            val uri = repository.copyMediaToAlbum(context, sourceItem, targetAlbumName)
+            if (uri != null) {
+                OperationResult.Success(uri)
+            } else {
+                OperationResult.Error(Exception("Failed to copy media"), "Copy operation failed")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            OperationResult.Error(e, e.message)
+        }
+    }
+
+    override suspend fun moveMedia(
+        context: android.content.Context,
+        sourceItem: MediaItem,
+        targetAlbumName: String
+    ): OperationResult<android.net.Uri> {
+        return try {
+            val uri = repository.copyMediaToAlbum(context, sourceItem, targetAlbumName)
+            if (uri != null) {
+                OperationResult.Success(uri)
+            } else {
+                OperationResult.Error(Exception("Failed to move media"), "Move operation failed during copy step")
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

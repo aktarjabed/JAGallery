@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MediaEntity::class], version = 2, exportSchema = true)
+@Database(entities = [MediaEntity::class, HiddenMediaEntity::class], version = 3, exportSchema = true)
 abstract class MediaDatabase : RoomDatabase() {
     abstract fun mediaDao(): MediaDao
 
@@ -27,6 +27,14 @@ abstract class MediaDatabase : RoomDatabase() {
 
                 db.execSQL("DROP TABLE IF EXISTS `favorites`")
                 db.execSQL("ALTER TABLE `favorites_new` RENAME TO `favorites`")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `hidden_media` (`uri` TEXT NOT NULL, `isHidden` INTEGER NOT NULL, `dateHidden` INTEGER NOT NULL, PRIMARY KEY(`uri`))"
+                )
             }
         }
     }

@@ -22,4 +22,13 @@ interface MediaDao {
 
     @Query("DELETE FROM favorites WHERE uri IN (:uris)")
     suspend fun removeFavorites(uris: List<String>)
+
+    @Query("SELECT * FROM hidden_media WHERE isHidden = 1")
+    fun getHiddenMedia(): Flow<List<HiddenMediaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun hideMedia(hiddenEntity: HiddenMediaEntity)
+
+    @Query("DELETE FROM hidden_media WHERE uri = :uri")
+    suspend fun unhideMedia(uri: String)
 }

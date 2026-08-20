@@ -9,4 +9,5 @@ sealed interface MediaSource {
         val volumeName: String get() = albumKey.volumeName
     }
     data class Search(val query: String) : MediaSource
+    object Trash : MediaSource
 }
