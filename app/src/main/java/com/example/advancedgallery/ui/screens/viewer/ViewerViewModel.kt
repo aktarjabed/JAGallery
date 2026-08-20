@@ -1,10 +1,12 @@
 package com.example.advancedgallery.ui.screens.viewer
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.ui.navigation.parseMediaSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,10 +18,24 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ViewerViewModel @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _source = MutableStateFlow<MediaSource>(MediaSource.All)
+    private val sourceStr: String? = savedStateHandle.get<String>("source")
+    private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
+    private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")?.let { android.net.Uri.decode(it) }
+
+    private val initialSource: MediaSource = parseMediaSource(sourceStr, bucketId, searchQuery)
+
+    private val _source = MutableStateFlow<MediaSource>(initialSource)
+
+    val currentMediaId: String?
+        get() = savedStateHandle.get<String>("mediaId")?.let { android.net.Uri.decode(it) }
+
+    fun setCurrentMediaId(mediaId: String) {
+        savedStateHandle["mediaId"] = android.net.Uri.encode(mediaId)
+    }
 
     val mediaItems: StateFlow<List<MediaItem>> = combine(
         repository.mediaItems,
@@ -35,11 +51,7 @@ class ViewerViewModel @Inject constructor(
                 }
             }
             is MediaSource.Album -> {
-                if (source.bucketId != null) {
-                    items.filter { it.bucketId == source.bucketId }
-                } else {
-                    items
-                }
+                items.filter { it.bucketId == source.bucketId }
             }
             is MediaSource.All -> items
         }
@@ -58,7 +70,6 @@ class ViewerViewModel @Inject constructor(
     fun removeDeletedItem(deletedId: String) {
         viewModelScope.launch {
             repository.removeDeletedItems(listOf(deletedId))
-            repository.loadMedia()
         }
     }
 }

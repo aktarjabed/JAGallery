@@ -58,6 +58,32 @@ object ImageEditorUtils {
         }
     }
 
+    suspend fun decodeFullResolutionBitmapFromUri(
+        context: Context,
+        uri: Uri
+    ): Bitmap? = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        try {
+            val bitmap = resolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            } ?: return@withContext null
+
+            val exifDegrees = getExifOrientationDegrees(context, uri)
+            if (exifDegrees != 0) {
+                val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
+                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                if (rotated != bitmap) {
+                    bitmap.recycle()
+                }
+                rotated
+            } else {
+                bitmap
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun calculateInSampleSize(
         options: BitmapFactory.Options,
         reqWidth: Int,
@@ -199,15 +225,7 @@ object ImageEditorUtils {
                     ExifInterface.TAG_WHITE_BALANCE,
                     ExifInterface.TAG_EXPOSURE_TIME,
                     ExifInterface.TAG_F_NUMBER,
-                    ExifInterface.TAG_ISO_SPEED_RATINGS,
-                    ExifInterface.TAG_GPS_LATITUDE,
-                    ExifInterface.TAG_GPS_LATITUDE_REF,
-                    ExifInterface.TAG_GPS_LONGITUDE,
-                    ExifInterface.TAG_GPS_LONGITUDE_REF,
-                    ExifInterface.TAG_GPS_ALTITUDE,
-                    ExifInterface.TAG_GPS_ALTITUDE_REF,
-                    ExifInterface.TAG_GPS_TIMESTAMP,
-                    ExifInterface.TAG_GPS_DATESTAMP
+                    ExifInterface.TAG_ISO_SPEED_RATINGS
                 )
 
                 for (attr in attributes) {

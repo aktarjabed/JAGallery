@@ -125,7 +125,7 @@ object MediaStoreHelper {
                 val uri = try {
                     ContentUris.withAppendedId(contentUri, mediaStoreId)
                 } catch (e: Exception) {
-                    contentUri
+                    continue
                 }
 
                 items.add(

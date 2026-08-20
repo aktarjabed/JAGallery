@@ -55,7 +55,7 @@ fun EditorScreen(
                 onSaveSuccess()
             }
             is SaveState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(state.messageResId), Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }

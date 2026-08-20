@@ -1,10 +1,12 @@
 package com.example.advancedgallery.ui.screens.albums
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.Album
 import com.example.advancedgallery.data.repository.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -14,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     val totalMediaCount: StateFlow<Int> = repository.mediaItems.map { it.size }
@@ -38,7 +41,7 @@ class AlbumsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.loadMedia()
+            repository.loadMedia(context = context)
         }
     }
 }

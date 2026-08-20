@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.advancedgallery.R
 import com.example.advancedgallery.util.ImageEditorUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +21,7 @@ sealed class SaveState {
     object Idle : SaveState()
     object Saving : SaveState()
     data class Success(val newUri: Uri) : SaveState()
-    data class Error(val message: String) : SaveState()
+    data class Error(val messageResId: Int) : SaveState()
 }
 
 @HiltViewModel
@@ -130,14 +131,39 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     }
 
     fun save(context: Context) {
-        val bitmap = _previewBitmap.value ?: return
+        val uri = sourceUri ?: return
+        val rotation = _rotationDegrees.value
+        val bright = _brightness.value
+        val cont = _contrast.value
+        val sat = _saturation.value
+
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
-            val savedUri = ImageEditorUtils.saveEditedImage(context, bitmap, sourceUri)
+            val savedUri = withContext(Dispatchers.Default) {
+                val fullRes = ImageEditorUtils.decodeFullResolutionBitmapFromUri(context, uri)
+                if (fullRes == null) {
+                    null
+                } else {
+                    val edited = ImageEditorUtils.applyAdjustmentsAndRotation(
+                        sourceBitmap = fullRes,
+                        rotationDegrees = rotation,
+                        brightness = bright,
+                        contrast = cont,
+                        saturation = sat
+                    )
+                    val resultUri = ImageEditorUtils.saveEditedImage(context, edited, uri)
+                    if (edited != fullRes) {
+                        edited.recycle()
+                    }
+                    fullRes.recycle()
+                    resultUri
+                }
+            }
+
             if (savedUri != null) {
                 _saveState.value = SaveState.Success(savedUri)
             } else {
-                _saveState.value = SaveState.Error("Failed to save image")
+                _saveState.value = SaveState.Error(R.string.failed_to_save_image)
             }
         }
     }
@@ -145,12 +171,15 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         previewJob?.cancel()
-        originalBitmap?.recycle()
+        val orig = originalBitmap
+        val curr = currentPreviewBitmap
         originalBitmap = null
-        if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
-            currentPreviewBitmap?.recycle()
-        }
         currentPreviewBitmap = null
         _previewBitmap.value = null
+
+        if (curr != null && curr != orig) {
+            curr.recycle()
+        }
+        orig?.recycle()
     }
 }

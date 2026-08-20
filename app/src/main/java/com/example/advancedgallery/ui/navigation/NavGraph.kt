@@ -14,6 +14,15 @@ import com.example.advancedgallery.ui.screens.grid.GridScreen
 import com.example.advancedgallery.ui.screens.search.SearchScreen
 import com.example.advancedgallery.ui.screens.viewer.ViewerScreen
 
+fun parseMediaSource(sourceStr: String?, bucketId: Long?, searchQuery: String?): MediaSource {
+    return when (sourceStr?.uppercase()) {
+        "FAVORITES" -> MediaSource.Favorites
+        "ALBUM" -> if (bucketId != null) MediaSource.Album(bucketId) else MediaSource.All
+        "SEARCH" -> MediaSource.Search(searchQuery ?: "")
+        else -> MediaSource.All
+    }
+}
+
 @Composable
 fun NavGraph() {
     val navController = rememberNavController()
@@ -88,7 +97,7 @@ fun NavGraph() {
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
             val searchQuery = backStackEntry.arguments?.getString("searchQuery")?.let { android.net.Uri.decode(it) }
-            val source = MediaSource.from(sourceStr, bucketId, searchQuery)
+            val source = parseMediaSource(sourceStr, bucketId, searchQuery)
 
             ViewerScreen(
                 initialMediaId = mediaId,

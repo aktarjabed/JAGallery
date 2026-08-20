@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.albums
 
 import android.content.ContentResolver
+import android.content.Context
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
 import com.example.advancedgallery.rules.MainDispatcherRule
@@ -21,6 +22,7 @@ class AlbumsViewModelTest {
     private lateinit var fakeDao: FakeMediaDao
     private lateinit var repository: MediaRepository
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
+    private val context: Context = mock(Context::class.java)
 
     @Before
     fun setUp() {
@@ -30,7 +32,7 @@ class AlbumsViewModelTest {
 
     @Test
     fun albums_initialStateIsEmpty() = runTest {
-        val viewModel = AlbumsViewModel(repository)
+        val viewModel = AlbumsViewModel(repository, context)
         val albums = viewModel.albums.value
         assertEquals(0, albums.size)
     }

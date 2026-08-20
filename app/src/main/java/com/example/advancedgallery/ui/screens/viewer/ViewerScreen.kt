@@ -67,14 +67,22 @@ fun ViewerScreen(
         return
     }
 
+    val activeMediaId = viewModel.currentMediaId ?: initialMediaId
+
     val initialIndex = remember(mediaItems) {
-        mediaItems.indexOfFirst { it.id == initialMediaId }.takeIf { it >= 0 } ?: 0
+        mediaItems.indexOfFirst { it.id == activeMediaId }.takeIf { it >= 0 } ?: 0
     }
 
     val pagerState = rememberPagerState(
         initialPage = initialIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0)),
         pageCount = { mediaItems.size }
     )
+
+    LaunchedEffect(pagerState.currentPage) {
+        mediaItems.getOrNull(pagerState.currentPage)?.id?.let { id ->
+            viewModel.setCurrentMediaId(id)
+        }
+    }
 
     val currentItem = mediaItems.getOrNull(pagerState.currentPage)
     if (currentItem == null) {

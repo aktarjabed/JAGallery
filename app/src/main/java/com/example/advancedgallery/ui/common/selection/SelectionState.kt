@@ -45,7 +45,19 @@ class SelectionState {
         selectedIds = emptySet()
     }
 
+    fun pruneSelection(items: List<MediaItem>) {
+        val validIds = items.map { it.id }.toSet()
+        val newSelection = selectedIds.intersect(validIds)
+        if (newSelection != selectedIds) {
+            selectedIds = newSelection
+            if (selectedIds.isEmpty()) {
+                selectionMode = false
+            }
+        }
+    }
+
     fun getSelectedItems(items: List<MediaItem>): List<MediaItem> {
+        pruneSelection(items)
         return items.filter { selectedIds.contains(it.id) }
     }
 }

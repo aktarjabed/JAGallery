@@ -36,7 +36,6 @@ class GridViewModel @Inject constructor(
     fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
             repository.removeDeletedItems(deletedIds)
-            repository.loadMedia()
         }
     }
 }

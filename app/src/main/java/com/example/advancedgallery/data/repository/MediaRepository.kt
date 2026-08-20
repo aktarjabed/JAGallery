@@ -1,6 +1,7 @@
 package com.example.advancedgallery.data.repository
 
 import android.content.ContentResolver
+import android.content.Context
 import com.example.advancedgallery.data.local.MediaDao
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
@@ -30,8 +31,11 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    suspend fun loadMedia() {
-        val items = MediaStoreHelper.getMediaItems(contentResolver, ioDispatcher)
+    suspend fun loadMedia(force: Boolean = false, context: Context? = null) {
+        if (!force && context != null && _mediaItems.value.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
+            return
+        }
+        val items = MediaStoreHelper.getMediaItems(contentResolver, ioDispatcher, context)
         _mediaItems.update { items }
     }
 
