@@ -15,6 +15,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -68,6 +69,8 @@ object ImageEditorUtils {
             } else {
                 bitmap
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
             Log.e(TAG, "Failed to decode sampled bitmap", e)
             null
@@ -108,6 +111,8 @@ object ImageEditorUtils {
             } else {
                 bitmap
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: OutOfMemoryError) {
             Log.w(TAG, "OOM decoding full resolution bitmap with sample size $inSampleSize")
             null
@@ -156,45 +161,50 @@ object ImageEditorUtils {
             postRotate(plan.rotationDegrees)
         }
 
-        val rotated = if (plan.rotationDegrees != 0f) {
-            Bitmap.createBitmap(
-                sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
+        var rotated: Bitmap? = null
+        try {
+            rotated = if (plan.rotationDegrees != 0f) {
+                Bitmap.createBitmap(
+                    sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
+                )
+            } else {
+                sourceBitmap
+            }
+
+            coroutineContext.ensureActive()
+
+            val cm = ColorMatrix()
+
+            val satMatrix = ColorMatrix().apply { setSaturation(plan.saturation) }
+            cm.postConcat(satMatrix)
+
+            val contrastMatrix = ColorMatrix(
+                floatArrayOf(
+                    plan.contrast, 0f, 0f, 0f, plan.brightness,
+                    0f, plan.contrast, 0f, 0f, plan.brightness,
+                    0f, 0f, plan.contrast, 0f, plan.brightness,
+                    0f, 0f, 0f, 1f, 0f
+                )
             )
-        } else {
-            sourceBitmap
+            cm.postConcat(contrastMatrix)
+
+            coroutineContext.ensureActive()
+
+            val result = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+            val paint = Paint().apply {
+                colorFilter = ColorMatrixColorFilter(cm)
+            }
+            canvas.drawBitmap(rotated, 0f, 0f, paint)
+
+            result
+        } catch (e: CancellationException) {
+            throw e
+        } finally {
+            if (rotated != null && rotated !== sourceBitmap && !rotated.isRecycled) {
+                rotated.recycle()
+            }
         }
-
-        coroutineContext.ensureActive()
-
-        val cm = ColorMatrix()
-
-        val satMatrix = ColorMatrix().apply { setSaturation(plan.saturation) }
-        cm.postConcat(satMatrix)
-
-        val contrastMatrix = ColorMatrix(
-            floatArrayOf(
-                plan.contrast, 0f, 0f, 0f, plan.brightness,
-                0f, plan.contrast, 0f, 0f, plan.brightness,
-                0f, 0f, plan.contrast, 0f, plan.brightness,
-                0f, 0f, 0f, 1f, 0f
-            )
-        )
-        cm.postConcat(contrastMatrix)
-
-        coroutineContext.ensureActive()
-
-        val result = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(result)
-        val paint = Paint().apply {
-            colorFilter = ColorMatrixColorFilter(cm)
-        }
-        canvas.drawBitmap(rotated, 0f, 0f, paint)
-
-        if (rotated != sourceBitmap) {
-            rotated.recycle()
-        }
-
-        result
     }
 
     suspend fun applyAdjustmentsAndRotation(
@@ -218,6 +228,8 @@ object ImageEditorUtils {
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, boundsOptions)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to inspect image bounds for export", e)
             return@withContext Pair(null, null)
@@ -233,7 +245,7 @@ object ImageEditorUtils {
         val allocableMemory = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
 
         var sampleSize = 1
-        while (sampleSize <= 4) {
+        while (sampleSize <= 32) {
             val sampledWidth = srcWidth / sampleSize
             val sampledHeight = srcHeight / sampleSize
             val estimatedBytes = sampledWidth.toLong() * sampledHeight.toLong() * 4L * 3L
@@ -242,20 +254,23 @@ object ImageEditorUtils {
             }
             sampleSize *= 2
         }
+        if (sampleSize > 32) sampleSize = 32
 
         var resultUri: Uri? = null
         var exportDimensions: String? = null
 
-        while (sampleSize <= 4) {
+        while (sampleSize <= 32) {
             coroutineContext.ensureActive()
+            var fullRes: Bitmap? = null
+            var edited: Bitmap? = null
             try {
-                val fullRes = decodeFullResolutionBitmapFromUri(context, uri, sampleSize)
+                fullRes = decodeFullResolutionBitmapFromUri(context, uri, sampleSize)
                 if (fullRes == null) {
                     sampleSize *= 2
                     continue
                 }
 
-                val edited = applyTransformationPlan(
+                edited = applyTransformationPlan(
                     sourceBitmap = fullRes,
                     plan = plan
                 )
@@ -264,14 +279,13 @@ object ImageEditorUtils {
 
                 resultUri = saveEditedImage(context, edited, uri)
 
-                if (edited != fullRes) {
-                    edited.recycle()
-                }
-                fullRes.recycle()
-
                 if (resultUri != null) {
                     break
                 }
+                // If saving failed, try next sample size
+                sampleSize *= 2
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: OutOfMemoryError) {
                 Log.w(TAG, "OOM during export at sample size $sampleSize, falling back")
                 sampleSize *= 2
@@ -284,6 +298,13 @@ object ImageEditorUtils {
             } catch (e: IllegalArgumentException) {
                 Log.e(TAG, "Export illegal argument exception at sample size $sampleSize", e)
                 break
+            } finally {
+                if (edited != null && edited !== fullRes && !edited.isRecycled) {
+                    edited.recycle()
+                }
+                if (fullRes != null && !fullRes.isRecycled) {
+                    fullRes.recycle()
+                }
             }
         }
 
@@ -369,6 +390,15 @@ object ImageEditorUtils {
             } else {
                 newUri
             }
+        } catch (e: CancellationException) {
+            if (newUri != null) {
+                try {
+                    resolver.delete(newUri, null, null)
+                } catch (delEx: Exception) {
+                    // ignore
+                }
+            }
+            throw e
         } catch (e: IOException) {
             Log.e(TAG, "Failed to save edited image", e)
             if (newUri != null) {

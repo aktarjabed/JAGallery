@@ -133,8 +133,6 @@ fun PermissionHandler(
                     permissionAccessMode = newMode
                     permissionState = newState
                     onPermissionChanged()
-                } else if (newMode == PermissionAccessMode.SELECTED) {
-                    onPermissionChanged()
                 }
             }
         }
