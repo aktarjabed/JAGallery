@@ -35,6 +35,7 @@ class MediaRepository @Inject constructor(
     private val favoriteMutex = Mutex()
 
     private var activeScanJob: Deferred<Unit>? = null
+    private var isCurrentScanForced = false
     private var pendingForcedScan = false
     private var pendingContext: Context? = null
 
@@ -53,13 +54,17 @@ class MediaRepository @Inject constructor(
 
     suspend fun loadMedia(force: Boolean = false, context: Context? = null) = withContext(ioDispatcher) {
         val jobToAwait = loadMutex.withLock {
-            if (force) {
-                pendingForcedScan = true
-                pendingContext = context
-            }
-            if (activeScanJob != null) {
-                activeScanJob!!
+            val existingJob = activeScanJob
+            if (existingJob != null) {
+                if (force) {
+                    if (!isCurrentScanForced) {
+                        pendingForcedScan = true
+                        pendingContext = context
+                    }
+                }
+                existingJob
             } else {
+                isCurrentScanForced = force
                 val newJob = repositoryScope.async {
                     executeScanLoop(initialForce = force, initialContext = context)
                 }
@@ -85,12 +90,14 @@ class MediaRepository @Inject constructor(
             val shouldContinue = loadMutex.withLock {
                 if (pendingForcedScan) {
                     forceForCurrentPass = true
+                    isCurrentScanForced = true
                     contextForCurrentPass = pendingContext
                     pendingForcedScan = false
                     pendingContext = null
                     true
                 } else {
                     activeScanJob = null
+                    isCurrentScanForced = false
                     false
                 }
             }

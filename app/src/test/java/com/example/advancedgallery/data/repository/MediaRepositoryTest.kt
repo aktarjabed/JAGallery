@@ -1,27 +1,34 @@
 package com.example.advancedgallery.data.repository
 
 import android.content.ContentResolver
+import android.database.MatrixCursor
 import android.net.Uri
+import android.provider.MediaStore
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.fakes.FakeMediaDao
 import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.stubbing.Answer
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -42,6 +49,19 @@ class MediaRepositoryTest {
         `when`(mockVideoUri.toString()).thenReturn("content://media/external/video/media/123")
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
+    }
+
+    private fun createEmptyCursor(): MatrixCursor {
+        return MatrixCursor(
+            arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.DATE_ADDED,
+                MediaStore.MediaColumns.MIME_TYPE,
+                MediaStore.MediaColumns.BUCKET_ID,
+                MediaStore.MediaColumns.BUCKET_DISPLAY_NAME
+            )
+        )
     }
 
     @Test
@@ -149,14 +169,84 @@ class MediaRepositoryTest {
     }
 
     @Test
-    fun concurrentLoadMedia_coalescesScanJobs() = runTest {
+    fun scanCoalescing_normalAndNormal_executesOneScan() = runTest {
+        val scanCount = AtomicInteger(0)
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+            scanCount.incrementAndGet()
+            createEmptyCursor()
+        })
+
         val job1 = launch { repository.loadMedia(force = false) }
+        val job2 = launch { repository.loadMedia(force = false) }
+
+        job1.join()
+        job2.join()
+
+        // 1 scan pass queries images and videos = 2 queries
+        assertEquals(2, scanCount.get())
+    }
+
+    @Test
+    fun scanCoalescing_normalAndForce_executesTwoScans() = runTest {
+        val scanCount = AtomicInteger(0)
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+            val count = scanCount.incrementAndGet()
+            if (count <= 2) {
+                Thread.sleep(50) // simulate active first scan pass
+            }
+            createEmptyCursor()
+        })
+
+        val job1 = async { repository.loadMedia(force = false) }
+        delay(10)
+        val job2 = async { repository.loadMedia(force = true) }
+
+        job1.await()
+        job2.await()
+
+        // 2 scan passes = 4 queries total
+        assertEquals(4, scanCount.get())
+    }
+
+    @Test
+    fun scanCoalescing_forcedAndForce_joinsCurrentForcedScan_executesOneScan() = runTest {
+        val scanCount = AtomicInteger(0)
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+            scanCount.incrementAndGet()
+            createEmptyCursor()
+        })
+
+        val job1 = launch { repository.loadMedia(force = true) }
         val job2 = launch { repository.loadMedia(force = true) }
 
         job1.join()
         job2.join()
 
-        val result = repository.mediaLoadResult.first()
-        assertTrue(result is com.example.advancedgallery.data.model.MediaLoadResult)
+        // 1 scan pass = 2 queries total
+        assertEquals(2, scanCount.get())
+    }
+
+    @Test
+    fun scanCoalescing_multipleForceRequestsDuringNormalScan_collapsesToOneFollowUpForcedScan() = runTest {
+        val scanCount = AtomicInteger(0)
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+            val count = scanCount.incrementAndGet()
+            if (count <= 2) {
+                Thread.sleep(50) // simulate active normal scan
+            }
+            createEmptyCursor()
+        })
+
+        val job1 = async { repository.loadMedia(force = false) }
+        delay(10)
+        val job2 = async { repository.loadMedia(force = true) }
+        val job3 = async { repository.loadMedia(force = true) }
+
+        job1.await()
+        job2.await()
+        job3.await()
+
+        // Exactly 2 scan passes = 4 queries total (1 normal + 1 follow-up forced scan)
+        assertEquals(4, scanCount.get())
     }
 }

@@ -2,6 +2,7 @@ package com.example.advancedgallery.domain
 
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +27,8 @@ class MediaOperationsImpl @Inject constructor(
         return try {
             repository.favoriteMedia(mediaItem)
             OperationResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             OperationResult.Error(e, e.message)
         }
@@ -35,6 +38,8 @@ class MediaOperationsImpl @Inject constructor(
         return try {
             repository.unfavoriteMedia(mediaItem)
             OperationResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             OperationResult.Error(e, e.message)
         }
@@ -44,6 +49,8 @@ class MediaOperationsImpl @Inject constructor(
         return try {
             repository.toggleFavorite(mediaItem)
             OperationResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             OperationResult.Error(e, e.message)
         }
@@ -54,6 +61,8 @@ class MediaOperationsImpl @Inject constructor(
         return try {
             repository.removeDeletedItems(deletedIds)
             OperationResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             OperationResult.Error(e, e.message)
         }

@@ -75,6 +75,26 @@ class ViewerViewModel @Inject constructor(
                 _navigationEvent.emit(ViewerNavigationEvent.PopBack)
             }
         }
+
+        viewModelScope.launch {
+            state.collect { currentState ->
+                if (currentState is ViewerState.Success) {
+                    val filtered = currentState.items
+                    val activeId = currentMediaId
+                    val index = if (activeId != null) filtered.indexOfFirst { it.id == activeId } else -1
+                    if (index != -1) {
+                        lastValidIndex = index
+                    } else {
+                        val targetIndex = lastValidIndex.coerceIn(0, filtered.size - 1)
+                        val nextItem = filtered[targetIndex]
+                        setCurrentMediaId(nextItem.id)
+                        lastValidIndex = targetIndex
+                    }
+                } else if (currentState is ViewerState.Empty) {
+                    _navigationEvent.emit(ViewerNavigationEvent.PopBack)
+                }
+            }
+        }
     }
 
     val state: StateFlow<ViewerState> = combine(
@@ -108,16 +128,6 @@ class ViewerViewModel @Inject constructor(
                 if (filtered.isEmpty()) {
                     ViewerState.Empty
                 } else {
-                    val activeId = currentMediaId
-                    val index = if (activeId != null) filtered.indexOfFirst { it.id == activeId } else -1
-                    if (index != -1) {
-                        lastValidIndex = index
-                    } else {
-                        val targetIndex = lastValidIndex.coerceIn(0, filtered.size - 1)
-                        val nextItem = filtered[targetIndex]
-                        setCurrentMediaId(nextItem.id)
-                        lastValidIndex = targetIndex
-                    }
                     ViewerState.Success(filtered)
                 }
             }
