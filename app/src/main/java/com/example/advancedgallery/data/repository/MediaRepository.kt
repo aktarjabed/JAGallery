@@ -2,6 +2,7 @@ package com.example.advancedgallery.data.repository
 
 import android.content.ContentResolver
 import android.content.Context
+import com.example.advancedgallery.data.local.HiddenMediaEntity
 import com.example.advancedgallery.data.local.MediaDao
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
@@ -31,6 +32,7 @@ class MediaRepository @Inject constructor(
 ) {
     private val repositoryScope = CoroutineScope(ioDispatcher + SupervisorJob())
     private val _mediaLoadResult = MutableStateFlow<MediaLoadResult>(MediaLoadResult.Loading)
+    private val _trashedMediaLoadResult = MutableStateFlow<MediaLoadResult>(MediaLoadResult.Loading)
     private val loadMutex = Mutex()
     private val favoriteMutex = Mutex()
 
@@ -39,14 +41,44 @@ class MediaRepository @Inject constructor(
     private var pendingForcedScan = false
     private var pendingContext: Context? = null
 
-    val mediaLoadResult: Flow<MediaLoadResult> = combine(_mediaLoadResult, mediaDao.getFavorites()) { result, favorites ->
+    val mediaLoadResult: Flow<MediaLoadResult> = combine(
+        _mediaLoadResult,
+        mediaDao.getFavorites(),
+        mediaDao.getHiddenMedia()
+    ) { result, favorites, hiddenMedia ->
         val favoriteUris = favorites.map { it.uri }.toSet()
+        val hiddenUris = hiddenMedia.map { it.uri }.toSet()
         when (result) {
             is MediaLoadResult.Success -> {
-                val updated = result.items.map { item ->
-                    item.copy(isFavorite = favoriteUris.contains(item.id))
-                }
+                val updated = result.items
+                    .filterNot { hiddenUris.contains(it.id) }
+                    .map { item -> item.copy(isFavorite = favoriteUris.contains(item.id)) }
                 if (updated.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(updated)
+            }
+            else -> result
+        }
+    }
+
+    val trashedMediaLoadResult: Flow<MediaLoadResult> = _trashedMediaLoadResult
+
+    suspend fun loadTrashedMedia(context: Context? = null) = withContext(ioDispatcher) {
+        val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context, includeTrashed = true)
+        _trashedMediaLoadResult.value = result
+    }
+
+    val hiddenMediaLoadResult: Flow<MediaLoadResult> = combine(
+        _mediaLoadResult,
+        mediaDao.getHiddenMedia(),
+        mediaDao.getFavorites()
+    ) { result, hiddenMedia, favorites ->
+        val favoriteUris = favorites.map { it.uri }.toSet()
+        val hiddenUris = hiddenMedia.map { it.uri }.toSet()
+        when (result) {
+            is MediaLoadResult.Success -> {
+                val hiddenItems = result.items
+                    .filter { hiddenUris.contains(it.id) }
+                    .map { item -> item.copy(isFavorite = favoriteUris.contains(item.id)) }
+                if (hiddenItems.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(hiddenItems)
             }
             else -> result
         }
@@ -143,9 +175,36 @@ class MediaRepository @Inject constructor(
         }
     }
 
+    suspend fun hideMedia(mediaItem: MediaItem) = withContext(ioDispatcher) {
+        mediaDao.hideMedia(HiddenMediaEntity(uri = mediaItem.id, dateHidden = System.currentTimeMillis()))
+    }
+
+    suspend fun hideMediaBatch(mediaItems: List<MediaItem>) = withContext(ioDispatcher) {
+        val now = System.currentTimeMillis()
+        val entities = mediaItems.map { HiddenMediaEntity(uri = it.id, dateHidden = now) }
+        mediaDao.hideMediaBatch(entities)
+    }
+
+    suspend fun unhideMedia(mediaItem: MediaItem) = withContext(ioDispatcher) {
+        mediaDao.unhideMedia(mediaItem.id)
+    }
+
+    suspend fun unhideMediaBatch(mediaItems: List<MediaItem>) = withContext(ioDispatcher) {
+        mediaDao.unhideMediaBatch(mediaItems.map { it.id })
+    }
+
     suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
         mediaDao.removeFavorites(deletedIds)
+        mediaDao.unhideMediaBatch(deletedIds)
         _mediaLoadResult.update { current ->
+            if (current is MediaLoadResult.Success) {
+                val filtered = current.items.filterNot { deletedIds.contains(it.id) }
+                if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
+            } else {
+                current
+            }
+        }
+        _trashedMediaLoadResult.update { current ->
             if (current is MediaLoadResult.Success) {
                 val filtered = current.items.filterNot { deletedIds.contains(it.id) }
                 if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
@@ -221,5 +280,20 @@ class MediaRepository @Inject constructor(
             }
             null
         }
+    }
+
+    suspend fun copyMediaBatchToAlbum(
+        context: Context,
+        sourceItems: List<MediaItem>,
+        targetAlbumName: String
+    ): List<Pair<MediaItem, android.net.Uri>> = withContext(ioDispatcher) {
+        val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+        for (item in sourceItems) {
+            val newUri = copyMediaToAlbum(context, item, targetAlbumName)
+            if (newUri != null) {
+                successfulCopies.add(Pair(item, newUri))
+            }
+        }
+        successfulCopies
     }
 }

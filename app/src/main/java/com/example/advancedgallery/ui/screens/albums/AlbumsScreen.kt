@@ -7,13 +7,19 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -31,9 +37,12 @@ fun AlbumsScreen(
     viewModel: AlbumsViewModel = hiltViewModel(),
     onNavigateToGrid: (MediaSource) -> Unit,
     onNavigateToFavorites: () -> Unit,
-    onNavigateToSearch: () -> Unit
+    onNavigateToSearch: () -> Unit,
+    onNavigateToHidden: () -> Unit,
+    onNavigateToTrash: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -45,6 +54,30 @@ fun AlbumsScreen(
                     }
                     IconButton(onClick = onNavigateToFavorites) {
                         Icon(Icons.Default.Favorite, contentDescription = stringResource(R.string.tab_favorites))
+                    }
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.tab_hidden_media)) },
+                            leadingIcon = { Icon(Icons.Default.VisibilityOff, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToHidden()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.tab_trash)) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToTrash()
+                            }
+                        )
                     }
                 }
             )

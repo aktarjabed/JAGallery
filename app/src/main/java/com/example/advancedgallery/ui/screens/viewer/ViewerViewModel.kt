@@ -70,17 +70,19 @@ class ViewerViewModel @Inject constructor(
 
     val state: StateFlow<ViewerState> = combine(
         repository.mediaLoadResult,
+        repository.hiddenMediaLoadResult,
         _source
-    ) { result, currentSource ->
+    ) { normalResult, hiddenResult, currentSource ->
         if (currentSource == null) {
             return@combine ViewerState.Empty
         }
-        when (result) {
+        val targetResult = if (currentSource is MediaSource.Hidden) hiddenResult else normalResult
+        when (targetResult) {
             is MediaLoadResult.Loading -> ViewerState.Loading
-            is MediaLoadResult.Error -> ViewerState.Error(result.cause)
+            is MediaLoadResult.Error -> ViewerState.Error(targetResult.cause)
             is MediaLoadResult.Empty -> ViewerState.Empty
             is MediaLoadResult.Success -> {
-                val items = result.items
+                val items = targetResult.items
                 val filtered = when (currentSource) {
                     is MediaSource.Favorites -> items.filter { it.isFavorite }
                     is MediaSource.Search -> {
@@ -95,6 +97,7 @@ class ViewerViewModel @Inject constructor(
                     }
                     is MediaSource.All -> items
                     is MediaSource.Trash -> items.filter { it.isTrashed }
+                    is MediaSource.Hidden -> items
                 }
 
                 if (filtered.isEmpty()) {

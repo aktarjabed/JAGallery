@@ -46,4 +46,20 @@ class MediaOperationsTest {
         verify(repository).removeDeletedItems(deletedIds)
         assertTrue(result is OperationResult.Success)
     }
+
+    @Test
+    fun hideMediaBatch_callsRepositoryHideMediaBatch() = runTest {
+        val items = listOf(MediaTestData.image(id = 10L))
+        val result = mediaOperations.hideMediaBatch(items)
+        verify(repository).hideMediaBatch(items)
+        assertTrue(result is OperationResult.Success)
+    }
+
+    @Test
+    fun unhideMediaBatch_callsRepositoryUnhideMediaBatch() = runTest {
+        val items = listOf(MediaTestData.image(id = 10L))
+        val result = mediaOperations.unhideMediaBatch(items)
+        verify(repository).unhideMediaBatch(items)
+        assertTrue(result is OperationResult.Success)
+    }
 }

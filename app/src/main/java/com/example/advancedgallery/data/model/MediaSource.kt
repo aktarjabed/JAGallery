@@ -10,4 +10,5 @@ sealed interface MediaSource {
     }
     data class Search(val query: String) : MediaSource
     object Trash : MediaSource
+    object Hidden : MediaSource
 }
