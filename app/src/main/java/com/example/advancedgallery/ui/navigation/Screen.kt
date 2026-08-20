@@ -5,8 +5,13 @@ import com.example.advancedgallery.data.model.MediaSource
 
 sealed class Screen(val route: String) {
     object Albums : Screen("albums")
-    object Grid : Screen("grid?bucketId={bucketId}") {
-        fun createRoute(bucketId: Long?) = if (bucketId != null) "grid?bucketId=$bucketId" else "grid"
+    object Grid : Screen("grid?source={source}&bucketId={bucketId}") {
+        fun createRoute(source: MediaSource = MediaSource.All): String {
+            return when (source) {
+                is MediaSource.Album -> "grid?source=ALBUM&bucketId=${source.bucketId}"
+                else -> "grid?source=ALL"
+            }
+        }
     }
     object Favorites : Screen("favorites")
     object Search : Screen("search")

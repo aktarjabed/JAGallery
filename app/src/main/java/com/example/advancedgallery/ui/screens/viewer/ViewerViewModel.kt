@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.ui.navigation.parseMediaSource
@@ -12,9 +13,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface ViewerState {
+    data object Loading : ViewerState
+    data class Success(val items: List<MediaItem>) : ViewerState
+    data object Empty : ViewerState
+    data class Error(val cause: Throwable) : ViewerState
+}
 
 @HiltViewModel
 class ViewerViewModel @Inject constructor(
@@ -37,24 +46,37 @@ class ViewerViewModel @Inject constructor(
         savedStateHandle["mediaId"] = android.net.Uri.encode(mediaId)
     }
 
-    val mediaItems: StateFlow<List<MediaItem>> = combine(
-        repository.mediaItems,
+    val state: StateFlow<ViewerState> = combine(
+        repository.mediaLoadResult,
         _source
-    ) { items, source ->
-        when (source) {
-            is MediaSource.Favorites -> items.filter { it.isFavorite }
-            is MediaSource.Search -> {
-                if (source.query.isNotBlank()) {
-                    items.filter { it.name.contains(source.query, ignoreCase = true) }
-                } else {
-                    items
+    ) { result, source ->
+        when (result) {
+            is MediaLoadResult.Loading -> ViewerState.Loading
+            is MediaLoadResult.Error -> ViewerState.Error(result.cause)
+            is MediaLoadResult.Empty -> ViewerState.Empty
+            is MediaLoadResult.Success -> {
+                val items = result.items
+                val filtered = when (source) {
+                    is MediaSource.Favorites -> items.filter { it.isFavorite }
+                    is MediaSource.Search -> {
+                        if (source.query.isNotBlank()) {
+                            items.filter { it.name.contains(source.query, ignoreCase = true) }
+                        } else {
+                            items
+                        }
+                    }
+                    is MediaSource.Album -> {
+                        items.filter { it.bucketId == source.bucketId }
+                    }
+                    is MediaSource.All -> items
                 }
+                if (filtered.isEmpty()) ViewerState.Empty else ViewerState.Success(filtered)
             }
-            is MediaSource.Album -> {
-                items.filter { it.bucketId == source.bucketId }
-            }
-            is MediaSource.All -> items
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ViewerState.Loading)
+
+    val mediaItems: StateFlow<List<MediaItem>> = state.map { currentState ->
+        if (currentState is ViewerState.Success) currentState.items else emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setSource(source: MediaSource) {

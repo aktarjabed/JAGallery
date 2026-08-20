@@ -29,7 +29,6 @@ object AppModule {
             "gallery_database"
         )
             .addMigrations(MediaDatabase.MIGRATION_1_2)
-            .fallbackToDestructiveMigration()
             .build()
     }
 

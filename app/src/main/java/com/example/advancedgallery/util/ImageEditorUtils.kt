@@ -13,11 +13,16 @@ import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 object ImageEditorUtils {
+
+    private const val TAG = "ImageEditorUtils"
 
     suspend fun decodeSampledBitmapFromUri(
         context: Context,
@@ -41,7 +46,6 @@ object ImageEditorUtils {
                 BitmapFactory.decodeStream(stream, null, options)
             } ?: return@withContext null
 
-            // Apply EXIF orientation correction
             val exifDegrees = getExifOrientationDegrees(context, uri)
             if (exifDegrees != 0) {
                 val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
@@ -53,19 +57,24 @@ object ImageEditorUtils {
             } else {
                 bitmap
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to decode sampled bitmap", e)
             null
         }
     }
 
     suspend fun decodeFullResolutionBitmapFromUri(
         context: Context,
-        uri: Uri
+        uri: Uri,
+        inSampleSize: Int = 1
     ): Bitmap? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         try {
+            val options = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
             val bitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
+                BitmapFactory.decodeStream(stream, null, options)
             } ?: return@withContext null
 
             val exifDegrees = getExifOrientationDegrees(context, uri)
@@ -79,7 +88,11 @@ object ImageEditorUtils {
             } else {
                 bitmap
             }
-        } catch (e: Exception) {
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "OOM decoding full resolution bitmap with sample size $inSampleSize")
+            null
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to decode full resolution bitmap", e)
             null
         }
     }
@@ -103,13 +116,15 @@ object ImageEditorUtils {
         return inSampleSize
     }
 
-    fun applyAdjustmentsAndRotation(
+    suspend fun applyAdjustmentsAndRotation(
         sourceBitmap: Bitmap,
         rotationDegrees: Float,
-        brightness: Float, // -100f to +100f
-        contrast: Float,   // 0.5f to 2.0f
-        saturation: Float  // 0.0f to 2.0f
-    ): Bitmap {
+        brightness: Float,
+        contrast: Float,
+        saturation: Float
+    ): Bitmap = withContext(Dispatchers.Default) {
+        coroutineContext.ensureActive()
+
         val matrix = Matrix().apply {
             postRotate(rotationDegrees)
         }
@@ -122,13 +137,13 @@ object ImageEditorUtils {
             sourceBitmap
         }
 
+        coroutineContext.ensureActive()
+
         val cm = ColorMatrix()
 
-        // Saturation
         val satMatrix = ColorMatrix().apply { setSaturation(saturation) }
         cm.postConcat(satMatrix)
 
-        // Contrast & Brightness
         val contrastMatrix = ColorMatrix(
             floatArrayOf(
                 contrast, 0f, 0f, 0f, brightness,
@@ -138,6 +153,8 @@ object ImageEditorUtils {
             )
         )
         cm.postConcat(contrastMatrix)
+
+        coroutineContext.ensureActive()
 
         val result = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
@@ -150,7 +167,62 @@ object ImageEditorUtils {
             rotated.recycle()
         }
 
-        return result
+        result
+    }
+
+    suspend fun exportEditedImageWithProgressiveFallback(
+        context: Context,
+        uri: Uri,
+        rotationDegrees: Float,
+        brightness: Float,
+        contrast: Float,
+        saturation: Float
+    ): Pair<Uri?, String?> = withContext(Dispatchers.IO) {
+        var sampleSize = 1
+        var resultUri: Uri? = null
+        var exportDimensions: String? = null
+
+        while (sampleSize <= 8) {
+            coroutineContext.ensureActive()
+            try {
+                val fullRes = decodeFullResolutionBitmapFromUri(context, uri, sampleSize)
+                if (fullRes == null) {
+                    sampleSize *= 2
+                    continue
+                }
+
+                exportDimensions = "${fullRes.width}x${fullRes.height}"
+
+                val edited = withContext(Dispatchers.Default) {
+                    applyAdjustmentsAndRotation(
+                        sourceBitmap = fullRes,
+                        rotationDegrees = rotationDegrees,
+                        brightness = brightness,
+                        contrast = contrast,
+                        saturation = saturation
+                    )
+                }
+
+                resultUri = saveEditedImage(context, edited, uri)
+
+                if (edited != fullRes) {
+                    edited.recycle()
+                }
+                fullRes.recycle()
+
+                if (resultUri != null) {
+                    break
+                }
+            } catch (e: OutOfMemoryError) {
+                Log.w(TAG, "OOM during export at sample size $sampleSize, falling back")
+                sampleSize *= 2
+            } catch (e: Throwable) {
+                Log.e(TAG, "Export error at sample size $sampleSize", e)
+                break
+            }
+        }
+
+        Pair(resultUri, exportDimensions)
     }
 
     suspend fun saveEditedImage(
@@ -168,10 +240,13 @@ object ImageEditorUtils {
         }
 
         val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        val newUri = resolver.insert(collection, contentValues) ?: return@withContext null
+        var newUri: Uri? = null
 
-        var success = false
         try {
+            newUri = resolver.insert(collection, contentValues)
+            if (newUri == null) return@withContext null
+
+            var success = false
             resolver.openOutputStream(newUri)?.use { outputStream ->
                 success = bitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
             }
@@ -180,7 +255,7 @@ object ImageEditorUtils {
                 try {
                     copyExifAttributes(context, sourceUri, newUri)
                 } catch (e: Exception) {
-                    // Ignore non-fatal EXIF copy errors
+                    Log.w(TAG, "EXIF copy failed non-fatally", e)
                 }
             }
 
@@ -189,19 +264,23 @@ object ImageEditorUtils {
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
                 resolver.update(newUri, contentValues, null, null)
             }
-        } catch (e: Exception) {
-            success = false
-        }
 
-        if (!success) {
-            try {
+            if (!success) {
                 resolver.delete(newUri, null, null)
-            } catch (e: Exception) {
-                // ignore
+                null
+            } else {
+                newUri
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to save edited image", e)
+            if (newUri != null) {
+                try {
+                    resolver.delete(newUri, null, null)
+                } catch (delEx: Exception) {
+                    // ignore
+                }
             }
             null
-        } else {
-            newUri
         }
     }
 
@@ -224,8 +303,7 @@ object ImageEditorUtils {
                     ExifInterface.TAG_FOCAL_LENGTH,
                     ExifInterface.TAG_WHITE_BALANCE,
                     ExifInterface.TAG_EXPOSURE_TIME,
-                    ExifInterface.TAG_F_NUMBER,
-                    ExifInterface.TAG_ISO_SPEED_RATINGS
+                    ExifInterface.TAG_F_NUMBER
                 )
 
                 for (attr in attributes) {
@@ -238,7 +316,7 @@ object ImageEditorUtils {
                 destExif.saveAttributes()
             }
         } catch (e: Exception) {
-            // Ignore
+            Log.w(TAG, "Failed to copy EXIF attributes", e)
         }
     }
 

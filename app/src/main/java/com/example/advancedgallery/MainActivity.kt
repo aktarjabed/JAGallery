@@ -3,7 +3,7 @@ package com.example.advancedgallery
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.activity.enableEdgeToEdge
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.ui.common.components.PermissionHandler
 import com.example.advancedgallery.ui.navigation.NavGraph
@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
     lateinit var repository: MediaRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
             AdvancedGalleryTheme {

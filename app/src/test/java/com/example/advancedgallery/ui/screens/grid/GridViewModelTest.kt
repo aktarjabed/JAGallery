@@ -3,6 +3,7 @@ package com.example.advancedgallery.ui.screens.grid
 import android.content.ContentResolver
 import androidx.lifecycle.SavedStateHandle
 import com.example.advancedgallery.data.local.MediaEntity
+import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
 import com.example.advancedgallery.rules.MainDispatcherRule
@@ -32,9 +33,9 @@ class GridViewModelTest {
     }
 
     @Test
-    fun setBucketId_filtersByBucketIdCorrectly() = runTest {
+    fun setSource_filtersBySourceCorrectly() = runTest {
         val viewModel = GridViewModel(repository, SavedStateHandle())
-        viewModel.setBucketId(10L)
+        viewModel.setSource(MediaSource.Album(10L))
 
         assertEquals(0, viewModel.mediaItems.value.size)
     }

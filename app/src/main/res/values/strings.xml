@@ -27,7 +27,10 @@
     <string name="media_info_album">Album:</string>
     <string name="media_info_uri">URI:</string>
     <string name="internal_storage">Internal Storage</string>
+    <string name="album_default_title">Album</string>
     <string name="no_media_found">No media items found</string>
+    <string name="failed_to_load_media">Failed to load media</string>
+    <string name="failed_to_delete_media">Failed to delete media</string>
     <string name="no_favorites_found">No favorite media items yet</string>
     <string name="no_search_results">No media items matching your search</string>
     <string name="grant_permission">Grant Permission</string>
@@ -38,6 +41,7 @@
     <string name="no_app_to_handle_share">No app found to handle sharing</string>
     <string name="share_failed">Failed to share media</string>
     <string name="selected">Selected</string>
+    <string name="select_all">Select All</string>
     <string name="ccw_90">90° CCW</string>
     <string name="cw_90">90° CW</string>
     <string name="brightness">Brightness</string>

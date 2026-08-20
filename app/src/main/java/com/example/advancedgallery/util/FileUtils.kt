@@ -5,11 +5,19 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 
 object FileUtils {
+    private const val TAG = "FileUtils"
+
     fun createDeleteRequest(contentResolver: ContentResolver, uris: List<Uri>): PendingIntent? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            MediaStore.createDeleteRequest(contentResolver, uris)
+            try {
+                MediaStore.createDeleteRequest(contentResolver, uris)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create delete request", e)
+                null
+            }
         } else {
             null
         }
@@ -20,9 +28,12 @@ object FileUtils {
         for (uri in uris) {
             try {
                 val rows = contentResolver.delete(uri, null, null)
-                if (rows <= 0) success = false
+                if (rows <= 0) {
+                    Log.w(TAG, "No rows deleted for URI $uri")
+                    success = false
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Exception deleting URI $uri", e)
                 success = false
             }
         }
