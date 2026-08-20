@@ -1,23 +1,22 @@
 package com.example.advancedgallery.ui.screens.search
 
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.ui.common.BaseMediaViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: MediaRepository,
+    repository: MediaRepository,
     private val savedStateHandle: SavedStateHandle
-) : ViewModel() {
+) : BaseMediaViewModel(repository) {
 
     val searchQuery: StateFlow<String> = savedStateHandle.getStateFlow("searchQuery", "")
 
@@ -31,11 +30,5 @@ class SearchViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         savedStateHandle["searchQuery"] = query
-    }
-
-    fun removeDeletedItems(deletedIds: List<String>) {
-        viewModelScope.launch {
-            repository.removeDeletedItems(deletedIds)
-        }
     }
 }

@@ -8,19 +8,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.R
 import com.example.advancedgallery.util.ImageEditorUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed class SaveState {
     object Idle : SaveState()
     object Saving : SaveState()
-    data class Success(val newUri: Uri) : SaveState()
+    data class Success(val newUri: Uri, val dimensions: String? = null) : SaveState()
     data class Error(val messageResId: Int) : SaveState()
 }
 
@@ -31,6 +29,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private var originalBitmap: Bitmap? = null
     private var currentPreviewBitmap: Bitmap? = null
     private var previewJob: Job? = null
+    private var loadJob: Job? = null
 
     private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
     val previewBitmap: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
@@ -54,9 +53,10 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadImage(context: Context, imageUri: Uri) {
-        if (originalBitmap != null) return
+        if (_isLoading.value || originalBitmap != null) return
         sourceUri = imageUri
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _isLoading.value = true
             val bitmap = ImageEditorUtils.decodeSampledBitmapFromUri(context, imageUri)
             originalBitmap = bitmap
@@ -96,9 +96,10 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _brightness.value = 0f
         _contrast.value = 1f
         _saturation.value = 1f
-        if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
-            currentPreviewBitmap?.recycle()
-            currentPreviewBitmap = null
+        val oldPreview = currentPreviewBitmap
+        currentPreviewBitmap = null
+        if (oldPreview != null && oldPreview != originalBitmap) {
+            oldPreview.recycle()
         }
         _previewBitmap.value = originalBitmap
     }
@@ -112,21 +113,21 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             val cont = _contrast.value
             val sat = _saturation.value
 
-            val updated = withContext(Dispatchers.Default) {
-                ImageEditorUtils.applyAdjustmentsAndRotation(
-                    sourceBitmap = base,
-                    rotationDegrees = rotation,
-                    brightness = bright,
-                    contrast = cont,
-                    saturation = sat
-                )
-            }
+            val updated = ImageEditorUtils.applyAdjustmentsAndRotation(
+                sourceBitmap = base,
+                rotationDegrees = rotation,
+                brightness = bright,
+                contrast = cont,
+                saturation = sat
+            )
 
-            if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
-                currentPreviewBitmap?.recycle()
-            }
+            val oldPreview = currentPreviewBitmap
             currentPreviewBitmap = updated
             _previewBitmap.value = updated
+
+            if (oldPreview != null && oldPreview != base && oldPreview != updated) {
+                oldPreview.recycle()
+            }
         }
     }
 
@@ -139,29 +140,17 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
-            val savedUri = withContext(Dispatchers.Default) {
-                val fullRes = ImageEditorUtils.decodeFullResolutionBitmapFromUri(context, uri)
-                if (fullRes == null) {
-                    null
-                } else {
-                    val edited = ImageEditorUtils.applyAdjustmentsAndRotation(
-                        sourceBitmap = fullRes,
-                        rotationDegrees = rotation,
-                        brightness = bright,
-                        contrast = cont,
-                        saturation = sat
-                    )
-                    val resultUri = ImageEditorUtils.saveEditedImage(context, edited, uri)
-                    if (edited != fullRes) {
-                        edited.recycle()
-                    }
-                    fullRes.recycle()
-                    resultUri
-                }
-            }
+            val (savedUri, dimensions) = ImageEditorUtils.exportEditedImageWithProgressiveFallback(
+                context = context,
+                uri = uri,
+                rotationDegrees = rotation,
+                brightness = bright,
+                contrast = cont,
+                saturation = sat
+            )
 
             if (savedUri != null) {
-                _saveState.value = SaveState.Success(savedUri)
+                _saveState.value = SaveState.Success(savedUri, dimensions)
             } else {
                 _saveState.value = SaveState.Error(R.string.failed_to_save_image)
             }
@@ -171,6 +160,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         previewJob?.cancel()
+        loadJob?.cancel()
         val orig = originalBitmap
         val curr = currentPreviewBitmap
         originalBitmap = null

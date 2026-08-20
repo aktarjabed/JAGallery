@@ -37,7 +37,7 @@ fun SelectionToolbar(
                 }
             }
             IconButton(onClick = onSelectAll) {
-                Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.select_all))
             }
             IconButton(onClick = onDeleteSelected) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))

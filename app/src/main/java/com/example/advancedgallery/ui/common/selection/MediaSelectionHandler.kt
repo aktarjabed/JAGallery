@@ -10,7 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.MediaItem
@@ -68,8 +67,7 @@ fun MediaSelectionHandler(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    var pendingDeleteBatch by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var deleteState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
 
     LaunchedEffect(items) {
         selectionState.pruneSelection(items)
@@ -78,36 +76,48 @@ fun MediaSelectionHandler(
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            pendingDeleteBatch?.let { batch ->
-                onRemoveDeletedItems(batch.ids)
+        val state = deleteState
+        if (state is DeleteOperationState.SystemConfirmation) {
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                onRemoveDeletedItems(state.batch.ids)
+                selectionState.clearSelection()
             }
-            selectionState.clearSelection()
-            pendingDeleteBatch = null
         }
+        deleteState = DeleteOperationState.Idle
     }
 
-    if (showDeleteConfirmation && pendingDeleteBatch != null) {
-        DeleteConfirmationDialog(
-            count = pendingDeleteBatch?.count ?: 0,
-            onConfirm = {
-                showDeleteConfirmation = false
-                val batch = pendingDeleteBatch ?: return@DeleteConfirmationDialog
-                val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, batch.uris)
-                if (pendingIntent != null) {
-                    deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
-                } else {
-                    FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
-                    onRemoveDeletedItems(batch.ids)
-                    selectionState.clearSelection()
-                    pendingDeleteBatch = null
+    when (val currentState = deleteState) {
+        is DeleteOperationState.Confirming -> {
+            DeleteConfirmationDialog(
+                count = currentState.batch.count,
+                onConfirm = {
+                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                    if (pendingIntent != null) {
+                        deleteState = DeleteOperationState.SystemConfirmation(currentState.batch)
+                        deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    } else {
+                        val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
+                        if (success) {
+                            onRemoveDeletedItems(currentState.batch.ids)
+                            selectionState.clearSelection()
+                            deleteState = DeleteOperationState.Idle
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                            deleteState = DeleteOperationState.Failed(currentState.batch)
+                        }
+                    }
+                },
+                onDismiss = {
+                    deleteState = DeleteOperationState.Idle
                 }
-            },
-            onDismiss = {
-                showDeleteConfirmation = false
-                pendingDeleteBatch = null
+            )
+        }
+        is DeleteOperationState.Failed -> {
+            LaunchedEffect(currentState) {
+                deleteState = DeleteOperationState.Idle
             }
-        )
+        }
+        else -> {}
     }
 
     BackHandler(enabled = selectionState.selectionMode) {
@@ -126,11 +136,11 @@ fun MediaSelectionHandler(
             onDeleteSelected = {
                 val selected = selectionState.getSelectedItems(items)
                 if (selected.isNotEmpty()) {
-                    pendingDeleteBatch = PendingDeleteBatch(
+                    val batch = PendingDeleteBatch(
                         ids = selected.map { it.id },
                         uris = selected.map { it.uri }
                     )
-                    showDeleteConfirmation = true
+                    deleteState = DeleteOperationState.Confirming(batch)
                 }
             }
         )

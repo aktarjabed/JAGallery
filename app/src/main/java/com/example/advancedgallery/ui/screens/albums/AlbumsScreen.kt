@@ -17,18 +17,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.advancedgallery.R
-import com.example.advancedgallery.data.model.Album
+import com.example.advancedgallery.data.model.MediaSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumsScreen(
     viewModel: AlbumsViewModel = hiltViewModel(),
-    onNavigateToGrid: (Long?) -> Unit,
+    onNavigateToGrid: (MediaSource) -> Unit,
     onNavigateToFavorites: () -> Unit,
     onNavigateToSearch: () -> Unit
 ) {
@@ -86,15 +87,15 @@ fun AlbumsScreen(
                         title = stringResource(R.string.tab_all_media),
                         count = totalMediaCount,
                         coverUri = coverUri ?: Uri.EMPTY,
-                        onClick = { onNavigateToGrid(null) }
+                        onClick = { onNavigateToGrid(MediaSource.All) }
                     )
                 }
                 items(albums) { album ->
                     AlbumCard(
-                        title = album.name,
+                        title = album.name.ifBlank { stringResource(R.string.album_default_title) },
                         count = album.mediaCount,
                         coverUri = album.coverUri,
-                        onClick = { onNavigateToGrid(album.bucketId) }
+                        onClick = { onNavigateToGrid(MediaSource.Album(album.bucketId)) }
                     )
                 }
             }
@@ -126,7 +127,10 @@ fun AlbumCard(
             )
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(text = "$count items", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = pluralStringResource(R.plurals.media_item_count, count, count),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }

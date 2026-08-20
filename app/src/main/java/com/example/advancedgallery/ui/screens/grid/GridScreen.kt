@@ -19,17 +19,25 @@ import com.example.advancedgallery.ui.common.selection.rememberSelectionState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GridScreen(
-    bucketId: Long?,
+    source: MediaSource,
     onNavigateToViewer: (mediaId: String, source: MediaSource) -> Unit,
     onBack: () -> Unit,
     viewModel: GridViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(bucketId) {
-        viewModel.setBucketId(bucketId)
+    LaunchedEffect(source) {
+        viewModel.setSource(source)
     }
 
     val mediaItems by viewModel.mediaItems.collectAsState()
     val selectionState = rememberSelectionState()
+
+    val albumTitle = stringResource(R.string.album_default_title)
+    val titleText = remember(source, mediaItems, albumTitle) {
+        when (source) {
+            is MediaSource.Album -> mediaItems.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
+            else -> null
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -41,8 +49,7 @@ fun GridScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                if (bucketId == null) stringResource(R.string.tab_all_media)
-                                else mediaItems.firstOrNull()?.bucketName?.ifBlank { "Album" } ?: "Album"
+                                titleText ?: stringResource(R.string.tab_all_media)
                             )
                         },
                         navigationIcon = {
@@ -69,7 +76,6 @@ fun GridScreen(
                 if (selectionState.selectionMode) {
                     selectionState.toggleSelection(item.id)
                 } else {
-                    val source = if (bucketId != null) MediaSource.Album(bucketId) else MediaSource.All
                     onNavigateToViewer(item.id, source)
                 }
             },

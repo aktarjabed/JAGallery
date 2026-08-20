@@ -50,21 +50,58 @@ fun ViewerScreen(
         viewModel.setSource(source)
     }
 
-    val mediaItems by viewModel.mediaItems.collectAsState()
+    val viewerState by viewModel.state.collectAsState()
 
-    if (mediaItems.isEmpty()) {
-        LaunchedEffect(Unit) {
-            onBack()
+    val mediaItems = when (val currentState = viewerState) {
+        is ViewerState.Loading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+            return
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = Color.White)
+        is ViewerState.Empty -> {
+            LaunchedEffect(Unit) {
+                onBack()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.no_media_found),
+                    color = Color.White
+                )
+            }
+            return
         }
-        return
+        is ViewerState.Error -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(R.string.failed_to_load_media),
+                        color = Color.Red
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onBack) {
+                        Text(stringResource(R.string.back))
+                    }
+                }
+            }
+            return
+        }
+        is ViewerState.Success -> currentState.items
     }
 
     val activeMediaId = viewModel.currentMediaId ?: initialMediaId
@@ -77,6 +114,23 @@ fun ViewerScreen(
         initialPage = initialIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0)),
         pageCount = { mediaItems.size }
     )
+
+    LaunchedEffect(mediaItems) {
+        if (mediaItems.isNotEmpty()) {
+            val targetMediaId = viewModel.currentMediaId ?: initialMediaId
+            val newIndex = mediaItems.indexOfFirst { it.id == targetMediaId }
+            if (newIndex >= 0) {
+                if (pagerState.currentPage != newIndex) {
+                    pagerState.scrollToPage(newIndex)
+                }
+            } else {
+                val nextIndex = pagerState.currentPage.coerceIn(0, mediaItems.size - 1)
+                mediaItems.getOrNull(nextIndex)?.id?.let { nextId ->
+                    viewModel.setCurrentMediaId(nextId)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(pagerState.currentPage) {
         mediaItems.getOrNull(pagerState.currentPage)?.id?.let { id ->
@@ -94,22 +148,23 @@ fun ViewerScreen(
 
     var showControls by remember { mutableStateOf(true) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    var pendingDeleteBatch by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
+    var deleteState by remember { mutableStateOf<com.example.advancedgallery.ui.common.selection.DeleteOperationState>(com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle) }
 
     val context = LocalContext.current
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        pendingDeleteBatch?.let { pending ->
+        val currentState = deleteState
+        if (currentState is com.example.advancedgallery.ui.common.selection.DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
-                viewModel.removeDeletedItem(pending.ids.first())
+                viewModel.removeDeletedItem(currentState.batch.ids.first())
                 if (mediaItems.size <= 1) {
                     onBack()
                 }
             }
-            pendingDeleteBatch = null
         }
+        deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle
     }
 
     if (showInfoDialog) {
@@ -143,34 +198,48 @@ fun ViewerScreen(
         )
     }
 
-    pendingDeleteBatch?.let { pending ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteBatch = null },
-            title = { Text(stringResource(R.string.delete_media_title)) },
-            text = { Text(stringResource(R.string.delete_single_confirm_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, pending.uris)
-                    if (pendingIntent != null) {
-                        deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
-                    } else {
-                        FileUtils.deleteMediaItems(context.contentResolver, pending.uris)
-                        viewModel.removeDeletedItem(pending.ids.first())
-                        pendingDeleteBatch = null
-                        if (mediaItems.size <= 1) {
-                            onBack()
+    when (val currentState = deleteState) {
+        is com.example.advancedgallery.ui.common.selection.DeleteOperationState.Confirming -> {
+            AlertDialog(
+                onDismissRequest = { deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle },
+                title = { Text(stringResource(R.string.delete_media_title)) },
+                text = { Text(stringResource(R.string.delete_single_confirm_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                        if (pendingIntent != null) {
+                            deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.SystemConfirmation(currentState.batch)
+                            deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                        } else {
+                            val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
+                            if (success) {
+                                viewModel.removeDeletedItem(currentState.batch.ids.first())
+                                deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle
+                                if (mediaItems.size <= 1) {
+                                    onBack()
+                                }
+                            } else {
+                                android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
+                                deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
+                            }
                         }
+                    }) {
+                        Text(stringResource(R.string.delete))
                     }
-                }) {
-                    Text(stringResource(R.string.delete))
+                },
+                dismissButton = {
+                    TextButton(onClick = { deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle }) {
+                        Text(stringResource(R.string.cancel))
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteBatch = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
+            )
+        }
+        is com.example.advancedgallery.ui.common.selection.DeleteOperationState.Failed -> {
+            LaunchedEffect(currentState) {
+                deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle
             }
-        )
+        }
+        else -> {}
     }
 
     Scaffold(
@@ -205,9 +274,11 @@ fun ViewerScreen(
                             )
                         }
                         IconButton(onClick = {
-                            pendingDeleteBatch = PendingDeleteBatch(
-                                ids = listOf(currentItem.id),
-                                uris = listOf(currentItem.uri)
+                            deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.Confirming(
+                                PendingDeleteBatch(
+                                    ids = listOf(currentItem.id),
+                                    uris = listOf(currentItem.uri)
+                                )
                             )
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))

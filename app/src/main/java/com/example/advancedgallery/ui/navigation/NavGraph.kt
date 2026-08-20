@@ -30,8 +30,8 @@ fun NavGraph() {
     NavHost(navController = navController, startDestination = Screen.Albums.route) {
         composable(Screen.Albums.route) {
             AlbumsScreen(
-                onNavigateToGrid = { bucketId ->
-                    navController.navigate(Screen.Grid.createRoute(bucketId))
+                onNavigateToGrid = { source ->
+                    navController.navigate(Screen.Grid.createRoute(source))
                 },
                 onNavigateToFavorites = {
                     navController.navigate(Screen.Favorites.route)
@@ -44,18 +44,24 @@ fun NavGraph() {
         composable(
             route = Screen.Grid.route,
             arguments = listOf(
+                navArgument("source") {
+                    type = NavType.StringType
+                    defaultValue = "ALL"
+                },
                 navArgument("bucketId") {
                     type = NavType.StringType
                     nullable = true
                 }
             )
         ) { backStackEntry ->
+            val sourceStr = backStackEntry.arguments?.getString("source")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
+            val source = if (sourceStr == "ALBUM" && bucketId != null) MediaSource.Album(bucketId) else MediaSource.All
             GridScreen(
-                bucketId = bucketId,
-                onNavigateToViewer = { mediaId, source ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
+                source = source,
+                onNavigateToViewer = { mediaId, src ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, src))
                 },
                 onBack = { navController.popBackStack() }
             )

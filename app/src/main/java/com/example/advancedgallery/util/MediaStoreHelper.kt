@@ -13,28 +13,30 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object MediaStoreHelper {
-    private var lastMediaStoreVersion: String? = null
+    private const val PREFS_NAME = "mediastore_sync_prefs"
+    private const val KEY_MEDIASTORE_VERSION = "key_mediastore_version"
 
-    suspend fun getMediaItems(
+    fun getPersistedMediaStoreVersion(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_MEDIASTORE_VERSION, null)
+    }
+
+    fun persistMediaStoreVersion(context: Context, version: String?) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_MEDIASTORE_VERSION, version).apply()
+    }
+
+    suspend fun getMediaItemsResult(
         contentResolver: ContentResolver,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         context: Context? = null
-    ): List<MediaItem> = withContext(dispatcher) {
-        val items = mutableListOf<MediaItem>()
+    ): com.example.advancedgallery.data.model.MediaLoadResult = withContext(dispatcher) {
+        try {
+            val items = mutableListOf<MediaItem>()
 
-        val imageCollectionUri = try {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        } catch (e: Exception) {
-            null
-        }
+            val imageCollectionUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            val videoCollectionUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
 
-        val videoCollectionUri = try {
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        } catch (e: Exception) {
-            null
-        }
-
-        if (imageCollectionUri != null) {
             items.addAll(
                 queryCollection(
                     contentResolver = contentResolver,
@@ -42,9 +44,7 @@ object MediaStoreHelper {
                     isVideo = false
                 )
             )
-        }
 
-        if (videoCollectionUri != null) {
             items.addAll(
                 queryCollection(
                     contentResolver = contentResolver,
@@ -52,24 +52,44 @@ object MediaStoreHelper {
                     isVideo = true
                 )
             )
-        }
 
-        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                lastMediaStoreVersion = MediaStore.getVersion(context)
-            } catch (e: Exception) {
-                // Ignore
+            if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    val currentVersion = MediaStore.getVersion(context)
+                    persistMediaStoreVersion(context, currentVersion)
+                } catch (e: Exception) {
+                    // Ignore
+                }
             }
-        }
 
-        items.sortedByDescending { it.dateAdded }
+            val sorted = items.sortedByDescending { it.dateAdded }
+            if (sorted.isEmpty()) {
+                com.example.advancedgallery.data.model.MediaLoadResult.Empty
+            } else {
+                com.example.advancedgallery.data.model.MediaLoadResult.Success(sorted)
+            }
+        } catch (e: Throwable) {
+            com.example.advancedgallery.data.model.MediaLoadResult.Error(e)
+        }
+    }
+
+    suspend fun getMediaItems(
+        contentResolver: ContentResolver,
+        dispatcher: CoroutineDispatcher = Dispatchers.IO,
+        context: Context? = null
+    ): List<MediaItem> = withContext(dispatcher) {
+        when (val result = getMediaItemsResult(contentResolver, dispatcher, context)) {
+            is com.example.advancedgallery.data.model.MediaLoadResult.Success -> result.items
+            else -> emptyList()
+        }
     }
 
     fun isMediaStoreVersionCurrent(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
             val currentVersion = MediaStore.getVersion(context)
-            lastMediaStoreVersion != null && lastMediaStoreVersion == currentVersion
+            val persisted = getPersistedMediaStoreVersion(context)
+            persisted != null && persisted == currentVersion
         } catch (e: Exception) {
             false
         }

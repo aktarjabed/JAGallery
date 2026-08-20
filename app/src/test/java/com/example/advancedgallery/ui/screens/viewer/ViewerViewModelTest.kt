@@ -68,4 +68,10 @@ class ViewerViewModelTest {
         val favorites = fakeDao.getFavorites().first()
         assertEquals(0, favorites.size)
     }
+
+    @Test
+    fun state_initialStateIsLoading() = runTest {
+        val viewModel = ViewerViewModel(repository, SavedStateHandle())
+        assertEquals(ViewerState.Loading, viewModel.state.value)
+    }
 }

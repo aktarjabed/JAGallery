@@ -5,12 +5,14 @@ import android.content.Context
 import com.example.advancedgallery.data.local.MediaDao
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.util.MediaStoreHelper
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -22,21 +24,35 @@ class MediaRepository @Inject constructor(
     private val mediaDao: MediaDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-    private val _mediaItems = MutableStateFlow<List<MediaItem>>(emptyList())
+    private val _mediaLoadResult = MutableStateFlow<MediaLoadResult>(MediaLoadResult.Loading)
 
-    val mediaItems: Flow<List<MediaItem>> = combine(_mediaItems, mediaDao.getFavorites()) { items, favorites ->
+    val mediaLoadResult: Flow<MediaLoadResult> = combine(_mediaLoadResult, mediaDao.getFavorites()) { result, favorites ->
         val favoriteUris = favorites.map { it.uri }.toSet()
-        items.map { item ->
-            item.copy(isFavorite = favoriteUris.contains(item.id))
+        when (result) {
+            is MediaLoadResult.Success -> {
+                val updated = result.items.map { item ->
+                    item.copy(isFavorite = favoriteUris.contains(item.id))
+                }
+                if (updated.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(updated)
+            }
+            else -> result
+        }
+    }
+
+    val mediaItems: Flow<List<MediaItem>> = mediaLoadResult.map { result ->
+        when (result) {
+            is MediaLoadResult.Success -> result.items
+            else -> emptyList()
         }
     }
 
     suspend fun loadMedia(force: Boolean = false, context: Context? = null) {
-        if (!force && context != null && _mediaItems.value.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
+        val current = _mediaLoadResult.value
+        if (!force && context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
             return
         }
-        val items = MediaStoreHelper.getMediaItems(contentResolver, ioDispatcher, context)
-        _mediaItems.update { items }
+        val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context)
+        _mediaLoadResult.value = result
     }
 
     suspend fun toggleFavorite(mediaItem: MediaItem) {
@@ -59,8 +75,13 @@ class MediaRepository @Inject constructor(
     suspend fun removeDeletedItems(deletedIds: List<String>) {
         withContext(ioDispatcher) {
             mediaDao.removeFavorites(deletedIds)
-            _mediaItems.update { current ->
-                current.filterNot { deletedIds.contains(it.id) }
+            _mediaLoadResult.update { current ->
+                if (current is MediaLoadResult.Success) {
+                    val filtered = current.items.filterNot { deletedIds.contains(it.id) }
+                    if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
+                } else {
+                    current
+                }
             }
         }
     }
