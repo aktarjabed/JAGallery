@@ -57,8 +57,8 @@ fun checkGalleryPermissionAccessMode(context: Context): PermissionAccessMode {
         val hasSelected = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
 
         when {
-            hasImages && hasVideo -> PermissionAccessMode.FULL
             hasSelected -> PermissionAccessMode.SELECTED
+            hasImages && hasVideo -> PermissionAccessMode.FULL
             hasImages -> PermissionAccessMode.IMAGES_ONLY
             hasVideo -> PermissionAccessMode.VIDEOS_ONLY
             else -> PermissionAccessMode.DENIED
@@ -95,6 +95,7 @@ fun PermissionHandler(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    var permissionAccessMode by remember { mutableStateOf(checkGalleryPermissionAccessMode(context)) }
     var permissionState by remember { mutableStateOf(checkGalleryPermissionState(context)) }
     var hasRequestedOnce by remember { mutableStateOf(false) }
 
@@ -116,7 +117,9 @@ fun PermissionHandler(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
         hasRequestedOnce = true
+        val newMode = checkGalleryPermissionAccessMode(context)
         val newState = checkGalleryPermissionState(context)
+        permissionAccessMode = newMode
         permissionState = newState
         onPermissionChanged()
     }
@@ -124,9 +127,13 @@ fun PermissionHandler(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
+                val newMode = checkGalleryPermissionAccessMode(context)
                 val newState = checkGalleryPermissionState(context)
-                if (newState != permissionState) {
+                if (newMode != permissionAccessMode) {
+                    permissionAccessMode = newMode
                     permissionState = newState
+                    onPermissionChanged()
+                } else if (newMode == PermissionAccessMode.SELECTED) {
                     onPermissionChanged()
                 }
             }

@@ -147,9 +147,7 @@ fun ViewerScreen(
     }
 
     LaunchedEffect(pagerState.currentPage) {
-        mediaItems.getOrNull(pagerState.currentPage)?.id?.let { id ->
-            viewModel.setCurrentMediaId(id)
-        }
+        viewModel.updateCurrentIndex(pagerState.currentPage)
     }
 
     val currentItem = mediaItems.getOrNull(pagerState.currentPage)

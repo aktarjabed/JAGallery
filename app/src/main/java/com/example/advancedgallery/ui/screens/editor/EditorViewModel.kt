@@ -31,6 +31,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private var currentPreviewBitmap: Bitmap? = null
     private var previewJob: Job? = null
     private var loadJob: Job? = null
+    private var currentRenderId: Long = 0L
 
     private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
     val previewBitmap: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
@@ -92,6 +93,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     }
 
     fun reset() {
+        currentRenderId++
         previewJob?.cancel()
         _rotationDegrees.value = 0f
         _brightness.value = 0f
@@ -109,6 +111,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     private fun updatePreview() {
         val base = originalBitmap ?: return
+        val renderId = ++currentRenderId
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
             val plan = TransformationPlan(
@@ -122,6 +125,13 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 sourceBitmap = base,
                 plan = plan
             )
+
+            if (renderId != currentRenderId) {
+                if (updated != base && !updated.isRecycled) {
+                    updated.recycle()
+                }
+                return@launch
+            }
 
             val previous = currentPreviewBitmap
             currentPreviewBitmap = updated

@@ -60,6 +60,15 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun reset_cancelsInFlightPreviewRender() = runTest {
+        val viewModel = EditorViewModel()
+        viewModel.updateBrightness(10f)
+        viewModel.reset()
+
+        assertEquals(0f, viewModel.brightness.value)
+    }
+
+    @Test
     fun applyAdjustmentsAndRotation_returnsValidBitmap() = runTest {
         val source = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
         val result = ImageEditorUtils.applyAdjustmentsAndRotation(

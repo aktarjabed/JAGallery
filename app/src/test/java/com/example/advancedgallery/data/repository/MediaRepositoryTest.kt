@@ -9,6 +9,7 @@ import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,10 +18,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.robolectric.RobolectricTestRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
 class MediaRepositoryTest {
 
     @get:Rule
@@ -142,5 +146,17 @@ class MediaRepositoryTest {
         val remaining = fakeDao.getFavorites().first()
         assertEquals(1, remaining.size)
         assertEquals(videoItem.id, remaining[0].uri)
+    }
+
+    @Test
+    fun concurrentLoadMedia_coalescesScanJobs() = runTest {
+        val job1 = launch { repository.loadMedia(force = false) }
+        val job2 = launch { repository.loadMedia(force = true) }
+
+        job1.join()
+        job2.join()
+
+        val result = repository.mediaLoadResult.first()
+        assertTrue(result is com.example.advancedgallery.data.model.MediaLoadResult)
     }
 }

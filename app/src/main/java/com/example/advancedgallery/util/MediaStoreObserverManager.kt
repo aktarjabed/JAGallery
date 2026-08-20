@@ -2,6 +2,7 @@ package com.example.advancedgallery.util
 
 import android.content.Context
 import android.database.ContentObserver
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -21,7 +22,7 @@ class MediaStoreObserverManager(
     private var observer: ContentObserver? = null
 
     fun startObserving() {
-        if (observer != null) return
+        stopObserving()
 
         observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -34,22 +35,38 @@ class MediaStoreObserverManager(
             }
         }
 
-        try {
-            val contentResolver = context.contentResolver
-            observer?.let { obs ->
-                contentResolver.registerContentObserver(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    true,
-                    obs
-                )
-                contentResolver.registerContentObserver(
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                    true,
-                    obs
-                )
+        val contentResolver = context.contentResolver
+        val obs = observer ?: return
+
+        val targetUris = mutableListOf<android.net.Uri>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val volumes = MediaStore.getExternalVolumeNames(context)
+                for (volume in volumes) {
+                    targetUris.add(MediaStore.Images.Media.getContentUri(volume))
+                    targetUris.add(MediaStore.Video.Media.getContentUri(volume))
+                }
+            } catch (e: SecurityException) {
+                Log.w("MediaStoreObserver", "SecurityException getting volume names", e)
+            } catch (e: IllegalArgumentException) {
+                Log.w("MediaStoreObserver", "IllegalArgumentException getting volume names", e)
             }
-        } catch (e: SecurityException) {
-            Log.w("MediaStoreObserver", "SecurityException registering ContentObserver", e)
+        }
+
+        if (targetUris.isEmpty()) {
+            targetUris.add(MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            targetUris.add(MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+        }
+
+        for (uri in targetUris) {
+            try {
+                contentResolver.registerContentObserver(uri, true, obs)
+            } catch (e: SecurityException) {
+                Log.w("MediaStoreObserver", "SecurityException registering observer for $uri", e)
+            } catch (e: IllegalArgumentException) {
+                Log.w("MediaStoreObserver", "IllegalArgumentException registering observer for $uri", e)
+            }
         }
     }
 
