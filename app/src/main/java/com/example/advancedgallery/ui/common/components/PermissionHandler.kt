@@ -28,16 +28,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.advancedgallery.R
 
 enum class PermissionAccessMode {
-    DENIED,
-    SELECTED,
     FULL,
+    SELECTED_PHOTOS_VIDEOS,
     IMAGES_ONLY,
-    VIDEOS_ONLY
-}
-
-enum class PermissionState {
-    FULL,
-    PARTIAL,
+    VIDEOS_ONLY,
     DENIED
 }
 
@@ -57,8 +51,8 @@ fun checkGalleryPermissionAccessMode(context: Context): PermissionAccessMode {
         val hasSelected = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
 
         when {
-            hasSelected -> PermissionAccessMode.SELECTED
             hasImages && hasVideo -> PermissionAccessMode.FULL
+            hasSelected -> PermissionAccessMode.SELECTED_PHOTOS_VIDEOS
             hasImages -> PermissionAccessMode.IMAGES_ONLY
             hasVideo -> PermissionAccessMode.VIDEOS_ONLY
             else -> PermissionAccessMode.DENIED
@@ -78,25 +72,14 @@ fun checkGalleryPermissionAccessMode(context: Context): PermissionAccessMode {
     }
 }
 
-fun checkGalleryPermissionState(context: Context): PermissionState {
-    return when (checkGalleryPermissionAccessMode(context)) {
-        PermissionAccessMode.FULL -> PermissionState.FULL
-        PermissionAccessMode.SELECTED,
-        PermissionAccessMode.IMAGES_ONLY,
-        PermissionAccessMode.VIDEOS_ONLY -> PermissionState.PARTIAL
-        PermissionAccessMode.DENIED -> PermissionState.DENIED
-    }
-}
-
 @Composable
 fun PermissionHandler(
     onPermissionChanged: () -> Unit = {},
-    content: @Composable (permissionState: PermissionState) -> Unit
+    content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var permissionAccessMode by remember { mutableStateOf(checkGalleryPermissionAccessMode(context)) }
-    var permissionState by remember { mutableStateOf(checkGalleryPermissionState(context)) }
     var hasRequestedOnce by remember { mutableStateOf(false) }
 
     val permissionsToRequest = remember {
@@ -118,20 +101,18 @@ fun PermissionHandler(
     ) { _ ->
         hasRequestedOnce = true
         val newMode = checkGalleryPermissionAccessMode(context)
-        val newState = checkGalleryPermissionState(context)
-        permissionAccessMode = newMode
-        permissionState = newState
-        onPermissionChanged()
+        if (newMode != permissionAccessMode) {
+            permissionAccessMode = newMode
+            onPermissionChanged()
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                 val newMode = checkGalleryPermissionAccessMode(context)
-                val newState = checkGalleryPermissionState(context)
                 if (newMode != permissionAccessMode) {
                     permissionAccessMode = newMode
-                    permissionState = newState
                     onPermissionChanged()
                 }
             }
@@ -142,7 +123,7 @@ fun PermissionHandler(
         }
     }
 
-    if (permissionState == PermissionState.DENIED) {
+    if (permissionAccessMode == PermissionAccessMode.DENIED) {
         val activity = context.findActivity()
         val showRationale = activity != null && permissionsToRequest.any { perm ->
             ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
@@ -158,7 +139,7 @@ fun PermissionHandler(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.media_access_required),
+                    text = stringResource(R.string.permission_denied),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -181,7 +162,14 @@ fun PermissionHandler(
         }
     } else {
         Column(modifier = Modifier.fillMaxSize()) {
-            if (permissionState == PermissionState.PARTIAL) {
+            val bannerText = when (permissionAccessMode) {
+                PermissionAccessMode.SELECTED_PHOTOS_VIDEOS -> stringResource(R.string.permission_selected_access)
+                PermissionAccessMode.IMAGES_ONLY -> stringResource(R.string.permission_images_only)
+                PermissionAccessMode.VIDEOS_ONLY -> stringResource(R.string.permission_videos_only)
+                else -> null
+            }
+
+            if (bannerText != null) {
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -195,18 +183,18 @@ fun PermissionHandler(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.showing_selected_photos),
+                            text = bannerText,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { launcher.launch(permissionsToRequest) }) {
-                            Text(stringResource(R.string.manage_selection))
+                            Text(stringResource(R.string.manage_access))
                         }
                     }
                 }
             }
             Box(modifier = Modifier.weight(1f)) {
-                content(permissionState)
+                content()
             }
         }
     }

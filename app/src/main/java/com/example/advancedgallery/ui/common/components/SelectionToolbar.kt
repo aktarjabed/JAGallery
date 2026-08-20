@@ -1,10 +1,14 @@
 package com.example.advancedgallery.ui.common.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,7 +25,11 @@ fun SelectionToolbar(
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onShareSelected: (() -> Unit)? = null,
-    onDeleteSelected: () -> Unit
+    onDeleteSelected: (() -> Unit)? = null,
+    onHideSelected: (() -> Unit)? = null,
+    onUnhideSelected: (() -> Unit)? = null,
+    onRestoreSelected: (() -> Unit)? = null,
+    onMoveSelected: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text("$selectedCount ${stringResource(R.string.selected)}") },
@@ -31,6 +39,26 @@ fun SelectionToolbar(
             }
         },
         actions = {
+            if (onRestoreSelected != null) {
+                IconButton(onClick = onRestoreSelected) {
+                    Icon(Icons.Default.Restore, contentDescription = stringResource(R.string.restore))
+                }
+            }
+            if (onUnhideSelected != null) {
+                IconButton(onClick = onUnhideSelected) {
+                    Icon(Icons.Default.Visibility, contentDescription = stringResource(R.string.unhide))
+                }
+            }
+            if (onHideSelected != null) {
+                IconButton(onClick = onHideSelected) {
+                    Icon(Icons.Default.VisibilityOff, contentDescription = stringResource(R.string.hide))
+                }
+            }
+            if (onMoveSelected != null) {
+                IconButton(onClick = onMoveSelected) {
+                    Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = stringResource(R.string.move_to_album))
+                }
+            }
             if (onShareSelected != null) {
                 IconButton(onClick = onShareSelected) {
                     Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
@@ -39,8 +67,10 @@ fun SelectionToolbar(
             IconButton(onClick = onSelectAll) {
                 Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.select_all))
             }
-            IconButton(onClick = onDeleteSelected) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
+            if (onDeleteSelected != null) {
+                IconButton(onClick = onDeleteSelected) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
+                }
             }
         }
     )

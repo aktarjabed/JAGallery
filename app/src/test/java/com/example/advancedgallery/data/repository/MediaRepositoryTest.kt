@@ -65,6 +65,34 @@ class MediaRepositoryTest {
     }
 
     @Test
+    fun hideMedia_and_unhideMedia_operatesCorrectly() = runTest {
+        val item = MediaTestData.image(id = 100L, uriString = "content://media/external/images/media/100")
+
+        repository.hideMedia(item)
+        var hiddenList = fakeDao.getHiddenMedia().first()
+        assertEquals(1, hiddenList.size)
+        assertEquals("content://media/external/images/media/100", hiddenList[0].uri)
+
+        repository.unhideMedia(item)
+        hiddenList = fakeDao.getHiddenMedia().first()
+        assertTrue(hiddenList.isEmpty())
+    }
+
+    @Test
+    fun hideMediaBatch_and_unhideMediaBatch_operatesCorrectly() = runTest {
+        val item1 = MediaTestData.image(id = 101L, uriString = "content://media/external/images/media/101")
+        val item2 = MediaTestData.image(id = 102L, uriString = "content://media/external/images/media/102")
+
+        repository.hideMediaBatch(listOf(item1, item2))
+        var hiddenList = fakeDao.getHiddenMedia().first()
+        assertEquals(2, hiddenList.size)
+
+        repository.unhideMediaBatch(listOf(item1, item2))
+        hiddenList = fakeDao.getHiddenMedia().first()
+        assertTrue(hiddenList.isEmpty())
+    }
+
+    @Test
     fun favoriteMedia_and_unfavoriteMedia_operateExplicitly() = runTest {
         val item = MediaTestData.image(id = 100L, uriString = "content://media/external/images/media/100")
 

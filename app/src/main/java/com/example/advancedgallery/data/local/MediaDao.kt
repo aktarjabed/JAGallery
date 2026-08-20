@@ -29,6 +29,12 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun hideMedia(hiddenEntity: HiddenMediaEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun hideMediaBatch(hiddenEntities: List<HiddenMediaEntity>)
+
     @Query("DELETE FROM hidden_media WHERE uri = :uri")
     suspend fun unhideMedia(uri: String)
+
+    @Query("DELETE FROM hidden_media WHERE uri IN (:uris)")
+    suspend fun unhideMediaBatch(uris: List<String>)
 }

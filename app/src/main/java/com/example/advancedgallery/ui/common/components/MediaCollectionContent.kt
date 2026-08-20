@@ -24,6 +24,10 @@ fun MediaCollectionContent(
     emptyMessage: String,
     topBar: @Composable () -> Unit,
     onItemClick: (MediaItem) -> Unit,
+    onHideSelected: ((List<MediaItem>) -> Unit)? = null,
+    onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
+    onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
+    onMoveSelected: ((List<MediaItem>, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val selectionState = rememberSelectionState()
@@ -35,6 +39,10 @@ fun MediaCollectionContent(
                 items = items,
                 selectionState = selectionState,
                 onRemoveDeletedItems = onRemoveDeletedItems,
+                onHideSelected = onHideSelected,
+                onUnhideSelected = onUnhideSelected,
+                onRestoreSelected = onRestoreSelected,
+                onMoveSelected = onMoveSelected,
                 topBarContent = topBar
             )
         },

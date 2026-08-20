@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.PendingDeleteBatch
+import com.example.advancedgallery.ui.common.components.AlbumSelectionDialog
 import com.example.advancedgallery.ui.common.components.DeleteConfirmationDialog
 import com.example.advancedgallery.ui.common.components.SelectionToolbar
 import com.example.advancedgallery.util.FileUtils
@@ -70,6 +71,10 @@ fun MediaSelectionHandler(
     items: List<MediaItem>,
     selectionState: SelectionState,
     onRemoveDeletedItems: (List<String>) -> Unit,
+    onHideSelected: ((List<MediaItem>) -> Unit)? = null,
+    onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
+    onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
+    onMoveSelected: ((List<MediaItem>, String) -> Unit)? = null,
     topBarContent: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -78,6 +83,9 @@ fun MediaSelectionHandler(
     LaunchedEffect(items) {
         selectionState.pruneSelection(items)
     }
+
+    var restoreState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
+    var showAlbumDialog by remember { mutableStateOf(false) }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
@@ -92,12 +100,32 @@ fun MediaSelectionHandler(
         deleteState = DeleteOperationState.Idle
     }
 
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val state = restoreState
+        if (state is DeleteOperationState.SystemConfirmation) {
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                onRemoveDeletedItems(state.batch.ids)
+                selectionState.clearSelection()
+            }
+        }
+        restoreState = DeleteOperationState.Idle
+    }
+
     when (val currentState = deleteState) {
         is DeleteOperationState.Confirming -> {
             DeleteConfirmationDialog(
                 count = currentState.batch.count,
                 onConfirm = {
-                    val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                    val isTrashedBatch = items.any { currentState.batch.ids.contains(it.id) && it.isTrashed }
+                    val pendingIntent = if (isTrashedBatch) {
+                        FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                    } else {
+                        FileUtils.createTrashRequest(context.contentResolver, currentState.batch.uris, true)
+                            ?: FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                    }
+
                     if (pendingIntent != null) {
                         deleteState = DeleteOperationState.SystemConfirmation(currentState.batch)
                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
@@ -130,6 +158,24 @@ fun MediaSelectionHandler(
         selectionState.clearSelection()
     }
 
+    if (showAlbumDialog && onMoveSelected != null) {
+        val albumNames = remember(items) {
+            items.mapNotNull { it.bucketName.ifBlank { null } }.distinct().sorted()
+        }
+        AlbumSelectionDialog(
+            albumNames = albumNames,
+            onAlbumSelected = { albumName ->
+                showAlbumDialog = false
+                val selected = selectionState.getSelectedItems(items)
+                if (selected.isNotEmpty()) {
+                    onMoveSelected(selected, albumName)
+                }
+                selectionState.clearSelection()
+            },
+            onDismiss = { showAlbumDialog = false }
+        )
+    }
+
     if (selectionState.selectionMode) {
         SelectionToolbar(
             selectedCount = selectionState.selectedCount,
@@ -148,7 +194,43 @@ fun MediaSelectionHandler(
                     )
                     deleteState = DeleteOperationState.Confirming(batch)
                 }
-            }
+            },
+            onHideSelected = onHideSelected?.let { callback ->
+                {
+                    val selected = selectionState.getSelectedItems(items)
+                    callback(selected)
+                    selectionState.clearSelection()
+                }
+            },
+            onUnhideSelected = onUnhideSelected?.let { callback ->
+                {
+                    val selected = selectionState.getSelectedItems(items)
+                    callback(selected)
+                    selectionState.clearSelection()
+                }
+            },
+            onRestoreSelected = {
+                val selected = selectionState.getSelectedItems(items)
+                if (selected.isNotEmpty()) {
+                    val batch = PendingDeleteBatch(
+                        ids = selected.map { it.id },
+                        uris = selected.map { it.uri }
+                    )
+                    val pendingIntent = FileUtils.createTrashRequest(context.contentResolver, batch.uris, false)
+                    if (pendingIntent != null) {
+                        restoreState = DeleteOperationState.SystemConfirmation(batch)
+                        restoreLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    } else {
+                        onRestoreSelected?.invoke(selected)
+                        selectionState.clearSelection()
+                    }
+                }
+            },
+            onMoveSelected = if (onMoveSelected != null) {
+                {
+                    showAlbumDialog = true
+                }
+            } else null
         )
     } else {
         topBarContent()

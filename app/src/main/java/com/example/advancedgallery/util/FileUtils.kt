@@ -23,6 +23,19 @@ object FileUtils {
         }
     }
 
+    fun createTrashRequest(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): PendingIntent? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                MediaStore.createTrashRequest(contentResolver, uris, value)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create trash request", e)
+                null
+            }
+        } else {
+            null
+        }
+    }
+
     fun deleteMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
         var success = true
         for (uri in uris) {

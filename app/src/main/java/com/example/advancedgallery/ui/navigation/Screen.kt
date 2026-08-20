@@ -17,6 +17,8 @@ sealed class Screen(val route: String) {
     }
     object Favorites : Screen("favorites")
     object Search : Screen("search")
+    object Hidden : Screen("hidden")
+    object Trash : Screen("trash")
     object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&searchQuery={searchQuery}") {
         fun createRoute(
             mediaId: String,
@@ -29,6 +31,7 @@ sealed class Screen(val route: String) {
                 is MediaSource.Album -> "ALBUM"
                 is MediaSource.Search -> "SEARCH"
                 is MediaSource.Trash -> "TRASH"
+                is MediaSource.Hidden -> "HIDDEN"
             }
             val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=$sourceName")
             when (source) {

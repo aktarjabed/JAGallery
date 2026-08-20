@@ -50,4 +50,25 @@
     <string name="rotate">Rotate</string>
     <string name="adjust">Adjust</string>
     <string name="unable_to_load_photo">Unable to load photo</string>
+    <string name="tab_hidden_media">Hidden Media</string>
+    <string name="tab_trash">Trash</string>
+    <string name="hide">Hide</string>
+    <string name="unhide">Unhide</string>
+    <string name="hide_confirm_title">Hide Media</string>
+    <string name="hide_confirm_message">Are you sure you want to hide %1$d selected items?</string>
+    <string name="no_hidden_found">No hidden media</string>
+    <string name="no_trash_found">Trash is empty</string>
+    <string name="restore">Restore</string>
+    <string name="delete_permanently">Delete Permanently</string>
+    <string name="empty_trash">Empty Trash</string>
+    <string name="move_to_album">Move to Album</string>
+    <string name="copy_to_album">Copy to Album</string>
+    <string name="manage_access">Manage Access</string>
+    <string name="permission_full_access">Full media access granted.</string>
+    <string name="permission_selected_access">Access granted to selected photos and videos only.</string>
+    <string name="permission_images_only">Access granted to images only.</string>
+    <string name="permission_videos_only">Access granted to videos only.</string>
+    <string name="permission_denied">Media permission denied.</string>
+    <string name="move_completed">Move completed successfully.</string>
+    <string name="move_partial_copied">Source items retained because deletion was cancelled.</string>
 </resources>

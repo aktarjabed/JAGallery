@@ -13,7 +13,9 @@ import com.example.advancedgallery.ui.screens.albums.AlbumsScreen
 import com.example.advancedgallery.ui.screens.editor.EditorScreen
 import com.example.advancedgallery.ui.screens.favorites.FavoritesScreen
 import com.example.advancedgallery.ui.screens.grid.GridScreen
+import com.example.advancedgallery.ui.screens.hidden.HiddenScreen
 import com.example.advancedgallery.ui.screens.search.SearchScreen
+import com.example.advancedgallery.ui.screens.trash.TrashScreen
 import com.example.advancedgallery.ui.screens.viewer.ViewerScreen
 
 fun parseMediaSource(
@@ -38,6 +40,8 @@ fun parseMediaSource(
                 null
             }
         }
+        "TRASH" -> MediaSource.Trash
+        "HIDDEN" -> MediaSource.Hidden
         "ALL" -> MediaSource.All
         null -> MediaSource.All
         else -> null
@@ -59,7 +63,29 @@ fun NavGraph() {
                 },
                 onNavigateToSearch = {
                     navController.navigate(Screen.Search.route)
+                },
+                onNavigateToHidden = {
+                    navController.navigate(Screen.Hidden.route)
+                },
+                onNavigateToTrash = {
+                    navController.navigate(Screen.Trash.route)
                 }
+            )
+        }
+        composable(Screen.Hidden.route) {
+            HiddenScreen(
+                onNavigateToViewer = { mediaId, source ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Trash.route) {
+            TrashScreen(
+                onNavigateToViewer = { mediaId, source ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(

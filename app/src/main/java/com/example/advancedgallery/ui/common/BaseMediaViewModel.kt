@@ -42,4 +42,56 @@ abstract class BaseMediaViewModel(
             }
         }
     }
+
+    fun hideMedia(mediaItem: MediaItem) {
+        viewModelScope.launch {
+            when (val result = mediaOperations.hideMedia(mediaItem)) {
+                is OperationResult.Error -> {
+                    _operationEvent.emit(OperationEvent.Error(result.message ?: "Failed to hide media"))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun hideMediaBatch(mediaItems: List<MediaItem>) {
+        viewModelScope.launch {
+            when (val result = mediaOperations.hideMediaBatch(mediaItems)) {
+                is OperationResult.Error -> {
+                    _operationEvent.emit(OperationEvent.Error(result.message ?: "Failed to hide media batch"))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun unhideMedia(mediaItem: MediaItem) {
+        viewModelScope.launch {
+            when (val result = mediaOperations.unhideMedia(mediaItem)) {
+                is OperationResult.Error -> {
+                    _operationEvent.emit(OperationEvent.Error(result.message ?: "Failed to unhide media"))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun unhideMediaBatch(mediaItems: List<MediaItem>) {
+        viewModelScope.launch {
+            when (val result = mediaOperations.unhideMediaBatch(mediaItems)) {
+                is OperationResult.Error -> {
+                    _operationEvent.emit(OperationEvent.Error(result.message ?: "Failed to unhide media batch"))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    suspend fun moveMediaBatch(
+        context: android.content.Context,
+        mediaItems: List<MediaItem>,
+        targetAlbumName: String
+    ): com.example.advancedgallery.domain.MoveOperationResult {
+        return mediaOperations.moveMediaBatch(context, mediaItems, targetAlbumName)
+    }
 }

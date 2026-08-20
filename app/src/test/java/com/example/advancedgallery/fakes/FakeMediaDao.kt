@@ -44,9 +44,24 @@ class FakeMediaDao : MediaDao {
         hiddenFlow.value = current
     }
 
+    override suspend fun hideMediaBatch(hiddenEntities: List<com.example.advancedgallery.data.local.HiddenMediaEntity>) {
+        val current = hiddenFlow.value.toMutableList()
+        val urisToAdd = hiddenEntities.map { it.uri }.toSet()
+        current.removeAll { urisToAdd.contains(it.uri) }
+        current.addAll(hiddenEntities)
+        hiddenFlow.value = current
+    }
+
     override suspend fun unhideMedia(uri: String) {
         val current = hiddenFlow.value.toMutableList()
         current.removeAll { it.uri == uri }
+        hiddenFlow.value = current
+    }
+
+    override suspend fun unhideMediaBatch(uris: List<String>) {
+        val current = hiddenFlow.value.toMutableList()
+        val uriSet = uris.toSet()
+        current.removeAll { uriSet.contains(it.uri) }
         hiddenFlow.value = current
     }
 }
