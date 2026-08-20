@@ -2,6 +2,7 @@ package com.example.advancedgallery.ui.screens.grid
 
 import android.content.ContentResolver
 import androidx.lifecycle.SavedStateHandle
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperationsImpl
@@ -12,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -40,7 +42,7 @@ class GridViewModelTest {
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
         viewModel.setSource(MediaSource.Album(10L))
 
-        assertEquals(0, viewModel.mediaItems.value.size)
+        assertTrue(viewModel.mediaLoadResult.value is MediaLoadResult.Loading || viewModel.mediaLoadResult.value is MediaLoadResult.Empty)
     }
 
     @Test

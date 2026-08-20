@@ -2,7 +2,7 @@ package com.example.advancedgallery.ui.screens.grid
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperations
@@ -34,12 +34,18 @@ class GridViewModel @Inject constructor(
     private val _source = MutableStateFlow<MediaSource>(initialSource)
     val source: StateFlow<MediaSource> = _source
 
-    val mediaItems: StateFlow<List<MediaItem>> = combine(repository.mediaItems, _source) { items, currentSource ->
-        when (currentSource) {
-            is MediaSource.Album -> items.filter { it.bucketId == currentSource.bucketId }
-            else -> items
+    val mediaLoadResult: StateFlow<MediaLoadResult> = combine(repository.mediaLoadResult, _source) { result, currentSource ->
+        when (result) {
+            is MediaLoadResult.Success -> {
+                val filtered = when (currentSource) {
+                    is MediaSource.Album -> result.items.filter { it.bucketId == currentSource.bucketId }
+                    else -> result.items
+                }
+                if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
+            }
+            else -> result
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MediaLoadResult.Loading)
 
     fun setSource(source: MediaSource) {
         _source.value = source

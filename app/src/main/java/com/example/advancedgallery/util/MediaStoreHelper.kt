@@ -7,24 +7,36 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaLoadResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 object MediaStoreHelper {
+    private const val TAG = "MediaStoreHelper"
     private const val PREFS_NAME = "mediastore_sync_prefs"
-    private const val KEY_MEDIASTORE_VERSION = "key_mediastore_version"
+    private const val KEY_VERSION_PREFIX = "key_mediastore_version_"
+    private const val KEY_GENERATION_PREFIX = "key_mediastore_generation_"
 
-    fun getPersistedMediaStoreVersion(context: Context): String? {
+    fun getPersistedVolumeVersion(context: Context, volumeName: String): String? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_MEDIASTORE_VERSION, null)
+        return prefs.getString(KEY_VERSION_PREFIX + volumeName, null)
     }
 
-    fun persistMediaStoreVersion(context: Context, version: String?) {
+    fun getPersistedVolumeGeneration(context: Context, volumeName: String): Long {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_MEDIASTORE_VERSION, version).apply()
+        return prefs.getLong(KEY_GENERATION_PREFIX + volumeName, -1L)
+    }
+
+    fun persistVolumeSyncInfo(context: Context, volumeName: String, version: String?, generation: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_VERSION_PREFIX + volumeName, version)
+            .putLong(KEY_GENERATION_PREFIX + volumeName, generation)
+            .apply()
     }
 
     suspend fun getMediaItemsResult(
@@ -35,37 +47,36 @@ object MediaStoreHelper {
         try {
             val items = mutableListOf<MediaItem>()
 
-            val imageCollectionUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            val videoCollectionUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            val targets = getCollectionUris(context)
+            for ((imageUri, videoUri, volumeName) in targets) {
+                val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false)
+                if (imageQueryResult is QueryResult.Error) {
+                    return@withContext MediaLoadResult.Error(imageQueryResult.cause)
+                } else if (imageQueryResult is QueryResult.Success) {
+                    items.addAll(imageQueryResult.items)
+                }
 
-            val imageQueryResult = queryCollectionResult(
-                contentResolver = contentResolver,
-                contentUri = imageCollectionUri,
-                isVideo = false
-            )
-            if (imageQueryResult is QueryResult.Error) {
-                return@withContext MediaLoadResult.Error(imageQueryResult.cause)
-            } else if (imageQueryResult is QueryResult.Success) {
-                items.addAll(imageQueryResult.items)
-            }
+                val videoQueryResult = queryCollectionResult(contentResolver, videoUri, isVideo = true)
+                if (videoQueryResult is QueryResult.Error) {
+                    return@withContext MediaLoadResult.Error(videoQueryResult.cause)
+                } else if (videoQueryResult is QueryResult.Success) {
+                    items.addAll(videoQueryResult.items)
+                }
 
-            val videoQueryResult = queryCollectionResult(
-                contentResolver = contentResolver,
-                contentUri = videoCollectionUri,
-                isVideo = true
-            )
-            if (videoQueryResult is QueryResult.Error) {
-                return@withContext MediaLoadResult.Error(videoQueryResult.cause)
-            } else if (videoQueryResult is QueryResult.Success) {
-                items.addAll(videoQueryResult.items)
-            }
-
-            if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                try {
-                    val currentVersion = MediaStore.getVersion(context)
-                    persistMediaStoreVersion(context, currentVersion)
-                } catch (e: Exception) {
-                    // Ignore
+                if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        val version = MediaStore.getVersion(context, volumeName)
+                        val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            MediaStore.getGeneration(context, volumeName)
+                        } else {
+                            0L
+                        }
+                        persistVolumeSyncInfo(context, volumeName, version, generation)
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "SecurityException persisting sync info for volume $volumeName", e)
+                    } catch (e: IllegalArgumentException) {
+                        Log.w(TAG, "IllegalArgumentException persisting sync info for volume $volumeName", e)
+                    }
                 }
             }
 
@@ -75,7 +86,11 @@ object MediaStoreHelper {
             } else {
                 MediaLoadResult.Success(sorted)
             }
-        } catch (e: Throwable) {
+        } catch (e: SecurityException) {
+            MediaLoadResult.Error(e)
+        } catch (e: IOException) {
+            MediaLoadResult.Error(e)
+        } catch (e: IllegalArgumentException) {
             MediaLoadResult.Error(e)
         }
     }
@@ -94,12 +109,64 @@ object MediaStoreHelper {
     fun isMediaStoreVersionCurrent(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
-            val currentVersion = MediaStore.getVersion(context)
-            val persisted = getPersistedMediaStoreVersion(context)
-            persisted != null && persisted == currentVersion
-        } catch (e: Exception) {
+            val volumeNames = MediaStore.getExternalVolumeNames(context)
+            if (volumeNames.isEmpty()) return false
+            for (volumeName in volumeNames) {
+                val currentVersion = MediaStore.getVersion(context, volumeName)
+                val persistedVersion = getPersistedVolumeVersion(context, volumeName)
+                if (persistedVersion == null || persistedVersion != currentVersion) {
+                    return false
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val currentGeneration = MediaStore.getGeneration(context, volumeName)
+                    val persistedGeneration = getPersistedVolumeGeneration(context, volumeName)
+                    if (persistedGeneration == -1L || persistedGeneration != currentGeneration) {
+                        return false
+                    }
+                }
+            }
+            true
+        } catch (e: SecurityException) {
+            Log.w(TAG, "SecurityException checking MediaStore version", e)
+            false
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "IllegalArgumentException checking MediaStore version", e)
             false
         }
+    }
+
+    private data class CollectionTarget(
+        val imageUri: Uri,
+        val videoUri: Uri,
+        val volumeName: String?
+    )
+
+    private fun getCollectionUris(context: Context?): List<CollectionTarget> {
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val volumes = MediaStore.getExternalVolumeNames(context)
+                if (volumes.isNotEmpty()) {
+                    return volumes.map { volume ->
+                        CollectionTarget(
+                            imageUri = MediaStore.Images.Media.getContentUri(volume),
+                            videoUri = MediaStore.Video.Media.getContentUri(volume),
+                            volumeName = volume
+                        )
+                    }
+                }
+            } catch (e: SecurityException) {
+                Log.w(TAG, "SecurityException getting volume names", e)
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "IllegalArgumentException getting volume names", e)
+            }
+        }
+        return listOf(
+            CollectionTarget(
+                imageUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                videoUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                volumeName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL_PRIMARY else null
+            )
+        )
     }
 
     private sealed interface QueryResult {
@@ -132,7 +199,11 @@ object MediaStoreHelper {
                 null,
                 sortOrder
             )
-        } catch (e: Throwable) {
+        } catch (e: SecurityException) {
+            return QueryResult.Error(e)
+        } catch (e: IllegalArgumentException) {
+            return QueryResult.Error(e)
+        } catch (e: Exception) {
             return QueryResult.Error(e)
         }
 
@@ -160,7 +231,7 @@ object MediaStoreHelper {
 
                 val uri = try {
                     ContentUris.withAppendedId(contentUri, mediaStoreId)
-                } catch (e: Exception) {
+                } catch (e: IllegalArgumentException) {
                     continue
                 }
 

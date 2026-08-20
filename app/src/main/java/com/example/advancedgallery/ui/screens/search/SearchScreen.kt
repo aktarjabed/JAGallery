@@ -21,10 +21,10 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val query by viewModel.searchQuery.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
+    val searchResult by viewModel.searchResult.collectAsState()
 
     MediaCollectionContent(
-        items = searchResults,
+        loadResult = searchResult,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         emptyIcon = Icons.Default.Search,
         emptyMessage = if (query.isBlank()) stringResource(R.string.search_hint) else stringResource(R.string.no_search_results),

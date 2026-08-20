@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,8 @@ import com.example.advancedgallery.data.model.PendingDeleteBatch
 import com.example.advancedgallery.ui.common.components.DeleteConfirmationDialog
 import com.example.advancedgallery.ui.common.components.SelectionToolbar
 import com.example.advancedgallery.util.FileUtils
+
+private const val TAG = "MediaSelectionHandler"
 
 fun shareMediaItems(context: Context, items: List<MediaItem>) {
     if (items.isEmpty()) return
@@ -53,7 +56,11 @@ fun shareMediaItems(context: Context, items: List<MediaItem>) {
         context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
     } catch (e: ActivityNotFoundException) {
         Toast.makeText(context, context.getString(R.string.no_app_to_handle_share), Toast.LENGTH_SHORT).show()
-    } catch (e: Exception) {
+    } catch (e: SecurityException) {
+        Log.e(TAG, "SecurityException during share", e)
+        Toast.makeText(context, context.getString(R.string.share_failed), Toast.LENGTH_SHORT).show()
+    } catch (e: IllegalArgumentException) {
+        Log.e(TAG, "IllegalArgumentException during share", e)
         Toast.makeText(context, context.getString(R.string.share_failed), Toast.LENGTH_SHORT).show()
     }
 }
@@ -63,8 +70,7 @@ fun MediaSelectionHandler(
     items: List<MediaItem>,
     selectionState: SelectionState,
     onRemoveDeletedItems: (List<String>) -> Unit,
-    topBarContent: @Composable () -> Unit,
-    content: @Composable () -> Unit
+    topBarContent: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     var deleteState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
@@ -147,6 +153,4 @@ fun MediaSelectionHandler(
     } else {
         topBarContent()
     }
-
-    content()
 }

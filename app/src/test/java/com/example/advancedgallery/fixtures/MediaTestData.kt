@@ -60,6 +60,20 @@ object MediaTestData {
         )
     }
 
+    fun collisionFixtures(sharedStoreId: Long = 123L): Pair<MediaItem, MediaItem> {
+        val imageItem = image(
+            id = sharedStoreId,
+            uriString = "content://media/external/images/media/$sharedStoreId",
+            name = "image_$sharedStoreId.jpg"
+        )
+        val videoItem = video(
+            id = sharedStoreId,
+            uriString = "content://media/external/video/media/$sharedStoreId",
+            name = "video_$sharedStoreId.mp4"
+        )
+        return Pair(imageItem, videoItem)
+    }
+
     fun album(
         bucketId: Long = 10L,
         bucketName: String = "Camera",

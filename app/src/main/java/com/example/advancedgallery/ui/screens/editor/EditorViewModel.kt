@@ -97,11 +97,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _brightness.value = 0f
         _contrast.value = 1f
         _saturation.value = 1f
-        val oldPreview = currentPreviewBitmap
         currentPreviewBitmap = null
-        if (oldPreview != null && oldPreview != originalBitmap) {
-            oldPreview.recycle()
-        }
         _previewBitmap.value = originalBitmap
     }
 
@@ -121,13 +117,8 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 plan = plan
             )
 
-            val oldPreview = currentPreviewBitmap
             currentPreviewBitmap = updated
             _previewBitmap.value = updated
-
-            if (oldPreview != null && oldPreview != base && oldPreview != updated) {
-                oldPreview.recycle()
-            }
         }
     }
 
@@ -160,15 +151,8 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         super.onCleared()
         previewJob?.cancel()
         loadJob?.cancel()
-        val orig = originalBitmap
-        val curr = currentPreviewBitmap
         originalBitmap = null
         currentPreviewBitmap = null
         _previewBitmap.value = null
-
-        if (curr != null && curr != orig) {
-            curr.recycle()
-        }
-        orig?.recycle()
     }
 }
