@@ -5,11 +5,13 @@ import android.net.Uri
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.fakes.FakeMediaDao
+import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -36,6 +38,20 @@ class MediaRepositoryTest {
         `when`(mockVideoUri.toString()).thenReturn("content://media/external/video/media/123")
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
+    }
+
+    @Test
+    fun favoriteMedia_and_unfavoriteMedia_operateExplicitly() = runTest {
+        val item = MediaTestData.image(id = 100L, uriString = "content://media/external/images/media/100")
+
+        repository.favoriteMedia(item)
+        var favorites = fakeDao.getFavorites().first()
+        assertEquals(1, favorites.size)
+        assertEquals("content://media/external/images/media/100", favorites[0].uri)
+
+        repository.unfavoriteMedia(item)
+        favorites = fakeDao.getFavorites().first()
+        assertTrue(favorites.isEmpty())
     }
 
     @Test
@@ -82,34 +98,11 @@ class MediaRepositoryTest {
 
     @Test
     fun idCollision_imageAndVideoWithSameMediaStoreId_areDistinct() = runTest {
-        val imageUri: Uri = mock(Uri::class.java)
-        val videoUri: Uri = mock(Uri::class.java)
-        `when`(imageUri.toString()).thenReturn("content://media/external/images/media/123")
-        `when`(videoUri.toString()).thenReturn("content://media/external/video/media/123")
-
-        val imageItem = MediaItem(
-            mediaStoreId = 123L,
-            uri = imageUri,
-            name = "photo.jpg",
-            dateAdded = 1000L,
-            mimeType = "image/jpeg",
-            bucketId = 10L,
-            bucketName = "Camera",
-            isVideo = false
-        )
-
-        val videoItem = MediaItem(
-            mediaStoreId = 123L,
-            uri = videoUri,
-            name = "video.mp4",
-            dateAdded = 2000L,
-            mimeType = "video/mp4",
-            bucketId = 10L,
-            bucketName = "Camera",
-            isVideo = true
-        )
+        val (imageItem, videoItem) = MediaTestData.collisionFixtures(123L)
 
         assertNotEquals(imageItem.id, videoItem.id)
+        assertEquals("content://media/external/images/media/123", imageItem.id)
+        assertEquals("content://media/external/video/media/123", videoItem.id)
 
         // Toggle favorite on image only
         repository.toggleFavorite(imageItem)
@@ -121,5 +114,33 @@ class MediaRepositoryTest {
         repository.toggleFavorite(videoItem)
         favorites = fakeDao.getFavorites().first()
         assertEquals(2, favorites.size)
+    }
+
+    @Test
+    fun duplicateUriInsertion_replacesOrIgnoresWithoutDuplication() = runTest {
+        val item = MediaTestData.image(id = 50L, uriString = "content://media/external/images/media/50")
+
+        repository.favoriteMedia(item)
+        repository.favoriteMedia(item) // Insert duplicate
+
+        val favorites = fakeDao.getFavorites().first()
+        assertEquals(1, favorites.size)
+        assertEquals("content://media/external/images/media/50", favorites[0].uri)
+    }
+
+    @Test
+    fun deletionIsolation_deletingImageDoesNotAffectVideoWithSameMediaStoreId() = runTest {
+        val (imageItem, videoItem) = MediaTestData.collisionFixtures(999L)
+
+        repository.favoriteMedia(imageItem)
+        repository.favoriteMedia(videoItem)
+
+        assertEquals(2, fakeDao.getFavorites().first().size)
+
+        repository.removeDeletedItems(listOf(imageItem.id))
+
+        val remaining = fakeDao.getFavorites().first()
+        assertEquals(1, remaining.size)
+        assertEquals(videoItem.id, remaining[0].uri)
     }
 }

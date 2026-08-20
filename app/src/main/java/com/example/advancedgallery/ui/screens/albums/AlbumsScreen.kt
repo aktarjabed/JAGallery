@@ -33,9 +33,7 @@ fun AlbumsScreen(
     onNavigateToFavorites: () -> Unit,
     onNavigateToSearch: () -> Unit
 ) {
-    val albums by viewModel.albums.collectAsState()
-    val totalMediaCount by viewModel.totalMediaCount.collectAsState()
-    val coverUri by viewModel.coverUri.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -52,51 +50,78 @@ fun AlbumsScreen(
             )
         }
     ) { padding ->
-        if (albums.isEmpty() && totalMediaCount == 0) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.PhotoLibrary,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+        when (val state = uiState) {
+            is AlbumsUiState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            is AlbumsUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = stringResource(R.string.no_media_found),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = state.cause.localizedMessage ?: "Failed to load media",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(4.dp)
-            ) {
-                item {
-                    AlbumCard(
-                        title = stringResource(R.string.tab_all_media),
-                        count = totalMediaCount,
-                        coverUri = coverUri ?: Uri.EMPTY,
-                        onClick = { onNavigateToGrid(MediaSource.All) }
-                    )
+            is AlbumsUiState.Empty -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.no_media_found),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                items(albums) { album ->
-                    AlbumCard(
-                        title = album.name.ifBlank { stringResource(R.string.album_default_title) },
-                        count = album.mediaCount,
-                        coverUri = album.coverUri,
-                        onClick = { onNavigateToGrid(MediaSource.Album(album.bucketId)) }
-                    )
+            }
+            is AlbumsUiState.Success -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(4.dp)
+                ) {
+                    item {
+                        AlbumCard(
+                            title = stringResource(R.string.tab_all_media),
+                            count = state.totalCount,
+                            coverUri = state.coverUri ?: Uri.EMPTY,
+                            onClick = { onNavigateToGrid(MediaSource.All) }
+                        )
+                    }
+                    items(state.albums) { album ->
+                        AlbumCard(
+                            title = album.name.ifBlank { stringResource(R.string.album_default_title) },
+                            count = album.mediaCount,
+                            coverUri = album.coverUri,
+                            onClick = { onNavigateToGrid(MediaSource.Album(album.bucketId)) }
+                        )
+                    }
                 }
             }
         }

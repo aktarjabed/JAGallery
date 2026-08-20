@@ -12,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -39,13 +38,6 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    val mediaItems: Flow<List<MediaItem>> = mediaLoadResult.map { result ->
-        when (result) {
-            is MediaLoadResult.Success -> result.items
-            else -> emptyList()
-        }
-    }
-
     suspend fun loadMedia(force: Boolean = false, context: Context? = null) {
         val current = _mediaLoadResult.value
         if (!force && context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
@@ -55,20 +47,29 @@ class MediaRepository @Inject constructor(
         _mediaLoadResult.value = result
     }
 
-    suspend fun toggleFavorite(mediaItem: MediaItem) {
+    suspend fun favoriteMedia(mediaItem: MediaItem) {
         withContext(ioDispatcher) {
-            val isFav = !mediaItem.isFavorite
-            if (isFav) {
-                mediaDao.insert(
-                    MediaEntity(
-                        uri = mediaItem.id,
-                        isFavorite = true,
-                        dateAdded = System.currentTimeMillis()
-                    )
+            mediaDao.insert(
+                MediaEntity(
+                    uri = mediaItem.id,
+                    isFavorite = true,
+                    dateAdded = System.currentTimeMillis()
                 )
-            } else {
-                mediaDao.removeFavorite(mediaItem.id)
-            }
+            )
+        }
+    }
+
+    suspend fun unfavoriteMedia(mediaItem: MediaItem) {
+        withContext(ioDispatcher) {
+            mediaDao.removeFavorite(mediaItem.id)
+        }
+    }
+
+    suspend fun toggleFavorite(mediaItem: MediaItem) {
+        if (mediaItem.isFavorite) {
+            unfavoriteMedia(mediaItem)
+        } else {
+            favoriteMedia(mediaItem)
         }
     }
 

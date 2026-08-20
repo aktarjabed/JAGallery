@@ -2,7 +2,7 @@ package com.example.advancedgallery.ui.screens.search
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperations
 import com.example.advancedgallery.ui.common.BaseMediaViewModel
@@ -25,16 +25,22 @@ class SearchViewModel @Inject constructor(
 
     val searchQuery: StateFlow<String> = savedStateHandle.getStateFlow("searchQuery", "")
 
-    val searchResults: StateFlow<List<MediaItem>> = combine(
-        repository.mediaItems,
+    val searchResult: StateFlow<MediaLoadResult> = combine(
+        repository.mediaLoadResult,
         searchQuery.debounce(300L)
-    ) { items, query ->
-        if (query.isBlank()) {
-            emptyList()
-        } else {
-            items.filter { it.name.contains(query, ignoreCase = true) }
+    ) { result, query ->
+        when (result) {
+            is MediaLoadResult.Success -> {
+                if (query.isBlank()) {
+                    MediaLoadResult.Empty
+                } else {
+                    val filtered = result.items.filter { it.name.contains(query, ignoreCase = true) }
+                    if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
+                }
+            }
+            else -> result
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MediaLoadResult.Loading)
 
     fun updateSearchQuery(query: String) {
         savedStateHandle["searchQuery"] = query

@@ -1,7 +1,7 @@
 package com.example.advancedgallery.ui.screens.favorites
 
 import androidx.lifecycle.viewModelScope
-import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperations
 import com.example.advancedgallery.ui.common.BaseMediaViewModel
@@ -18,7 +18,13 @@ class FavoritesViewModel @Inject constructor(
     mediaOperations: MediaOperations
 ) : BaseMediaViewModel(mediaOperations) {
 
-    val favoriteItems: StateFlow<List<MediaItem>> = repository.mediaItems.map { items ->
-        items.filter { it.isFavorite }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val mediaLoadResult: StateFlow<MediaLoadResult> = repository.mediaLoadResult.map { result ->
+        when (result) {
+            is MediaLoadResult.Success -> {
+                val favorites = result.items.filter { it.isFavorite }
+                if (favorites.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(favorites)
+            }
+            else -> result
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MediaLoadResult.Loading)
 }

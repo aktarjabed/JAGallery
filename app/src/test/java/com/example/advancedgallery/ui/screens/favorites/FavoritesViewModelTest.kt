@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.favorites
 
 import android.content.ContentResolver
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperationsImpl
 import com.example.advancedgallery.fakes.FakeMediaDao
@@ -10,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -34,9 +36,10 @@ class FavoritesViewModelTest {
     }
 
     @Test
-    fun favoriteItems_initialStateIsEmpty() = runTest {
+    fun mediaLoadResult_initialStateIsLoadingOrEmpty() = runTest {
         val viewModel = FavoritesViewModel(repository, mediaOperations)
-        assertEquals(0, viewModel.favoriteItems.value.size)
+        val result = viewModel.mediaLoadResult.value
+        assertTrue(result is MediaLoadResult.Loading || result is MediaLoadResult.Empty)
     }
 
     @Test

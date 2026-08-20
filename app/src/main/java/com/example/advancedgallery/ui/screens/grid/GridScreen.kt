@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.advancedgallery.R
+import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.ui.common.components.MediaCollectionContent
 
@@ -23,18 +24,21 @@ fun GridScreen(
         viewModel.setSource(source)
     }
 
-    val mediaItems by viewModel.mediaItems.collectAsState()
+    val loadResult by viewModel.mediaLoadResult.collectAsState()
 
     val albumTitle = stringResource(R.string.album_default_title)
-    val titleText = remember(source, mediaItems, albumTitle) {
+    val titleText = remember(source, loadResult, albumTitle) {
         when (source) {
-            is MediaSource.Album -> mediaItems.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
+            is MediaSource.Album -> {
+                val items = (loadResult as? MediaLoadResult.Success)?.items
+                items?.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
+            }
             else -> null
         }
     }
 
     MediaCollectionContent(
-        items = mediaItems,
+        loadResult = loadResult,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         emptyIcon = Icons.Default.PhotoLibrary,
         emptyMessage = stringResource(R.string.no_media_found),
