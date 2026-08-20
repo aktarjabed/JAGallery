@@ -46,45 +46,63 @@ object MediaStoreHelper {
     ): MediaLoadResult = withContext(dispatcher) {
         try {
             val items = mutableListOf<MediaItem>()
-
             val targets = getCollectionUris(context)
+            var successfulVolumes = 0
+            val failedVolumeErrors = mutableListOf<Pair<String, Throwable>>()
+
             for ((imageUri, videoUri, volumeName) in targets) {
-                val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false)
+                val effectiveVolume = volumeName ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL_PRIMARY else "external"
+                var volumeFailed = false
+
+                val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false, volumeName = effectiveVolume)
                 if (imageQueryResult is QueryResult.Error) {
-                    return@withContext MediaLoadResult.Error(imageQueryResult.cause)
+                    Log.w(TAG, "Image query failed for volume $effectiveVolume", imageQueryResult.cause)
+                    failedVolumeErrors.add(effectiveVolume to imageQueryResult.cause)
+                    volumeFailed = true
                 } else if (imageQueryResult is QueryResult.Success) {
                     items.addAll(imageQueryResult.items)
                 }
 
-                val videoQueryResult = queryCollectionResult(contentResolver, videoUri, isVideo = true)
-                if (videoQueryResult is QueryResult.Error) {
-                    return@withContext MediaLoadResult.Error(videoQueryResult.cause)
-                } else if (videoQueryResult is QueryResult.Success) {
-                    items.addAll(videoQueryResult.items)
+                if (!volumeFailed) {
+                    val videoQueryResult = queryCollectionResult(contentResolver, videoUri, isVideo = true, volumeName = effectiveVolume)
+                    if (videoQueryResult is QueryResult.Error) {
+                        Log.w(TAG, "Video query failed for volume $effectiveVolume", videoQueryResult.cause)
+                        failedVolumeErrors.add(effectiveVolume to videoQueryResult.cause)
+                        volumeFailed = true
+                    } else if (videoQueryResult is QueryResult.Success) {
+                        items.addAll(videoQueryResult.items)
+                    }
                 }
 
-                if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    try {
-                        val version = MediaStore.getVersion(context, volumeName)
-                        val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            MediaStore.getGeneration(context, volumeName)
-                        } else {
-                            0L
+                if (!volumeFailed) {
+                    successfulVolumes++
+                    if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val version = MediaStore.getVersion(context, volumeName)
+                            val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                MediaStore.getGeneration(context, volumeName)
+                            } else {
+                                0L
+                            }
+                            persistVolumeSyncInfo(context, volumeName, version, generation)
+                        } catch (e: SecurityException) {
+                            Log.w(TAG, "SecurityException persisting sync info for volume $volumeName", e)
+                        } catch (e: IllegalArgumentException) {
+                            Log.w(TAG, "IllegalArgumentException persisting sync info for volume $volumeName", e)
                         }
-                        persistVolumeSyncInfo(context, volumeName, version, generation)
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "SecurityException persisting sync info for volume $volumeName", e)
-                    } catch (e: IllegalArgumentException) {
-                        Log.w(TAG, "IllegalArgumentException persisting sync info for volume $volumeName", e)
                     }
                 }
             }
 
-            val sorted = items.sortedByDescending { it.dateAdded }
-            if (sorted.isEmpty()) {
-                MediaLoadResult.Empty
+            if (successfulVolumes == 0 && failedVolumeErrors.isNotEmpty()) {
+                MediaLoadResult.Error(failedVolumeErrors.first().second)
             } else {
-                MediaLoadResult.Success(sorted)
+                val sorted = items.sortedByDescending { it.dateAdded }
+                if (sorted.isEmpty()) {
+                    MediaLoadResult.Empty
+                } else {
+                    MediaLoadResult.Success(sorted)
+                }
             }
         } catch (e: SecurityException) {
             MediaLoadResult.Error(e)
@@ -92,17 +110,6 @@ object MediaStoreHelper {
             MediaLoadResult.Error(e)
         } catch (e: IllegalArgumentException) {
             MediaLoadResult.Error(e)
-        }
-    }
-
-    suspend fun getMediaItems(
-        contentResolver: ContentResolver,
-        dispatcher: CoroutineDispatcher = Dispatchers.IO,
-        context: Context? = null
-    ): List<MediaItem> = withContext(dispatcher) {
-        when (val result = getMediaItemsResult(contentResolver, dispatcher, context)) {
-            is MediaLoadResult.Success -> result.items
-            else -> emptyList()
         }
     }
 
@@ -177,7 +184,8 @@ object MediaStoreHelper {
     private fun queryCollectionResult(
         contentResolver: ContentResolver,
         contentUri: Uri,
-        isVideo: Boolean
+        isVideo: Boolean,
+        volumeName: String
     ): QueryResult {
         val items = mutableListOf<MediaItem>()
         val projection = arrayOf(
@@ -203,7 +211,9 @@ object MediaStoreHelper {
             return QueryResult.Error(e)
         } catch (e: IllegalArgumentException) {
             return QueryResult.Error(e)
-        } catch (e: Exception) {
+        } catch (e: IllegalStateException) {
+            return QueryResult.Error(e)
+        } catch (e: IOException) {
             return QueryResult.Error(e)
         }
 
@@ -244,7 +254,8 @@ object MediaStoreHelper {
                         mimeType = mimeType,
                         bucketId = bucketId,
                         bucketName = bucketName,
-                        isVideo = isVideo
+                        isVideo = isVideo,
+                        volumeName = volumeName
                     )
                 )
             }

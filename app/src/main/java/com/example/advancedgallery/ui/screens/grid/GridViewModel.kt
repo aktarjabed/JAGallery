@@ -23,10 +23,11 @@ class GridViewModel @Inject constructor(
 ) : BaseMediaViewModel(mediaOperations) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
+    private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val sourceName: String? = savedStateHandle.get<String>("source")
 
-    private val initialSource: MediaSource = if (sourceName == "ALBUM" && bucketId != null) {
-        MediaSource.Album(bucketId)
+    private val initialSource: MediaSource = if (sourceName == "ALBUM" && !volumeName.isNullOrBlank() && bucketId != null) {
+        MediaSource.Album(volumeName, bucketId)
     } else {
         MediaSource.All
     }
@@ -38,7 +39,7 @@ class GridViewModel @Inject constructor(
         when (result) {
             is MediaLoadResult.Success -> {
                 val filtered = when (currentSource) {
-                    is MediaSource.Album -> result.items.filter { it.bucketId == currentSource.bucketId }
+                    is MediaSource.Album -> result.items.filter { it.albumKey == currentSource.albumKey }
                     else -> result.items
                 }
                 if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)

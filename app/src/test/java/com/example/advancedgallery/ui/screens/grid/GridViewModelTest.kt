@@ -40,7 +40,7 @@ class GridViewModelTest {
     @Test
     fun setSource_filtersBySourceCorrectly() = runTest {
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
-        viewModel.setSource(MediaSource.Album(10L))
+        viewModel.setSource(MediaSource.Album("external_primary", 10L))
 
         assertTrue(viewModel.mediaLoadResult.value is MediaLoadResult.Loading || viewModel.mediaLoadResult.value is MediaLoadResult.Empty)
     }

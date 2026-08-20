@@ -119,7 +119,7 @@ fun AlbumsScreen(
                             title = album.name.ifBlank { stringResource(R.string.album_default_title) },
                             count = album.mediaCount,
                             coverUri = album.coverUri,
-                            onClick = { onNavigateToGrid(MediaSource.Album(album.bucketId)) }
+                            onClick = { onNavigateToGrid(MediaSource.Album(album.key)) }
                         )
                     }
                 }

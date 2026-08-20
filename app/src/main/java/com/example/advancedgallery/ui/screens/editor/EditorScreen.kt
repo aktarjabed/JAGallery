@@ -162,19 +162,21 @@ fun EditorScreen(
         ) {
             if (isLoading) {
                 CircularProgressIndicator(color = Color.White)
-            } else if (previewBitmap != null) {
-                Image(
-                    bitmap = previewBitmap!!.asImageBitmap(),
-                    contentDescription = stringResource(R.string.edit_photo),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
             } else {
-                Text(
-                    text = stringResource(R.string.unable_to_load_photo),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                previewBitmap?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = stringResource(R.string.edit_photo),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } ?: run {
+                    Text(
+                        text = stringResource(R.string.unable_to_load_photo),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         }
     }

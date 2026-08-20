@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +26,8 @@ class MediaRepository @Inject constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val _mediaLoadResult = MutableStateFlow<MediaLoadResult>(MediaLoadResult.Loading)
+    private val loadMutex = Mutex()
+    private val favoriteMutex = Mutex()
 
     val mediaLoadResult: Flow<MediaLoadResult> = combine(_mediaLoadResult, mediaDao.getFavorites()) { result, favorites ->
         val favoriteUris = favorites.map { it.uri }.toSet()
@@ -38,17 +42,19 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    suspend fun loadMedia(force: Boolean = false, context: Context? = null) {
-        val current = _mediaLoadResult.value
-        if (!force && context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
-            return
+    suspend fun loadMedia(force: Boolean = false, context: Context? = null) = withContext(ioDispatcher) {
+        loadMutex.withLock {
+            val current = _mediaLoadResult.value
+            if (!force && context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
+                return@withLock
+            }
+            val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context)
+            _mediaLoadResult.value = result
         }
-        val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context)
-        _mediaLoadResult.value = result
     }
 
-    suspend fun favoriteMedia(mediaItem: MediaItem) {
-        withContext(ioDispatcher) {
+    suspend fun favoriteMedia(mediaItem: MediaItem) = withContext(ioDispatcher) {
+        favoriteMutex.withLock {
             mediaDao.insert(
                 MediaEntity(
                     uri = mediaItem.id,
@@ -59,30 +65,37 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    suspend fun unfavoriteMedia(mediaItem: MediaItem) {
-        withContext(ioDispatcher) {
+    suspend fun unfavoriteMedia(mediaItem: MediaItem) = withContext(ioDispatcher) {
+        favoriteMutex.withLock {
             mediaDao.removeFavorite(mediaItem.id)
         }
     }
 
-    suspend fun toggleFavorite(mediaItem: MediaItem) {
-        if (mediaItem.isFavorite) {
-            unfavoriteMedia(mediaItem)
-        } else {
-            favoriteMedia(mediaItem)
+    suspend fun toggleFavorite(mediaItem: MediaItem) = withContext(ioDispatcher) {
+        favoriteMutex.withLock {
+            val existing = mediaDao.getFavoriteById(mediaItem.id)
+            if (existing != null) {
+                mediaDao.removeFavorite(mediaItem.id)
+            } else {
+                mediaDao.insert(
+                    MediaEntity(
+                        uri = mediaItem.id,
+                        isFavorite = true,
+                        dateAdded = System.currentTimeMillis()
+                    )
+                )
+            }
         }
     }
 
-    suspend fun removeDeletedItems(deletedIds: List<String>) {
-        withContext(ioDispatcher) {
-            mediaDao.removeFavorites(deletedIds)
-            _mediaLoadResult.update { current ->
-                if (current is MediaLoadResult.Success) {
-                    val filtered = current.items.filterNot { deletedIds.contains(it.id) }
-                    if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
-                } else {
-                    current
-                }
+    suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
+        mediaDao.removeFavorites(deletedIds)
+        _mediaLoadResult.update { current ->
+            if (current is MediaLoadResult.Success) {
+                val filtered = current.items.filterNot { deletedIds.contains(it.id) }
+                if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
+            } else {
+                current
             }
         }
     }

@@ -3,6 +3,7 @@ package com.example.advancedgallery.fixtures
 import android.net.Uri
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.Album
+import com.example.advancedgallery.data.model.AlbumKey
 import com.example.advancedgallery.data.model.MediaItem
 import org.mockito.Mockito.mock
 
@@ -22,7 +23,8 @@ object MediaTestData {
         mimeType: String = "image/jpeg",
         bucketId: Long = 10L,
         bucketName: String = "Camera",
-        isFavorite: Boolean = false
+        isFavorite: Boolean = false,
+        volumeName: String = "external_primary"
     ): MediaItem {
         return MediaItem(
             uri = mockUri(uriString),
@@ -33,7 +35,8 @@ object MediaTestData {
             bucketId = bucketId,
             bucketName = bucketName,
             isVideo = false,
-            isFavorite = isFavorite
+            isFavorite = isFavorite,
+            volumeName = volumeName
         )
     }
 
@@ -45,7 +48,8 @@ object MediaTestData {
         mimeType: String = "video/mp4",
         bucketId: Long = 10L,
         bucketName: String = "Camera",
-        isFavorite: Boolean = false
+        isFavorite: Boolean = false,
+        volumeName: String = "external_primary"
     ): MediaItem {
         return MediaItem(
             uri = mockUri(uriString),
@@ -56,7 +60,8 @@ object MediaTestData {
             bucketId = bucketId,
             bucketName = bucketName,
             isVideo = true,
-            isFavorite = isFavorite
+            isFavorite = isFavorite,
+            volumeName = volumeName
         )
     }
 
@@ -78,10 +83,11 @@ object MediaTestData {
         bucketId: Long = 10L,
         bucketName: String = "Camera",
         mediaCount: Int = 1,
-        coverUri: Uri = mockUri("content://media/external/images/media/1")
+        coverUri: Uri = mockUri("content://media/external/images/media/1"),
+        volumeName: String = "external_primary"
     ): Album {
         return Album(
-            bucketId = bucketId,
+            key = AlbumKey(volumeName = volumeName, bucketId = bucketId),
             name = bucketName,
             mediaCount = mediaCount,
             coverUri = coverUri
