@@ -32,4 +32,21 @@ class FakeMediaDao : MediaDao {
         current.removeAll { uris.contains(it.uri) }
         favoritesFlow.value = current
     }
+
+    val hiddenFlow = MutableStateFlow<List<com.example.advancedgallery.data.local.HiddenMediaEntity>>(emptyList())
+
+    override fun getHiddenMedia(): Flow<List<com.example.advancedgallery.data.local.HiddenMediaEntity>> = hiddenFlow
+
+    override suspend fun hideMedia(hiddenEntity: com.example.advancedgallery.data.local.HiddenMediaEntity) {
+        val current = hiddenFlow.value.toMutableList()
+        current.removeAll { it.uri == hiddenEntity.uri }
+        current.add(hiddenEntity)
+        hiddenFlow.value = current
+    }
+
+    override suspend fun unhideMedia(uri: String) {
+        val current = hiddenFlow.value.toMutableList()
+        current.removeAll { it.uri == uri }
+        hiddenFlow.value = current
+    }
 }

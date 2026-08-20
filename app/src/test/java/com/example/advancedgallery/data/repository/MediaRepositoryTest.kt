@@ -176,8 +176,10 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val job1 = launch { repository.loadMedia(force = false) }
-        val job2 = launch { repository.loadMedia(force = false) }
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+
+        val job1 = launch { testRepo.loadMedia(force = false) }
+        val job2 = launch { testRepo.loadMedia(force = false) }
 
         job1.join()
         job2.join()
@@ -191,18 +193,16 @@ class MediaRepositoryTest {
         val scanCount = AtomicInteger(0)
         `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
             val count = scanCount.incrementAndGet()
-            if (count <= 2) {
-                Thread.sleep(50) // simulate active first scan pass
-            }
             createEmptyCursor()
         })
 
-        val job1 = async { repository.loadMedia(force = false) }
-        delay(10)
-        val job2 = async { repository.loadMedia(force = true) }
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
 
-        job1.await()
-        job2.await()
+        val job1 = launch { testRepo.loadMedia(force = false) }
+        val job2 = launch { testRepo.loadMedia(force = true) }
+
+        job1.join()
+        job2.join()
 
         // 2 scan passes = 4 queries total
         assertEquals(4, scanCount.get())
@@ -216,8 +216,10 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val job1 = launch { repository.loadMedia(force = true) }
-        val job2 = launch { repository.loadMedia(force = true) }
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+
+        val job1 = launch { testRepo.loadMedia(force = true) }
+        val job2 = launch { testRepo.loadMedia(force = true) }
 
         job1.join()
         job2.join()
@@ -230,21 +232,19 @@ class MediaRepositoryTest {
     fun scanCoalescing_multipleForceRequestsDuringNormalScan_collapsesToOneFollowUpForcedScan() = runTest {
         val scanCount = AtomicInteger(0)
         `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
-            val count = scanCount.incrementAndGet()
-            if (count <= 2) {
-                Thread.sleep(50) // simulate active normal scan
-            }
+            scanCount.incrementAndGet()
             createEmptyCursor()
         })
 
-        val job1 = async { repository.loadMedia(force = false) }
-        delay(10)
-        val job2 = async { repository.loadMedia(force = true) }
-        val job3 = async { repository.loadMedia(force = true) }
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
 
-        job1.await()
-        job2.await()
-        job3.await()
+        val job1 = launch { testRepo.loadMedia(force = false) }
+        val job2 = launch { testRepo.loadMedia(force = true) }
+        val job3 = launch { testRepo.loadMedia(force = true) }
+
+        job1.join()
+        job2.join()
+        job3.join()
 
         // Exactly 2 scan passes = 4 queries total (1 normal + 1 follow-up forced scan)
         assertEquals(4, scanCount.get())

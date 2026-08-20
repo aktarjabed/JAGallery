@@ -42,7 +42,8 @@ object MediaStoreHelper {
     suspend fun getMediaItemsResult(
         contentResolver: ContentResolver,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
-        context: Context? = null
+        context: Context? = null,
+        includeTrashed: Boolean = false
     ): MediaLoadResult = withContext(dispatcher) {
         try {
             val items = mutableListOf<MediaItem>()
@@ -56,7 +57,7 @@ object MediaStoreHelper {
                 var volumeHasSuccess = false
 
                 totalQueriesAttempted++
-                val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false, volumeName = effectiveVolume)
+                val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false, volumeName = effectiveVolume, includeTrashed = includeTrashed)
                 if (imageQueryResult is QueryResult.Error) {
                     Log.w(TAG, "Image query failed for volume $effectiveVolume", imageQueryResult.cause)
                     queryErrors.add("Image ($effectiveVolume)" to imageQueryResult.cause)
@@ -67,7 +68,7 @@ object MediaStoreHelper {
                 }
 
                 totalQueriesAttempted++
-                val videoQueryResult = queryCollectionResult(contentResolver, videoUri, isVideo = true, volumeName = effectiveVolume)
+                val videoQueryResult = queryCollectionResult(contentResolver, videoUri, isVideo = true, volumeName = effectiveVolume, includeTrashed = includeTrashed)
                 if (videoQueryResult is QueryResult.Error) {
                     Log.w(TAG, "Video query failed for volume $effectiveVolume", videoQueryResult.cause)
                     queryErrors.add("Video ($effectiveVolume)" to videoQueryResult.cause)
@@ -185,28 +186,41 @@ object MediaStoreHelper {
         contentResolver: ContentResolver,
         contentUri: Uri,
         isVideo: Boolean,
-        volumeName: String
+        volumeName: String,
+        includeTrashed: Boolean = false
     ): QueryResult {
-        val items = mutableListOf<MediaItem>()
-        val projection = arrayOf(
+        val projectionList = mutableListOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.BUCKET_ID,
-            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.MediaColumns.SIZE
         )
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
+            projectionList.add("date_trashed")
+        }
+
+        val projection = projectionList.toTypedArray()
         val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
 
         val query: Cursor? = try {
-            contentResolver.query(
-                contentUri,
-                projection,
-                null,
-                null,
-                sortOrder
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val bundle = android.os.Bundle().apply {
+                    putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+                    if (includeTrashed) {
+                        putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+                    } else {
+                        putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_EXCLUDE)
+                    }
+                }
+                contentResolver.query(contentUri, projection, bundle, null)
+            } else {
+                contentResolver.query(contentUri, projection, null, null, sortOrder)
+            }
         } catch (e: SecurityException) {
             return QueryResult.Error(e)
         } catch (e: IllegalArgumentException) {
@@ -221,6 +235,7 @@ object MediaStoreHelper {
             return QueryResult.Error(NullPointerException("Cursor returned null for $contentUri"))
         }
 
+        val items = mutableListOf<MediaItem>()
         query.use { cursor ->
             val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
             val nameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
@@ -228,6 +243,9 @@ object MediaStoreHelper {
             val mimeTypeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
             val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
             val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+            val sizeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED) else -1
+            val dateTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex("date_trashed") else -1
 
             if (idColumn == -1) return QueryResult.Success(items)
 
@@ -238,6 +256,9 @@ object MediaStoreHelper {
                 val mimeType = if (mimeTypeColumn != -1) cursor.getString(mimeTypeColumn) ?: "" else ""
                 val bucketId = if (bucketIdColumn != -1) cursor.getLong(bucketIdColumn) else 0L
                 val bucketName = if (bucketNameColumn != -1) cursor.getString(bucketNameColumn) ?: "" else ""
+                val size = if (sizeColumn != -1) cursor.getLong(sizeColumn) else 0L
+                val isTrashed = if (isTrashedColumn != -1) cursor.getInt(isTrashedColumn) == 1 else false
+                val dateTrashed = if (dateTrashedColumn != -1) cursor.getLong(dateTrashedColumn) else 0L
 
                 val uri = try {
                     ContentUris.withAppendedId(contentUri, mediaStoreId)
@@ -255,7 +276,10 @@ object MediaStoreHelper {
                         bucketId = bucketId,
                         bucketName = bucketName,
                         isVideo = isVideo,
-                        volumeName = volumeName
+                        volumeName = volumeName,
+                        size = size,
+                        isTrashed = isTrashed,
+                        dateTrashed = dateTrashed
                     )
                 )
             }

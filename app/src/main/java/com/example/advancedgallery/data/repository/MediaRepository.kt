@@ -154,4 +154,72 @@ class MediaRepository @Inject constructor(
             }
         }
     }
+
+    suspend fun copyMediaToAlbum(
+        context: Context,
+        sourceItem: MediaItem,
+        targetAlbumName: String
+    ): android.net.Uri? = withContext(ioDispatcher) {
+        val resolver = context.contentResolver
+        val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            if (sourceItem.isVideo) "Movies/$targetAlbumName/" else "Pictures/$targetAlbumName/"
+        } else {
+            ""
+        }
+
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, sourceItem.name)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, sourceItem.mimeType)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        }
+
+        val collection = if (sourceItem.isVideo) {
+            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        } else {
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
+        var newUri: android.net.Uri? = null
+        try {
+            newUri = resolver.insert(collection, contentValues) ?: return@withContext null
+            var success = false
+            resolver.openInputStream(sourceItem.uri)?.use { input ->
+                resolver.openOutputStream(newUri)?.use { output ->
+                    input.copyTo(output)
+                    success = true
+                }
+            }
+
+            if (success && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                val updated = resolver.update(newUri, contentValues, null, null)
+                if (updated != 1) {
+                    try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                    return@withContext null
+                }
+            }
+
+            if (!success) {
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                null
+            } else {
+                loadMedia(force = true, context = context)
+                newUri
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            if (newUri != null) {
+                try { resolver.delete(newUri, null, null) } catch (delEx: Exception) {}
+            }
+            throw e
+        } catch (e: Exception) {
+            if (newUri != null) {
+                try { resolver.delete(newUri, null, null) } catch (delEx: Exception) {}
+            }
+            null
+        }
+    }
 }

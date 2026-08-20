@@ -28,6 +28,7 @@ sealed class Screen(val route: String) {
                 is MediaSource.Favorites -> "FAVORITES"
                 is MediaSource.Album -> "ALBUM"
                 is MediaSource.Search -> "SEARCH"
+                is MediaSource.Trash -> "TRASH"
             }
             val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=$sourceName")
             when (source) {

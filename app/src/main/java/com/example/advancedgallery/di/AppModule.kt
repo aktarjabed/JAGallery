@@ -28,7 +28,7 @@ object AppModule {
             MediaDatabase::class.java,
             "gallery_database"
         )
-            .addMigrations(MediaDatabase.MIGRATION_1_2)
+            .addMigrations(MediaDatabase.MIGRATION_1_2, MediaDatabase.MIGRATION_2_3)
             .build()
     }
 

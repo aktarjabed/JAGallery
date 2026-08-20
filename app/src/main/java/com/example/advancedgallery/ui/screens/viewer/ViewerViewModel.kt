@@ -68,6 +68,44 @@ class ViewerViewModel @Inject constructor(
         savedStateHandle["mediaId"] = android.net.Uri.encode(mediaId)
     }
 
+    val state: StateFlow<ViewerState> = combine(
+        repository.mediaLoadResult,
+        _source
+    ) { result, currentSource ->
+        if (currentSource == null) {
+            return@combine ViewerState.Empty
+        }
+        when (result) {
+            is MediaLoadResult.Loading -> ViewerState.Loading
+            is MediaLoadResult.Error -> ViewerState.Error(result.cause)
+            is MediaLoadResult.Empty -> ViewerState.Empty
+            is MediaLoadResult.Success -> {
+                val items = result.items
+                val filtered = when (currentSource) {
+                    is MediaSource.Favorites -> items.filter { it.isFavorite }
+                    is MediaSource.Search -> {
+                        if (currentSource.query.isNotBlank()) {
+                            items.filter { it.name.contains(currentSource.query, ignoreCase = true) }
+                        } else {
+                            items
+                        }
+                    }
+                    is MediaSource.Album -> {
+                        items.filter { it.albumKey == currentSource.albumKey }
+                    }
+                    is MediaSource.All -> items
+                    is MediaSource.Trash -> items.filter { it.isTrashed }
+                }
+
+                if (filtered.isEmpty()) {
+                    ViewerState.Empty
+                } else {
+                    ViewerState.Success(filtered)
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ViewerState.Loading)
+
     init {
         if (initialSource == null) {
             Log.w(TAG, "Invalid navigation route parameters: sourceStr=$sourceStr, volumeName=$volumeName, bucketId=$bucketId, searchQuery=$searchQuery")
@@ -96,43 +134,6 @@ class ViewerViewModel @Inject constructor(
             }
         }
     }
-
-    val state: StateFlow<ViewerState> = combine(
-        repository.mediaLoadResult,
-        _source
-    ) { result, currentSource ->
-        if (currentSource == null) {
-            return@combine ViewerState.Empty
-        }
-        when (result) {
-            is MediaLoadResult.Loading -> ViewerState.Loading
-            is MediaLoadResult.Error -> ViewerState.Error(result.cause)
-            is MediaLoadResult.Empty -> ViewerState.Empty
-            is MediaLoadResult.Success -> {
-                val items = result.items
-                val filtered = when (currentSource) {
-                    is MediaSource.Favorites -> items.filter { it.isFavorite }
-                    is MediaSource.Search -> {
-                        if (currentSource.query.isNotBlank()) {
-                            items.filter { it.name.contains(currentSource.query, ignoreCase = true) }
-                        } else {
-                            items
-                        }
-                    }
-                    is MediaSource.Album -> {
-                        items.filter { it.albumKey == currentSource.albumKey }
-                    }
-                    is MediaSource.All -> items
-                }
-
-                if (filtered.isEmpty()) {
-                    ViewerState.Empty
-                } else {
-                    ViewerState.Success(filtered)
-                }
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ViewerState.Loading)
 
     val mediaItems: StateFlow<List<MediaItem>> = state.map { currentState ->
         if (currentState is ViewerState.Success) currentState.items else emptyList()
