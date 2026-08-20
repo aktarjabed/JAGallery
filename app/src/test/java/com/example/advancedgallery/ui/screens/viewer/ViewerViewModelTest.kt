@@ -14,9 +14,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
+import org.robolectric.RobolectricTestRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
 class ViewerViewModelTest {
 
     @get:Rule
@@ -61,5 +64,14 @@ class ViewerViewModelTest {
     fun state_initialStateIsLoading() = runTest {
         val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
         assertEquals(ViewerState.Loading, viewModel.state.value)
+    }
+
+    @Test
+    fun invalidRoute_emitsPopBackNavigationEvent() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("source" to "INVALID_SOURCE"))
+        val viewModel = ViewerViewModel(repository, mediaOperations, savedStateHandle)
+
+        val navEvent = viewModel.navigationEvent.first()
+        assertEquals(ViewerNavigationEvent.PopBack, navEvent)
     }
 }

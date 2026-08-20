@@ -8,7 +8,11 @@ import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.util.MediaStoreHelper
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -25,9 +29,14 @@ class MediaRepository @Inject constructor(
     private val mediaDao: MediaDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
+    private val repositoryScope = CoroutineScope(ioDispatcher + SupervisorJob())
     private val _mediaLoadResult = MutableStateFlow<MediaLoadResult>(MediaLoadResult.Loading)
     private val loadMutex = Mutex()
     private val favoriteMutex = Mutex()
+
+    private var activeScanJob: Deferred<Unit>? = null
+    private var pendingForcedScan = false
+    private var pendingContext: Context? = null
 
     val mediaLoadResult: Flow<MediaLoadResult> = combine(_mediaLoadResult, mediaDao.getFavorites()) { result, favorites ->
         val favoriteUris = favorites.map { it.uri }.toSet()
@@ -43,13 +52,52 @@ class MediaRepository @Inject constructor(
     }
 
     suspend fun loadMedia(force: Boolean = false, context: Context? = null) = withContext(ioDispatcher) {
-        loadMutex.withLock {
-            val current = _mediaLoadResult.value
-            if (!force && context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(context)) {
-                return@withLock
+        val jobToAwait = loadMutex.withLock {
+            if (force) {
+                pendingForcedScan = true
+                pendingContext = context
             }
-            val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context)
-            _mediaLoadResult.value = result
+            if (activeScanJob != null) {
+                activeScanJob!!
+            } else {
+                val newJob = repositoryScope.async {
+                    executeScanLoop(initialForce = force, initialContext = context)
+                }
+                activeScanJob = newJob
+                newJob
+            }
+        }
+        jobToAwait.await()
+    }
+
+    private suspend fun executeScanLoop(initialForce: Boolean, initialContext: Context?) {
+        var forceForCurrentPass = initialForce
+        var contextForCurrentPass = initialContext
+
+        while (true) {
+            val current = _mediaLoadResult.value
+            val skip = !forceForCurrentPass && contextForCurrentPass != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(contextForCurrentPass)
+            if (!skip) {
+                val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, contextForCurrentPass)
+                _mediaLoadResult.value = result
+            }
+
+            val shouldContinue = loadMutex.withLock {
+                if (pendingForcedScan) {
+                    forceForCurrentPass = true
+                    contextForCurrentPass = pendingContext
+                    pendingForcedScan = false
+                    pendingContext = null
+                    true
+                } else {
+                    activeScanJob = null
+                    false
+                }
+            }
+
+            if (!shouldContinue) {
+                break
+            }
         }
     }
 

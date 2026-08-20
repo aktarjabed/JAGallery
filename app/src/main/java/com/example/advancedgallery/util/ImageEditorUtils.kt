@@ -213,11 +213,40 @@ object ImageEditorUtils {
         uri: Uri,
         plan: TransformationPlan
     ): Pair<Uri?, String?> = withContext(Dispatchers.IO) {
+        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, boundsOptions)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to inspect image bounds for export", e)
+            return@withContext Pair(null, null)
+        }
+
+        val srcWidth = boundsOptions.outWidth
+        val srcHeight = boundsOptions.outHeight
+        if (srcWidth <= 0 || srcHeight <= 0) {
+            return@withContext Pair(null, null)
+        }
+
+        val runtime = Runtime.getRuntime()
+        val allocableMemory = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+
         var sampleSize = 1
+        while (sampleSize <= 4) {
+            val sampledWidth = srcWidth / sampleSize
+            val sampledHeight = srcHeight / sampleSize
+            val estimatedBytes = sampledWidth.toLong() * sampledHeight.toLong() * 4L * 3L
+            if (estimatedBytes <= (allocableMemory * 0.6).toLong()) {
+                break
+            }
+            sampleSize *= 2
+        }
+
         var resultUri: Uri? = null
         var exportDimensions: String? = null
 
-        while (sampleSize <= 8) {
+        while (sampleSize <= 4) {
             coroutineContext.ensureActive()
             try {
                 val fullRes = decodeFullResolutionBitmapFromUri(context, uri, sampleSize)
@@ -404,8 +433,14 @@ object ImageEditorUtils {
                 destExif.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
                 destExif.saveAttributes()
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to copy EXIF attributes", e)
+        } catch (e: IOException) {
+            Log.w(TAG, "Failed to copy EXIF attributes due to IOException", e)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Failed to copy EXIF attributes due to SecurityException", e)
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "Failed to copy EXIF attributes due to IllegalArgumentException", e)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Failed to copy EXIF attributes due to IllegalStateException", e)
         }
     }
 
@@ -420,7 +455,13 @@ object ImageEditorUtils {
                     else -> 0
                 }
             } ?: 0
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            0
+        } catch (e: SecurityException) {
+            0
+        } catch (e: IllegalArgumentException) {
+            0
+        } catch (e: IllegalStateException) {
             0
         }
     }
