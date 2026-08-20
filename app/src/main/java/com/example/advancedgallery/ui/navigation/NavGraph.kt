@@ -45,8 +45,8 @@ fun NavGraph() {
             val bucketId = bucketIdStr?.toLongOrNull()
             GridScreen(
                 bucketId = bucketId,
-                onNavigateToViewer = { mediaId, source, bId ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, source, bId))
+                onNavigateToViewer = { mediaId, source ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -61,8 +61,8 @@ fun NavGraph() {
         }
         composable(Screen.Search.route) {
             SearchScreen(
-                onNavigateToViewer = { mediaId, source, query ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, source, searchQuery = query))
+                onNavigateToViewer = { mediaId, source ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -84,16 +84,15 @@ fun NavGraph() {
         ) { backStackEntry ->
             val encodedMediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
             val mediaId = android.net.Uri.decode(encodedMediaId)
-            val sourceStr = backStackEntry.arguments?.getString("source") ?: MediaSource.ALL.name
-            val source = try { MediaSource.valueOf(sourceStr) } catch (e: Exception) { MediaSource.ALL }
+            val sourceStr = backStackEntry.arguments?.getString("source")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
             val searchQuery = backStackEntry.arguments?.getString("searchQuery")?.let { android.net.Uri.decode(it) }
+            val source = MediaSource.from(sourceStr, bucketId, searchQuery)
+
             ViewerScreen(
                 initialMediaId = mediaId,
                 source = source,
-                bucketId = bucketId,
-                searchQuery = searchQuery,
                 onBack = { navController.popBackStack() },
                 onNavigateToEditor = { imageUri ->
                     navController.navigate(Screen.Editor.createRoute(imageUri))

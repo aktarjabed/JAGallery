@@ -20,6 +20,12 @@
     <string name="edit_photo">Edit Photo</string>
     <string name="image_saved">Image saved successfully</string>
     <string name="media_info_title">Media Info</string>
+    <string name="media_info_name">Name:</string>
+    <string name="media_info_mime_type">MIME Type:</string>
+    <string name="media_info_date_added">Date Added:</string>
+    <string name="media_info_album">Album:</string>
+    <string name="media_info_uri">URI:</string>
+    <string name="internal_storage">Internal Storage</string>
     <string name="no_media_found">No media items found</string>
     <string name="no_favorites_found">No favorite media items yet</string>
     <string name="no_search_results">No media items matching your search</string>
@@ -30,4 +36,12 @@
     <string name="media_access_required">Media access is required to display your gallery.</string>
     <string name="no_app_to_handle_share">No app found to handle sharing</string>
     <string name="selected">Selected</string>
+    <string name="ccw_90">90° CCW</string>
+    <string name="cw_90">90° CW</string>
+    <string name="brightness">Brightness</string>
+    <string name="contrast">Contrast</string>
+    <string name="saturation">Saturation</string>
+    <string name="rotate">Rotate</string>
+    <string name="adjust">Adjust</string>
+    <string name="unable_to_load_photo">Unable to load photo</string>
 </resources>

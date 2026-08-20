@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.search
 
 import android.content.ContentResolver
+import androidx.lifecycle.SavedStateHandle
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
 import com.example.advancedgallery.rules.MainDispatcherRule
@@ -30,7 +31,7 @@ class SearchViewModelTest {
 
     @Test
     fun updateSearchQuery_updatesQueryState() = runTest {
-        val viewModel = SearchViewModel(repository)
+        val viewModel = SearchViewModel(repository, SavedStateHandle())
         assertEquals("", viewModel.searchQuery.value)
 
         viewModel.updateSearchQuery("vacation")

@@ -7,10 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.util.ImageEditorUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed class SaveState {
@@ -23,7 +26,10 @@ sealed class SaveState {
 @HiltViewModel
 class EditorViewModel @Inject constructor() : ViewModel() {
 
+    private var sourceUri: Uri? = null
     private var originalBitmap: Bitmap? = null
+    private var currentPreviewBitmap: Bitmap? = null
+    private var previewJob: Job? = null
 
     private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
     val previewBitmap: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
@@ -48,6 +54,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     fun loadImage(context: Context, imageUri: Uri) {
         if (originalBitmap != null) return
+        sourceUri = imageUri
         viewModelScope.launch {
             _isLoading.value = true
             val bitmap = ImageEditorUtils.decodeSampledBitmapFromUri(context, imageUri)
@@ -83,23 +90,41 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     }
 
     fun reset() {
+        previewJob?.cancel()
         _rotationDegrees.value = 0f
         _brightness.value = 0f
         _contrast.value = 1f
         _saturation.value = 1f
+        if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
+            currentPreviewBitmap?.recycle()
+            currentPreviewBitmap = null
+        }
         _previewBitmap.value = originalBitmap
     }
 
     private fun updatePreview() {
         val base = originalBitmap ?: return
-        viewModelScope.launch {
-            val updated = ImageEditorUtils.applyAdjustmentsAndRotation(
-                sourceBitmap = base,
-                rotationDegrees = _rotationDegrees.value,
-                brightness = _brightness.value,
-                contrast = _contrast.value,
-                saturation = _saturation.value
-            )
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch {
+            val rotation = _rotationDegrees.value
+            val bright = _brightness.value
+            val cont = _contrast.value
+            val sat = _saturation.value
+
+            val updated = withContext(Dispatchers.Default) {
+                ImageEditorUtils.applyAdjustmentsAndRotation(
+                    sourceBitmap = base,
+                    rotationDegrees = rotation,
+                    brightness = bright,
+                    contrast = cont,
+                    saturation = sat
+                )
+            }
+
+            if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
+                currentPreviewBitmap?.recycle()
+            }
+            currentPreviewBitmap = updated
             _previewBitmap.value = updated
         }
     }
@@ -108,7 +133,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         val bitmap = _previewBitmap.value ?: return
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
-            val savedUri = ImageEditorUtils.saveEditedImage(context, bitmap)
+            val savedUri = ImageEditorUtils.saveEditedImage(context, bitmap, sourceUri)
             if (savedUri != null) {
                 _saveState.value = SaveState.Success(savedUri)
             } else {
@@ -119,9 +144,13 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        previewJob?.cancel()
         originalBitmap?.recycle()
         originalBitmap = null
-        _previewBitmap.value?.recycle()
+        if (currentPreviewBitmap != null && currentPreviewBitmap != originalBitmap) {
+            currentPreviewBitmap?.recycle()
+        }
+        currentPreviewBitmap = null
         _previewBitmap.value = null
     }
 }

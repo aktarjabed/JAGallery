@@ -5,8 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "favorites")
 data class MediaEntity(
-    @PrimaryKey val id: Long,
-    val uri: String,
-    val isFavorite: Boolean,
+    @PrimaryKey val uri: String,
+    val isFavorite: Boolean = true,
     val dateAdded: Long
 )

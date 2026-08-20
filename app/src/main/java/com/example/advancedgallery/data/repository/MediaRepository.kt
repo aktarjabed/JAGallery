@@ -24,9 +24,9 @@ class MediaRepository @Inject constructor(
     private val _mediaItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
     val mediaItems: Flow<List<MediaItem>> = combine(_mediaItems, mediaDao.getFavorites()) { items, favorites ->
-        val favoriteIds = favorites.map { it.id }.toSet()
+        val favoriteUris = favorites.map { it.uri }.toSet()
         items.map { item ->
-            item.copy(isFavorite = favoriteIds.contains(item.id))
+            item.copy(isFavorite = favoriteUris.contains(item.id))
         }
     }
 
@@ -41,7 +41,7 @@ class MediaRepository @Inject constructor(
             if (isFav) {
                 mediaDao.insert(
                     MediaEntity(
-                        id = mediaItem.id,
+                        uri = mediaItem.id,
                         isFavorite = true,
                         dateAdded = System.currentTimeMillis()
                     )
@@ -55,6 +55,9 @@ class MediaRepository @Inject constructor(
     suspend fun removeDeletedItems(deletedIds: List<String>) {
         withContext(ioDispatcher) {
             mediaDao.removeFavorites(deletedIds)
+            _mediaItems.update { current ->
+                current.filterNot { deletedIds.contains(it.id) }
+            }
         }
     }
 }

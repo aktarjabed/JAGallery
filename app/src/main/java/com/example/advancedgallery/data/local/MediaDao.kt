@@ -14,12 +14,12 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(mediaEntity: MediaEntity)
 
-    @Query("DELETE FROM favorites WHERE id = :id")
-    suspend fun removeFavorite(id: Long)
+    @Query("DELETE FROM favorites WHERE uri = :uri")
+    suspend fun removeFavorite(uri: String)
 
-    @Query("SELECT * FROM favorites WHERE id = :id")
-    suspend fun getFavoriteById(id: Long): MediaEntity?
+    @Query("SELECT * FROM favorites WHERE uri = :uri")
+    suspend fun getFavoriteById(uri: String): MediaEntity?
 
-    @Query("DELETE FROM favorites WHERE id IN (:ids)")
-    suspend fun removeFavorites(ids: List<Long>)
+    @Query("DELETE FROM favorites WHERE uri IN (:uris)")
+    suspend fun removeFavorites(uris: List<String>)
 }

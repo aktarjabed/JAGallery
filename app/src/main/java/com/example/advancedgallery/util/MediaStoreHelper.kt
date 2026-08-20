@@ -2,8 +2,10 @@ package com.example.advancedgallery.util
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.Context
 import android.database.Cursor
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import com.example.advancedgallery.data.model.MediaItem
 import kotlinx.coroutines.CoroutineDispatcher
@@ -11,9 +13,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object MediaStoreHelper {
+    private var lastMediaStoreVersion: String? = null
+
     suspend fun getMediaItems(
         contentResolver: ContentResolver,
-        dispatcher: CoroutineDispatcher = Dispatchers.IO
+        dispatcher: CoroutineDispatcher = Dispatchers.IO,
+        context: Context? = null
     ): List<MediaItem> = withContext(dispatcher) {
         val items = mutableListOf<MediaItem>()
 
@@ -49,7 +54,25 @@ object MediaStoreHelper {
             )
         }
 
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                lastMediaStoreVersion = MediaStore.getVersion(context)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+
         items.sortedByDescending { it.dateAdded }
+    }
+
+    fun isMediaStoreVersionCurrent(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return try {
+            val currentVersion = MediaStore.getVersion(context)
+            lastMediaStoreVersion != null && lastMediaStoreVersion == currentVersion
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun queryCollection(
@@ -107,9 +130,8 @@ object MediaStoreHelper {
 
                 items.add(
                     MediaItem(
-                        id = uri.toString(),
-                        mediaStoreId = mediaStoreId,
                         uri = uri,
+                        mediaStoreId = mediaStoreId,
                         name = name,
                         dateAdded = dateAdded,
                         mimeType = mimeType,

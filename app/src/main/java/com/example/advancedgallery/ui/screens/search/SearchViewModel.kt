@@ -1,11 +1,11 @@
 package com.example.advancedgallery.ui.screens.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -15,13 +15,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery
+    val searchQuery: StateFlow<String> = savedStateHandle.getStateFlow("searchQuery", "")
 
-    val searchResults: StateFlow<List<MediaItem>> = combine(repository.mediaItems, _searchQuery) { items, query ->
+    val searchResults: StateFlow<List<MediaItem>> = combine(repository.mediaItems, searchQuery) { items, query ->
         if (query.isBlank()) {
             emptyList()
         } else {
@@ -30,7 +30,7 @@ class SearchViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
+        savedStateHandle["searchQuery"] = query
     }
 
     fun removeDeletedItems(deletedIds: List<String>) {
