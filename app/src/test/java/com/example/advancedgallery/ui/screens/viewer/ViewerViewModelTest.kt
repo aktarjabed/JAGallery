@@ -2,6 +2,7 @@ package com.example.advancedgallery.ui.screens.viewer
 
 import android.content.ContentResolver
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
@@ -37,7 +38,7 @@ class ViewerViewModelTest {
 
     @Test
     fun toggleFavorite_invokesRepositoryToggle() = runTest {
-        val viewModel = ViewerViewModel(repository)
+        val viewModel = ViewerViewModel(repository, SavedStateHandle())
         val item = MediaItem(
             mediaStoreId = 10L,
             uri = mockUri,
@@ -60,7 +61,7 @@ class ViewerViewModelTest {
     @Test
     fun removeDeletedItem_clearsFromFavorites() = runTest {
         fakeDao.insert(MediaEntity("content://media/external/images/media/10", true, 500L))
-        val viewModel = ViewerViewModel(repository)
+        val viewModel = ViewerViewModel(repository, SavedStateHandle())
 
         viewModel.removeDeletedItem("content://media/external/images/media/10")
 

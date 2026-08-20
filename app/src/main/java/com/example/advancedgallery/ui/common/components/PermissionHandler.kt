@@ -50,13 +50,17 @@ fun checkGalleryPermissionState(context: Context): PermissionState {
 
         when {
             hasImages && hasVideo -> PermissionState.FULL
-            hasSelected -> PermissionState.PARTIAL
+            hasSelected || hasImages || hasVideo -> PermissionState.PARTIAL
             else -> PermissionState.DENIED
         }
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val hasImages = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
         val hasVideo = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
-        if (hasImages && hasVideo) PermissionState.FULL else PermissionState.DENIED
+        when {
+            hasImages && hasVideo -> PermissionState.FULL
+            hasImages || hasVideo -> PermissionState.PARTIAL
+            else -> PermissionState.DENIED
+        }
     } else {
         val hasStorage = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         if (hasStorage) PermissionState.FULL else PermissionState.DENIED

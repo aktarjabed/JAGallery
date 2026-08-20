@@ -16,10 +16,16 @@ sealed class Screen(val route: String) {
             source: MediaSource
         ): String {
             val encodedMediaId = Uri.encode(mediaId)
-            val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=${source.name}")
+            val sourceName = when (source) {
+                is MediaSource.All -> "ALL"
+                is MediaSource.Favorites -> "FAVORITES"
+                is MediaSource.Album -> "ALBUM"
+                is MediaSource.Search -> "SEARCH"
+            }
+            val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=$sourceName")
             when (source) {
                 is MediaSource.Album -> {
-                    if (source.bucketId != null) builder.append("&bucketId=${source.bucketId}")
+                    builder.append("&bucketId=${source.bucketId}")
                 }
                 is MediaSource.Search -> {
                     if (source.query.isNotBlank()) builder.append("&searchQuery=${Uri.encode(source.query)}")

@@ -69,7 +69,8 @@ fun GridScreen(
                 if (selectionState.selectionMode) {
                     selectionState.toggleSelection(item.id)
                 } else {
-                    onNavigateToViewer(item.id, MediaSource.Album(bucketId))
+                    val source = if (bucketId != null) MediaSource.Album(bucketId) else MediaSource.All
+                    onNavigateToViewer(item.id, source)
                 }
             },
             onItemLongClick = { item ->

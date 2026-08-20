@@ -55,7 +55,7 @@ fun shareMediaItems(context: Context, items: List<MediaItem>) {
     } catch (e: ActivityNotFoundException) {
         Toast.makeText(context, context.getString(R.string.no_app_to_handle_share), Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
-        Toast.makeText(context, context.getString(R.string.no_app_to_handle_share), Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.share_failed), Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -70,6 +70,10 @@ fun MediaSelectionHandler(
     val context = LocalContext.current
     var pendingDeleteBatch by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(items) {
+        selectionState.pruneSelection(items)
+    }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()

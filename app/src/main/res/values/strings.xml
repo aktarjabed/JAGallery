@@ -19,6 +19,7 @@
     <string name="back">Back</string>
     <string name="edit_photo">Edit Photo</string>
     <string name="image_saved">Image saved successfully</string>
+    <string name="failed_to_save_image">Failed to save image</string>
     <string name="media_info_title">Media Info</string>
     <string name="media_info_name">Name:</string>
     <string name="media_info_mime_type">MIME Type:</string>
@@ -35,6 +36,7 @@
     <string name="showing_selected_photos">Showing selected photos only.</string>
     <string name="media_access_required">Media access is required to display your gallery.</string>
     <string name="no_app_to_handle_share">No app found to handle sharing</string>
+    <string name="share_failed">Failed to share media</string>
     <string name="selected">Selected</string>
     <string name="ccw_90">90° CCW</string>
     <string name="cw_90">90° CW</string>

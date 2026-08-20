@@ -27,7 +27,10 @@ object AppModule {
             context,
             MediaDatabase::class.java,
             "gallery_database"
-        ).build()
+        )
+            .addMigrations(MediaDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
