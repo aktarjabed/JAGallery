@@ -33,7 +33,7 @@ class SearchViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    fun removeDeletedItems(deletedIds: List<Long>) {
+    fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
             repository.removeDeletedItems(deletedIds)
             repository.loadMedia()

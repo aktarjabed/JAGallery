@@ -6,12 +6,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.ui.screens.albums.AlbumsScreen
+import com.example.advancedgallery.ui.screens.editor.EditorScreen
 import com.example.advancedgallery.ui.screens.favorites.FavoritesScreen
 import com.example.advancedgallery.ui.screens.grid.GridScreen
 import com.example.advancedgallery.ui.screens.search.SearchScreen
 import com.example.advancedgallery.ui.screens.viewer.ViewerScreen
-import com.example.advancedgallery.util.Constants
 
 @Composable
 fun NavGraph() {
@@ -44,24 +45,24 @@ fun NavGraph() {
             val bucketId = bucketIdStr?.toLongOrNull()
             GridScreen(
                 bucketId = bucketId,
-                onNavigateToViewer = { mediaId ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, bucketId))
+                onNavigateToViewer = { mediaId, source, bId ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source, bId))
                 },
                 onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Favorites.route) {
             FavoritesScreen(
-                onNavigateToViewer = { mediaId ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, Constants.BUCKET_ID_FAVORITES))
+                onNavigateToViewer = { mediaId, source ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source))
                 },
                 onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Search.route) {
             SearchScreen(
-                onNavigateToViewer = { mediaId, query ->
-                    navController.navigate(Screen.Viewer.createRoute(mediaId, Constants.BUCKET_ID_SEARCH, query))
+                onNavigateToViewer = { mediaId, source, query ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, source, searchQuery = query))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -69,7 +70,8 @@ fun NavGraph() {
         composable(
             route = Screen.Viewer.route,
             arguments = listOf(
-                navArgument("mediaId") { type = NavType.LongType },
+                navArgument("mediaId") { type = NavType.StringType },
+                navArgument("source") { type = NavType.StringType },
                 navArgument("bucketId") {
                     type = NavType.StringType
                     nullable = true
@@ -80,15 +82,36 @@ fun NavGraph() {
                 }
             )
         ) { backStackEntry ->
-            val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: return@composable
+            val encodedMediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
+            val mediaId = android.net.Uri.decode(encodedMediaId)
+            val sourceStr = backStackEntry.arguments?.getString("source") ?: MediaSource.ALL.name
+            val source = try { MediaSource.valueOf(sourceStr) } catch (e: Exception) { MediaSource.ALL }
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
-            val searchQuery = backStackEntry.arguments?.getString("searchQuery")
+            val searchQuery = backStackEntry.arguments?.getString("searchQuery")?.let { android.net.Uri.decode(it) }
             ViewerScreen(
                 initialMediaId = mediaId,
+                source = source,
                 bucketId = bucketId,
                 searchQuery = searchQuery,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToEditor = { imageUri ->
+                    navController.navigate(Screen.Editor.createRoute(imageUri))
+                }
+            )
+        }
+        composable(
+            route = Screen.Editor.route,
+            arguments = listOf(
+                navArgument("imageUri") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val encodedUri = backStackEntry.arguments?.getString("imageUri") ?: return@composable
+            val imageUri = android.net.Uri.parse(android.net.Uri.decode(encodedUri))
+            EditorScreen(
+                imageUri = imageUri,
+                onBack = { navController.popBackStack() },
+                onSaveSuccess = { navController.popBackStack() }
             )
         }
     }

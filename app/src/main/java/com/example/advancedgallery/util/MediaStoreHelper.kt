@@ -19,13 +19,13 @@ object MediaStoreHelper {
 
         val imageCollectionUri = try {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             null
         }
 
         val videoCollectionUri = try {
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             null
         }
 
@@ -92,7 +92,7 @@ object MediaStoreHelper {
             if (idColumn == -1) return items
 
             while (cursor.moveToNext()) {
-                val id = cursor.getLong(idColumn)
+                val mediaStoreId = cursor.getLong(idColumn)
                 val name = if (nameColumn != -1) cursor.getString(nameColumn) ?: "" else ""
                 val dateAdded = if (dateAddedColumn != -1) cursor.getLong(dateAddedColumn) else 0L
                 val mimeType = if (mimeTypeColumn != -1) cursor.getString(mimeTypeColumn) ?: "" else ""
@@ -100,14 +100,15 @@ object MediaStoreHelper {
                 val bucketName = if (bucketNameColumn != -1) cursor.getString(bucketNameColumn) ?: "" else ""
 
                 val uri = try {
-                    ContentUris.withAppendedId(contentUri, id)
-                } catch (e: Throwable) {
+                    ContentUris.withAppendedId(contentUri, mediaStoreId)
+                } catch (e: Exception) {
                     contentUri
                 }
 
                 items.add(
                     MediaItem(
-                        id = id,
+                        id = uri.toString(),
+                        mediaStoreId = mediaStoreId,
                         uri = uri,
                         name = name,
                         dateAdded = dateAdded,

@@ -32,10 +32,10 @@ class GridViewModel @Inject constructor(
         _bucketId.value = bucketId
     }
 
-    fun removeDeletedItems(deletedIds: List<Long>) {
+    fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
             repository.removeDeletedItems(deletedIds)
-            repository.loadMedia() // Refresh
+            repository.loadMedia()
         }
     }
 }

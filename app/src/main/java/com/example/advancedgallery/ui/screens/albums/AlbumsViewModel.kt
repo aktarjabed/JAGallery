@@ -17,6 +17,12 @@ class AlbumsViewModel @Inject constructor(
     private val repository: MediaRepository
 ) : ViewModel() {
 
+    val totalMediaCount: StateFlow<Int> = repository.mediaItems.map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val coverUri: StateFlow<android.net.Uri?> = repository.mediaItems.map { it.firstOrNull()?.uri }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val albums: StateFlow<List<Album>> = repository.mediaItems.map { items ->
         items.groupBy { it.bucketId }
             .map { (bucketId, bucketItems) ->

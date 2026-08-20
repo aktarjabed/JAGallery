@@ -37,7 +37,8 @@ class ViewerViewModelTest {
     fun toggleFavorite_invokesRepositoryToggle() = runTest {
         val viewModel = ViewerViewModel(repository)
         val item = MediaItem(
-            id = 10L,
+            id = "content://media/external/images/media/10",
+            mediaStoreId = 10L,
             uri = mockUri,
             name = "pic.png",
             dateAdded = 500L,
@@ -52,15 +53,15 @@ class ViewerViewModelTest {
 
         val favorites = fakeDao.getFavorites().first()
         assertEquals(1, favorites.size)
-        assertEquals(10L, favorites[0].id)
+        assertEquals("content://media/external/images/media/10", favorites[0].id)
     }
 
     @Test
     fun removeDeletedItem_clearsFromFavorites() = runTest {
-        fakeDao.insert(MediaEntity(10L, "uri10", true, 500L))
+        fakeDao.insert(MediaEntity("content://media/external/images/media/10", true, 500L))
         val viewModel = ViewerViewModel(repository)
 
-        viewModel.removeDeletedItem(10L)
+        viewModel.removeDeletedItem("content://media/external/images/media/10")
 
         val favorites = fakeDao.getFavorites().first()
         assertEquals(0, favorites.size)

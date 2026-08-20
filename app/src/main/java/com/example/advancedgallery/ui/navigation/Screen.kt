@@ -1,5 +1,8 @@
 package com.example.advancedgallery.ui.navigation
 
+import android.net.Uri
+import com.example.advancedgallery.data.model.MediaSource
+
 sealed class Screen(val route: String) {
     object Albums : Screen("albums")
     object Grid : Screen("grid?bucketId={bucketId}") {
@@ -7,16 +10,23 @@ sealed class Screen(val route: String) {
     }
     object Favorites : Screen("favorites")
     object Search : Screen("search")
-    object Viewer : Screen("viewer/{mediaId}?bucketId={bucketId}&searchQuery={searchQuery}") {
-        fun createRoute(mediaId: Long, bucketId: Long?, searchQuery: String? = null): String {
-            val builder = StringBuilder("viewer/$mediaId")
-            val params = mutableListOf<String>()
-            if (bucketId != null) params.add("bucketId=$bucketId")
-            if (!searchQuery.isNullOrBlank()) params.add("searchQuery=${android.net.Uri.encode(searchQuery)}")
-            if (params.isNotEmpty()) {
-                builder.append("?").append(params.joinToString("&"))
-            }
+    object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&bucketId={bucketId}&searchQuery={searchQuery}") {
+        fun createRoute(
+            mediaId: String,
+            source: MediaSource,
+            bucketId: Long? = null,
+            searchQuery: String? = null
+        ): String {
+            val encodedMediaId = Uri.encode(mediaId)
+            val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=${source.name}")
+            if (bucketId != null) builder.append("&bucketId=$bucketId")
+            if (!searchQuery.isNullOrBlank()) builder.append("&searchQuery=${Uri.encode(searchQuery)}")
             return builder.toString()
+        }
+    }
+    object Editor : Screen("editor?imageUri={imageUri}") {
+        fun createRoute(imageUri: String): String {
+            return "editor?imageUri=${Uri.encode(imageUri)}"
         }
     }
 }

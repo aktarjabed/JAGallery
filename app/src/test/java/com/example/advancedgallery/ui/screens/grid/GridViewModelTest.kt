@@ -1,9 +1,7 @@
 package com.example.advancedgallery.ui.screens.grid
 
 import android.content.ContentResolver
-import android.net.Uri
 import com.example.advancedgallery.data.local.MediaEntity
-import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.fakes.FakeMediaDao
 import com.example.advancedgallery.rules.MainDispatcherRule
@@ -25,7 +23,6 @@ class GridViewModelTest {
     private lateinit var fakeDao: FakeMediaDao
     private lateinit var repository: MediaRepository
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
-    private val mockUri: Uri = mock(Uri::class.java)
 
     @Before
     fun setUp() {
@@ -43,10 +40,10 @@ class GridViewModelTest {
 
     @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
-        fakeDao.insert(MediaEntity(100L, "uri100", true, 1000L))
+        fakeDao.insert(MediaEntity("content://media/external/images/media/100", true, 1000L))
         val viewModel = GridViewModel(repository)
 
-        viewModel.removeDeletedItems(listOf(100L))
+        viewModel.removeDeletedItems(listOf("content://media/external/images/media/100"))
 
         val favorites = fakeDao.getFavorites().first()
         assertEquals(0, favorites.size)

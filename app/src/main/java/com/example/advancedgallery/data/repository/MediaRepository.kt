@@ -3,7 +3,6 @@ package com.example.advancedgallery.data.repository
 import android.content.ContentResolver
 import com.example.advancedgallery.data.local.MediaDao
 import com.example.advancedgallery.data.local.MediaEntity
-import com.example.advancedgallery.data.model.Album
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.util.MediaStoreHelper
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,7 +42,6 @@ class MediaRepository @Inject constructor(
                 mediaDao.insert(
                     MediaEntity(
                         id = mediaItem.id,
-                        uri = mediaItem.uri.toString(),
                         isFavorite = true,
                         dateAdded = System.currentTimeMillis()
                     )
@@ -54,7 +52,7 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    suspend fun removeDeletedItems(deletedIds: List<Long>) {
+    suspend fun removeDeletedItems(deletedIds: List<String>) {
         withContext(ioDispatcher) {
             mediaDao.removeFavorites(deletedIds)
         }

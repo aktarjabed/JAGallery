@@ -3,7 +3,8 @@ package com.example.advancedgallery.data.model
 import android.net.Uri
 
 data class MediaItem(
-    val id: Long,
+    val id: String = uri.toString(),
+    val mediaStoreId: Long,
     val uri: Uri,
     val name: String,
     val dateAdded: Long,

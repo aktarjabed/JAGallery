@@ -24,7 +24,7 @@ import com.example.advancedgallery.data.model.MediaItem
 @Composable
 fun MediaGrid(
     items: List<MediaItem>,
-    selectedIds: Set<Long>,
+    selectedIds: Set<String>,
     selectionMode: Boolean,
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
