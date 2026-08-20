@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.R
 import com.example.advancedgallery.util.ImageEditorUtils
+import com.example.advancedgallery.util.TransformationPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,17 +109,16 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         val base = originalBitmap ?: return
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            val rotation = _rotationDegrees.value
-            val bright = _brightness.value
-            val cont = _contrast.value
-            val sat = _saturation.value
+            val plan = TransformationPlan(
+                rotationDegrees = _rotationDegrees.value,
+                brightness = _brightness.value,
+                contrast = _contrast.value,
+                saturation = _saturation.value
+            )
 
-            val updated = ImageEditorUtils.applyAdjustmentsAndRotation(
+            val updated = ImageEditorUtils.applyTransformationPlan(
                 sourceBitmap = base,
-                rotationDegrees = rotation,
-                brightness = bright,
-                contrast = cont,
-                saturation = sat
+                plan = plan
             )
 
             val oldPreview = currentPreviewBitmap
@@ -133,20 +133,19 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     fun save(context: Context) {
         val uri = sourceUri ?: return
-        val rotation = _rotationDegrees.value
-        val bright = _brightness.value
-        val cont = _contrast.value
-        val sat = _saturation.value
+        val plan = TransformationPlan(
+            rotationDegrees = _rotationDegrees.value,
+            brightness = _brightness.value,
+            contrast = _contrast.value,
+            saturation = _saturation.value
+        )
 
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
             val (savedUri, dimensions) = ImageEditorUtils.exportEditedImageWithProgressiveFallback(
                 context = context,
                 uri = uri,
-                rotationDegrees = rotation,
-                brightness = bright,
-                contrast = cont,
-                saturation = sat
+                plan = plan
             )
 
             if (savedUri != null) {
