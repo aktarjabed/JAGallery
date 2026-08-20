@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.domain.MediaOperations
 import com.example.advancedgallery.ui.common.BaseMediaViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,8 +18,9 @@ import javax.inject.Inject
 @HiltViewModel
 class GridViewModel @Inject constructor(
     repository: MediaRepository,
+    mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
-) : BaseMediaViewModel(repository) {
+) : BaseMediaViewModel(mediaOperations) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
     private val sourceName: String? = savedStateHandle.get<String>("source")

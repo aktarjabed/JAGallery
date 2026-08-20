@@ -1,12 +1,11 @@
 package com.example.advancedgallery.ui.screens.viewer
 
 import android.content.ContentResolver
-import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
-import com.example.advancedgallery.data.local.MediaEntity
-import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.domain.MediaOperationsImpl
 import com.example.advancedgallery.fakes.FakeMediaDao
+import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -15,7 +14,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -26,30 +24,20 @@ class ViewerViewModelTest {
 
     private lateinit var fakeDao: FakeMediaDao
     private lateinit var repository: MediaRepository
+    private lateinit var mediaOperations: MediaOperationsImpl
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
-    private val mockUri: Uri = mock(Uri::class.java)
 
     @Before
     fun setUp() {
-        `when`(mockUri.toString()).thenReturn("content://media/external/images/media/10")
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
+        mediaOperations = MediaOperationsImpl(repository)
     }
 
     @Test
     fun toggleFavorite_invokesRepositoryToggle() = runTest {
-        val viewModel = ViewerViewModel(repository, SavedStateHandle())
-        val item = MediaItem(
-            mediaStoreId = 10L,
-            uri = mockUri,
-            name = "pic.png",
-            dateAdded = 500L,
-            mimeType = "image/png",
-            bucketId = 1L,
-            bucketName = "DCIM",
-            isVideo = false,
-            isFavorite = false
-        )
+        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
+        val item = MediaTestData.image(id = 10L, uriString = "content://media/external/images/media/10")
 
         viewModel.toggleFavorite(item)
 
@@ -60,8 +48,8 @@ class ViewerViewModelTest {
 
     @Test
     fun removeDeletedItem_clearsFromFavorites() = runTest {
-        fakeDao.insert(MediaEntity("content://media/external/images/media/10", true, 500L))
-        val viewModel = ViewerViewModel(repository, SavedStateHandle())
+        fakeDao.insert(MediaTestData.favorite(uriString = "content://media/external/images/media/10"))
+        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
 
         viewModel.removeDeletedItem("content://media/external/images/media/10")
 
@@ -71,7 +59,7 @@ class ViewerViewModelTest {
 
     @Test
     fun state_initialStateIsLoading() = runTest {
-        val viewModel = ViewerViewModel(repository, SavedStateHandle())
+        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
         assertEquals(ViewerState.Loading, viewModel.state.value)
     }
 }

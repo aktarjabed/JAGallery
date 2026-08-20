@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.example.advancedgallery.data.model.MediaItem
+import com.example.advancedgallery.data.model.MediaLoadResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,28 +31,34 @@ object MediaStoreHelper {
         contentResolver: ContentResolver,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         context: Context? = null
-    ): com.example.advancedgallery.data.model.MediaLoadResult = withContext(dispatcher) {
+    ): MediaLoadResult = withContext(dispatcher) {
         try {
             val items = mutableListOf<MediaItem>()
 
             val imageCollectionUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
             val videoCollectionUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
 
-            items.addAll(
-                queryCollection(
-                    contentResolver = contentResolver,
-                    contentUri = imageCollectionUri,
-                    isVideo = false
-                )
+            val imageQueryResult = queryCollectionResult(
+                contentResolver = contentResolver,
+                contentUri = imageCollectionUri,
+                isVideo = false
             )
+            if (imageQueryResult is QueryResult.Error) {
+                return@withContext MediaLoadResult.Error(imageQueryResult.cause)
+            } else if (imageQueryResult is QueryResult.Success) {
+                items.addAll(imageQueryResult.items)
+            }
 
-            items.addAll(
-                queryCollection(
-                    contentResolver = contentResolver,
-                    contentUri = videoCollectionUri,
-                    isVideo = true
-                )
+            val videoQueryResult = queryCollectionResult(
+                contentResolver = contentResolver,
+                contentUri = videoCollectionUri,
+                isVideo = true
             )
+            if (videoQueryResult is QueryResult.Error) {
+                return@withContext MediaLoadResult.Error(videoQueryResult.cause)
+            } else if (videoQueryResult is QueryResult.Success) {
+                items.addAll(videoQueryResult.items)
+            }
 
             if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
@@ -64,12 +71,12 @@ object MediaStoreHelper {
 
             val sorted = items.sortedByDescending { it.dateAdded }
             if (sorted.isEmpty()) {
-                com.example.advancedgallery.data.model.MediaLoadResult.Empty
+                MediaLoadResult.Empty
             } else {
-                com.example.advancedgallery.data.model.MediaLoadResult.Success(sorted)
+                MediaLoadResult.Success(sorted)
             }
         } catch (e: Throwable) {
-            com.example.advancedgallery.data.model.MediaLoadResult.Error(e)
+            MediaLoadResult.Error(e)
         }
     }
 
@@ -79,7 +86,7 @@ object MediaStoreHelper {
         context: Context? = null
     ): List<MediaItem> = withContext(dispatcher) {
         when (val result = getMediaItemsResult(contentResolver, dispatcher, context)) {
-            is com.example.advancedgallery.data.model.MediaLoadResult.Success -> result.items
+            is MediaLoadResult.Success -> result.items
             else -> emptyList()
         }
     }
@@ -95,11 +102,16 @@ object MediaStoreHelper {
         }
     }
 
-    private fun queryCollection(
+    private sealed interface QueryResult {
+        data class Success(val items: List<MediaItem>) : QueryResult
+        data class Error(val cause: Throwable) : QueryResult
+    }
+
+    private fun queryCollectionResult(
         contentResolver: ContentResolver,
         contentUri: Uri,
         isVideo: Boolean
-    ): List<MediaItem> {
+    ): QueryResult {
         val items = mutableListOf<MediaItem>()
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
@@ -120,11 +132,15 @@ object MediaStoreHelper {
                 null,
                 sortOrder
             )
-        } catch (e: Exception) {
-            null
+        } catch (e: Throwable) {
+            return QueryResult.Error(e)
         }
 
-        query?.use { cursor ->
+        if (query == null) {
+            return QueryResult.Error(NullPointerException("Cursor returned null for $contentUri"))
+        }
+
+        query.use { cursor ->
             val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
             val nameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
             val dateAddedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
@@ -132,7 +148,7 @@ object MediaStoreHelper {
             val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
             val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
 
-            if (idColumn == -1) return items
+            if (idColumn == -1) return QueryResult.Success(items)
 
             while (cursor.moveToNext()) {
                 val mediaStoreId = cursor.getLong(idColumn)
@@ -162,6 +178,6 @@ object MediaStoreHelper {
                 )
             }
         }
-        return items
+        return QueryResult.Success(items)
     }
 }

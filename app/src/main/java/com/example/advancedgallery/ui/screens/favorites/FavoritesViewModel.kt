@@ -3,6 +3,7 @@ package com.example.advancedgallery.ui.screens.favorites
 import androidx.lifecycle.viewModelScope
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.domain.MediaOperations
 import com.example.advancedgallery.ui.common.BaseMediaViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,8 +14,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FavoritesViewModel @Inject constructor(
-    repository: MediaRepository
-) : BaseMediaViewModel(repository) {
+    repository: MediaRepository,
+    mediaOperations: MediaOperations
+) : BaseMediaViewModel(mediaOperations) {
 
     val favoriteItems: StateFlow<List<MediaItem>> = repository.mediaItems.map { items ->
         items.filter { it.isFavorite }

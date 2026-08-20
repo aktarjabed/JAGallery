@@ -2,10 +2,11 @@ package com.example.advancedgallery.ui.screens.grid
 
 import android.content.ContentResolver
 import androidx.lifecycle.SavedStateHandle
-import com.example.advancedgallery.data.local.MediaEntity
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.domain.MediaOperationsImpl
 import com.example.advancedgallery.fakes.FakeMediaDao
+import com.example.advancedgallery.fixtures.MediaTestData
 import com.example.advancedgallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -24,17 +25,19 @@ class GridViewModelTest {
 
     private lateinit var fakeDao: FakeMediaDao
     private lateinit var repository: MediaRepository
+    private lateinit var mediaOperations: MediaOperationsImpl
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
 
     @Before
     fun setUp() {
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
+        mediaOperations = MediaOperationsImpl(repository)
     }
 
     @Test
     fun setSource_filtersBySourceCorrectly() = runTest {
-        val viewModel = GridViewModel(repository, SavedStateHandle())
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
         viewModel.setSource(MediaSource.Album(10L))
 
         assertEquals(0, viewModel.mediaItems.value.size)
@@ -42,8 +45,9 @@ class GridViewModelTest {
 
     @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
-        fakeDao.insert(MediaEntity("content://media/external/images/media/100", true, 1000L))
-        val viewModel = GridViewModel(repository, SavedStateHandle())
+        val fav = MediaTestData.favorite(uriString = "content://media/external/images/media/100")
+        fakeDao.insert(fav)
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
 
         viewModel.removeDeletedItems(listOf("content://media/external/images/media/100"))
 

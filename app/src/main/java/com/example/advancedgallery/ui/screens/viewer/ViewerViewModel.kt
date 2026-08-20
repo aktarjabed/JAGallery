@@ -7,6 +7,7 @@ import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.domain.MediaOperations
 import com.example.advancedgallery.ui.navigation.parseMediaSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,7 @@ sealed interface ViewerState {
 @HiltViewModel
 class ViewerViewModel @Inject constructor(
     private val repository: MediaRepository,
+    private val mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -85,13 +87,25 @@ class ViewerViewModel @Inject constructor(
 
     fun toggleFavorite(mediaItem: MediaItem) {
         viewModelScope.launch {
-            repository.toggleFavorite(mediaItem)
+            mediaOperations.toggleFavorite(mediaItem)
         }
     }
 
     fun removeDeletedItem(deletedId: String) {
+        val currentItems = mediaItems.value
+        val currentIndex = currentItems.indexOfFirst { it.id == deletedId }
+
+        if (currentIndex != -1 && currentItems.size > 1) {
+            val nextItem = if (currentIndex < currentItems.size - 1) {
+                currentItems[currentIndex + 1]
+            } else {
+                currentItems[currentIndex - 1]
+            }
+            setCurrentMediaId(nextItem.id)
+        }
+
         viewModelScope.launch {
-            repository.removeDeletedItems(listOf(deletedId))
+            mediaOperations.removeDeletedItems(listOf(deletedId))
         }
     }
 }

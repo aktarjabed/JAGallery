@@ -20,6 +20,16 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
+data class TransformationPlan(
+    val rotationDegrees: Float = 0f,
+    val brightness: Float = 0f,
+    val contrast: Float = 1f,
+    val saturation: Float = 1f
+) {
+    fun isIdentity(): Boolean =
+        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f
+}
+
 object ImageEditorUtils {
 
     private const val TAG = "ImageEditorUtils"
@@ -116,20 +126,21 @@ object ImageEditorUtils {
         return inSampleSize
     }
 
-    suspend fun applyAdjustmentsAndRotation(
+    suspend fun applyTransformationPlan(
         sourceBitmap: Bitmap,
-        rotationDegrees: Float,
-        brightness: Float,
-        contrast: Float,
-        saturation: Float
+        plan: TransformationPlan
     ): Bitmap = withContext(Dispatchers.Default) {
         coroutineContext.ensureActive()
 
-        val matrix = Matrix().apply {
-            postRotate(rotationDegrees)
+        if (plan.isIdentity()) {
+            return@withContext sourceBitmap
         }
 
-        val rotated = if (rotationDegrees != 0f) {
+        val matrix = Matrix().apply {
+            postRotate(plan.rotationDegrees)
+        }
+
+        val rotated = if (plan.rotationDegrees != 0f) {
             Bitmap.createBitmap(
                 sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
             )
@@ -141,14 +152,14 @@ object ImageEditorUtils {
 
         val cm = ColorMatrix()
 
-        val satMatrix = ColorMatrix().apply { setSaturation(saturation) }
+        val satMatrix = ColorMatrix().apply { setSaturation(plan.saturation) }
         cm.postConcat(satMatrix)
 
         val contrastMatrix = ColorMatrix(
             floatArrayOf(
-                contrast, 0f, 0f, 0f, brightness,
-                0f, contrast, 0f, 0f, brightness,
-                0f, 0f, contrast, 0f, brightness,
+                plan.contrast, 0f, 0f, 0f, plan.brightness,
+                0f, plan.contrast, 0f, 0f, plan.brightness,
+                0f, 0f, plan.contrast, 0f, plan.brightness,
                 0f, 0f, 0f, 1f, 0f
             )
         )
@@ -170,13 +181,21 @@ object ImageEditorUtils {
         result
     }
 
-    suspend fun exportEditedImageWithProgressiveFallback(
-        context: Context,
-        uri: Uri,
+    suspend fun applyAdjustmentsAndRotation(
+        sourceBitmap: Bitmap,
         rotationDegrees: Float,
         brightness: Float,
         contrast: Float,
         saturation: Float
+    ): Bitmap = applyTransformationPlan(
+        sourceBitmap,
+        TransformationPlan(rotationDegrees, brightness, contrast, saturation)
+    )
+
+    suspend fun exportEditedImageWithProgressiveFallback(
+        context: Context,
+        uri: Uri,
+        plan: TransformationPlan
     ): Pair<Uri?, String?> = withContext(Dispatchers.IO) {
         var sampleSize = 1
         var resultUri: Uri? = null
@@ -193,15 +212,10 @@ object ImageEditorUtils {
 
                 exportDimensions = "${fullRes.width}x${fullRes.height}"
 
-                val edited = withContext(Dispatchers.Default) {
-                    applyAdjustmentsAndRotation(
-                        sourceBitmap = fullRes,
-                        rotationDegrees = rotationDegrees,
-                        brightness = brightness,
-                        contrast = contrast,
-                        saturation = saturation
-                    )
-                }
+                val edited = applyTransformationPlan(
+                    sourceBitmap = fullRes,
+                    plan = plan
+                )
 
                 resultUri = saveEditedImage(context, edited, uri)
 
@@ -224,6 +238,19 @@ object ImageEditorUtils {
 
         Pair(resultUri, exportDimensions)
     }
+
+    suspend fun exportEditedImageWithProgressiveFallback(
+        context: Context,
+        uri: Uri,
+        rotationDegrees: Float,
+        brightness: Float,
+        contrast: Float,
+        saturation: Float
+    ): Pair<Uri?, String?> = exportEditedImageWithProgressiveFallback(
+        context,
+        uri,
+        TransformationPlan(rotationDegrees, brightness, contrast, saturation)
+    )
 
     suspend fun saveEditedImage(
         context: Context,
