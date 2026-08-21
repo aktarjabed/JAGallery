@@ -121,8 +121,10 @@ fun MediaSelectionHandler(
 
     when (val currentState = deleteState) {
         is DeleteOperationState.Confirming -> {
+            val isTrashedBatch = items.any { currentState.batch.ids.contains(it.id) && it.isTrashed }
             DeleteConfirmationDialog(
                 count = currentState.batch.count,
+                isPermanent = isTrashedBatch,
                 onConfirm = {
                     val isTrashedBatch = items.any { currentState.batch.ids.contains(it.id) && it.isTrashed }
                     val pendingIntent = if (isTrashedBatch) {

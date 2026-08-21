@@ -10,6 +10,7 @@ import com.example.advancedgallery.R
 @Composable
 fun DeleteConfirmationDialog(
     count: Int,
+    isPermanent: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -24,7 +25,7 @@ fun DeleteConfirmationDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.delete))
+                Text(stringResource(if (isPermanent) R.string.delete_permanently else R.string.delete))
             }
         },
         dismissButton = {
