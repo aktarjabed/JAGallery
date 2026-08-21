@@ -218,7 +218,6 @@ class MediaRepository @Inject constructor(
         context: Context,
         sourceItem: MediaItem,
         targetAlbumName: String,
-        skipLoad: Boolean = false
         skipRescan: Boolean = false
     ): android.net.Uri? = withContext(ioDispatcher) {
         val resolver = context.contentResolver
@@ -268,7 +267,6 @@ class MediaRepository @Inject constructor(
                 try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
                 null
             } else {
-                if (!skipLoad) {
                 if (!skipRescan) {
                     loadMedia(force = true, context = context)
                 }
@@ -294,7 +292,6 @@ class MediaRepository @Inject constructor(
     ): List<Pair<MediaItem, android.net.Uri>> = withContext(ioDispatcher) {
         val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
         for (item in sourceItems) {
-            val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipLoad = true)
             val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipRescan = true)
             if (newUri != null) {
                 successfulCopies.add(Pair(item, newUri))
