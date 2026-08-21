@@ -155,6 +155,26 @@ class MediaOperationsImpl @Inject constructor(
         targetAlbumName: String
     ): MoveOperationResult {
         return moveMediaBatch(context, listOf(sourceItem), targetAlbumName)
+    ): OperationResult<android.net.Uri> {
+        return try {
+            val result = moveMediaBatch(context, listOf(sourceItem), targetAlbumName)
+            when (result) {
+                is MoveOperationResult.Success -> OperationResult.Success(result.movedItems.first().second)
+                is MoveOperationResult.RequestSourceDelete -> OperationResult.Error(
+                    Exception("Source deletion confirmation required"),
+                    "Source deletion confirmation required"
+                )
+                is MoveOperationResult.CopiedSourceRetained -> OperationResult.Error(
+                    Exception("Copied to album, but source retained"),
+                    "Copied to album, but source retained"
+                )
+                is MoveOperationResult.Error -> OperationResult.Error(Exception(result.message), result.message)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            OperationResult.Error(e, e.message)
+        }
     }
 
     override suspend fun moveMediaBatch(

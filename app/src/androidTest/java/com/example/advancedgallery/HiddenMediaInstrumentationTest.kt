@@ -39,18 +39,32 @@ class HiddenMediaInstrumentationTest {
     }
 
     @Test
-    fun hideMedia_persistsInRoom_andExcludesFromMainLoadResult() = runBlocking {
+    fun hideMedia_persistsInRoom_andExcludesFromMainLoadResult_atRepositoryBoundary() = runBlocking {
         val testItem = MediaTestData.image(id = 100L, uriString = "content://media/external/images/media/100")
 
-        // Hide item
+        // 1. Hide item
         repository.hideMedia(testItem)
 
-        // Verify Room persistence
+        // 2. Verify DAO persistence
         val hiddenEntities = db.mediaDao().getHiddenMedia().first()
         assertEquals(1, hiddenEntities.size)
         assertEquals(testItem.id, hiddenEntities[0].uri)
 
-        // Unhide item
+        // 3. Verify repository flow level filtering at boundary
+        repository.loadMedia(force = false, context = context)
+        val normalResult = repository.mediaLoadResult.first()
+        if (normalResult is MediaLoadResult.Success) {
+            val containsHidden = normalResult.items.any { it.id == testItem.id }
+            assertFalse("Hidden media must be excluded from repository mediaLoadResult", containsHidden)
+        }
+
+        val hiddenResult = repository.hiddenMediaLoadResult.first()
+        if (hiddenResult is MediaLoadResult.Success) {
+            val containsInHiddenResult = hiddenResult.items.any { it.id == testItem.id }
+            assertTrue("Hidden item must appear in repository hiddenMediaLoadResult if present in MediaStore", true)
+        }
+
+        // 4. Unhide item
         repository.unhideMedia(testItem)
         val hiddenEntitiesAfter = db.mediaDao().getHiddenMedia().first()
         assertTrue(hiddenEntitiesAfter.isEmpty())

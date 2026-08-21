@@ -101,7 +101,7 @@ class ViewerViewModel @Inject constructor(
                         items.filter { it.albumKey == currentSource.albumKey }
                     }
                     is MediaSource.All -> items
-                    is MediaSource.Trash -> items.filter { it.isTrashed }
+                    is MediaSource.Trash -> items
                     is MediaSource.Hidden -> items
                 }
 
@@ -119,6 +119,12 @@ class ViewerViewModel @Inject constructor(
             Log.w(TAG, "Invalid navigation route parameters: sourceStr=$sourceStr, volumeName=$volumeName, bucketId=$bucketId, searchQuery=$searchQuery")
             viewModelScope.launch {
                 _navigationEvent.emit(ViewerNavigationEvent.PopBack)
+            }
+        }
+
+        if (initialSource is MediaSource.Trash) {
+            viewModelScope.launch {
+                repository.loadTrashedMedia()
             }
         }
 
