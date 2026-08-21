@@ -2,6 +2,7 @@ package com.example.advancedgallery.ui.screens.editor
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -48,6 +49,9 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private val _saturation = MutableStateFlow(1f)
     val saturation: StateFlow<Float> = _saturation.asStateFlow()
 
+    private val _cropRect = MutableStateFlow<RectF?>(null)
+    val cropRect: StateFlow<RectF?> = _cropRect.asStateFlow()
+
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState.asStateFlow()
 
@@ -92,6 +96,11 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         updatePreview()
     }
 
+    fun setCropRect(rect: RectF?) {
+        _cropRect.value = rect
+        updatePreview()
+    }
+
     fun reset() {
         currentRenderId++
         previewJob?.cancel()
@@ -99,6 +108,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _brightness.value = 0f
         _contrast.value = 1f
         _saturation.value = 1f
+        _cropRect.value = null
 
         val oldTransformed = currentPreviewBitmap
         currentPreviewBitmap = null
@@ -118,7 +128,8 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 rotationDegrees = _rotationDegrees.value,
                 brightness = _brightness.value,
                 contrast = _contrast.value,
-                saturation = _saturation.value
+                saturation = _saturation.value,
+                cropRect = _cropRect.value
             )
 
             val updated = ImageEditorUtils.applyTransformationPlan(
@@ -149,7 +160,8 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             rotationDegrees = _rotationDegrees.value,
             brightness = _brightness.value,
             contrast = _contrast.value,
-            saturation = _saturation.value
+            saturation = _saturation.value,
+            cropRect = _cropRect.value
         )
 
         viewModelScope.launch {

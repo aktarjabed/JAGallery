@@ -215,7 +215,14 @@ fun ViewerScreen(
                 text = { Text(stringResource(R.string.delete_single_confirm_message)) },
                 confirmButton = {
                     TextButton(onClick = {
-                        val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                        val isTrashed = currentItem?.isTrashed == true
+                        val pendingIntent = if (isTrashed) {
+                            FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                        } else {
+                            FileUtils.createTrashRequest(context.contentResolver, currentState.batch.uris, true)
+                                ?: FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                        }
+
                         if (pendingIntent != null) {
                             deleteState = com.example.advancedgallery.ui.common.selection.DeleteOperationState.SystemConfirmation(currentState.batch)
                             deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
@@ -230,7 +237,7 @@ fun ViewerScreen(
                             }
                         }
                     }) {
-                        Text(stringResource(R.string.delete))
+                        Text(stringResource(if (currentItem?.isTrashed == true) R.string.delete_permanently else R.string.delete))
                     }
                 },
                 dismissButton = {

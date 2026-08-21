@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Crop
+import android.graphics.RectF
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,6 +96,44 @@ fun EditorScreen(
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     if (activeTab == 0) {
+                        val imageWidth = previewBitmap?.width?.toFloat() ?: 1f
+                        val imageHeight = previewBitmap?.height?.toFloat() ?: 1f
+                        val aspect = imageWidth / imageHeight
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(onClick = { viewModel.setCropRect(null) }) {
+                                Text(stringResource(R.string.crop_original))
+                            }
+                            Button(onClick = {
+                                val rect = if (aspect > 1f) {
+                                    // Landscape image: Square crop is limited by height
+                                    val size = 1f
+                                    val w = 1f / aspect
+                                    val left = (1f - w) / 2f
+                                    RectF(left, 0f, left + w, 1f)
+                                } else {
+                                    // Portrait image: Square crop is limited by width
+                                    val size = 1f
+                                    val h = aspect
+                                    val top = (1f - h) / 2f
+                                    RectF(0f, top, 1f, top + h)
+                                }
+                                viewModel.setCropRect(rect)
+                            }) {
+                                Text(stringResource(R.string.crop_square))
+                            }
+                            Button(onClick = {
+                                // Free crop mapping to an arbitrary central crop
+                                viewModel.setCropRect(RectF(0.1f, 0.1f, 0.9f, 0.9f))
+                            }) {
+                                Text(stringResource(R.string.crop_free))
+                            }
+                        }
+                    } else if (activeTab == 1) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -139,12 +179,18 @@ fun EditorScreen(
                         Tab(
                             selected = activeTab == 0,
                             onClick = { activeTab = 0 },
-                            text = { Text(stringResource(R.string.rotate)) },
-                            icon = { Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null) }
+                            text = { Text(stringResource(R.string.crop)) },
+                            icon = { Icon(Icons.Default.Crop, contentDescription = null) }
                         )
                         Tab(
                             selected = activeTab == 1,
                             onClick = { activeTab = 1 },
+                            text = { Text(stringResource(R.string.rotate)) },
+                            icon = { Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null) }
+                        )
+                        Tab(
+                            selected = activeTab == 2,
+                            onClick = { activeTab = 2 },
                             text = { Text(stringResource(R.string.adjust)) },
                             icon = { Icon(Icons.Default.Tune, contentDescription = null) }
                         )

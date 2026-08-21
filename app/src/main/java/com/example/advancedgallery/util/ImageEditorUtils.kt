@@ -9,6 +9,8 @@ import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
+import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
@@ -26,10 +28,11 @@ data class TransformationPlan(
     val rotationDegrees: Float = 0f,
     val brightness: Float = 0f,
     val contrast: Float = 1f,
-    val saturation: Float = 1f
+    val saturation: Float = 1f,
+    val cropRect: RectF? = null
 ) {
     fun isIdentity(): Boolean =
-        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f
+        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && cropRect == null
 }
 
 object ImageEditorUtils {
@@ -157,6 +160,22 @@ object ImageEditorUtils {
             return@withContext sourceBitmap
         }
 
+        var cropped: Bitmap? = null
+        if (plan.cropRect != null) {
+            val left = (plan.cropRect.left * sourceBitmap.width).toInt().coerceIn(0, sourceBitmap.width)
+            val top = (plan.cropRect.top * sourceBitmap.height).toInt().coerceIn(0, sourceBitmap.height)
+            val right = (plan.cropRect.right * sourceBitmap.width).toInt().coerceIn(0, sourceBitmap.width)
+            val bottom = (plan.cropRect.bottom * sourceBitmap.height).toInt().coerceIn(0, sourceBitmap.height)
+            val width = (right - left).coerceAtLeast(1)
+            val height = (bottom - top).coerceAtLeast(1)
+
+            // Only crop if it's smaller than the full image
+            if (width < sourceBitmap.width || height < sourceBitmap.height) {
+                cropped = Bitmap.createBitmap(sourceBitmap, left, top, width, height)
+            }
+        }
+        val sourceForRotation = cropped ?: sourceBitmap
+
         val matrix = Matrix().apply {
             postRotate(plan.rotationDegrees)
         }
@@ -165,10 +184,10 @@ object ImageEditorUtils {
         try {
             rotated = if (plan.rotationDegrees != 0f) {
                 Bitmap.createBitmap(
-                    sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true
+                    sourceForRotation, 0, 0, sourceForRotation.width, sourceForRotation.height, matrix, true
                 )
             } else {
-                sourceBitmap
+                sourceForRotation
             }
 
             coroutineContext.ensureActive()
@@ -201,8 +220,11 @@ object ImageEditorUtils {
         } catch (e: CancellationException) {
             throw e
         } finally {
-            if (rotated != null && rotated !== sourceBitmap && !rotated.isRecycled) {
+            if (rotated != null && rotated !== sourceBitmap && rotated !== cropped && !rotated.isRecycled) {
                 rotated.recycle()
+            }
+            if (cropped != null && cropped !== sourceBitmap && !cropped.isRecycled) {
+                cropped.recycle()
             }
         }
     }

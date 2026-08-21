@@ -71,4 +71,8 @@
     <string name="permission_denied">Media permission denied.</string>
     <string name="move_completed">Move completed successfully.</string>
     <string name="move_partial_copied">Source items retained because deletion was cancelled.</string>
+    <string name="crop">Crop</string>
+    <string name="crop_original">Original</string>
+    <string name="crop_square">Square</string>
+    <string name="crop_free">Free</string>
 </resources>
