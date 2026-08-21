@@ -58,17 +58,7 @@ object ImageEditorUtils {
                 BitmapFactory.decodeStream(stream, null, options)
             } ?: return@withContext null
 
-            val exifDegrees = getExifOrientationDegrees(context, uri)
-            if (exifDegrees != 0) {
-                val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
-                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-                if (rotated != bitmap) {
-                    bitmap.recycle()
-                }
-                rotated
-            } else {
-                bitmap
-            }
+            rotateBitmapIfNeeded(context, uri, bitmap)
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
@@ -100,17 +90,7 @@ object ImageEditorUtils {
                 BitmapFactory.decodeStream(stream, null, options)
             } ?: return@withContext null
 
-            val exifDegrees = getExifOrientationDegrees(context, uri)
-            if (exifDegrees != 0) {
-                val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
-                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-                if (rotated != bitmap) {
-                    bitmap.recycle()
-                }
-                rotated
-            } else {
-                bitmap
-            }
+            rotateBitmapIfNeeded(context, uri, bitmap)
         } catch (e: CancellationException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -190,7 +170,7 @@ object ImageEditorUtils {
 
             coroutineContext.ensureActive()
 
-            val result = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
+            val result = androidx.core.graphics.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
             val paint = Paint().apply {
                 colorFilter = ColorMatrixColorFilter(cm)
@@ -494,5 +474,19 @@ object ImageEditorUtils {
         } catch (e: IllegalStateException) {
             0
         }
+    }
+
+
+    private fun rotateBitmapIfNeeded(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+        val exifDegrees = getExifOrientationDegrees(context, uri)
+        if (exifDegrees != 0) {
+            val matrix = Matrix().apply { postRotate(exifDegrees.toFloat()) }
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotated != bitmap) {
+                bitmap.recycle()
+            }
+            return rotated
+        }
+        return bitmap
     }
 }

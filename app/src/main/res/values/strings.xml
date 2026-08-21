@@ -3,7 +3,7 @@
     <string name="tab_all_media">All Media</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_favorites">Favorites</string>
-    <string name="search_hint">Search media...</string>
+    <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
     <string name="delete_confirm_message">Are you sure you want to delete %1$d selected items?</string>
     <string name="delete_single_confirm_message">Are you sure you want to delete this item?</string>
