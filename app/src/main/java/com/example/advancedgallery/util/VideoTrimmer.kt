@@ -90,13 +90,12 @@ object VideoTrimmer {
                 val dstTrackIndex = trackMap[trackIndex]
                 if (dstTrackIndex != null) {
                     val firstSampleTimeUs = firstSampleTimeUsMap.getOrPut(trackIndex) { presentationTimeUs }
-                    val normalizedUs = maxOf(0L, presentationTimeUs - firstSampleTimeUs)
                     if (baseTimeUs == null) {
                         baseTimeUs = presentationTimeUs
                     }
                     val normalizedUs = maxOf(0L, presentationTimeUs - baseTimeUs)
                     bufferInfo.presentationTimeUs = normalizedUs
-                    bufferInfo.flags = extractor.sampleFlags
+                    bufferInfo.flags = if (extractor.sampleFlags and android.media.MediaExtractor.SAMPLE_FLAG_SYNC != 0) android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
                     muxer.writeSampleData(dstTrackIndex, buffer, bufferInfo)
                 }
                 extractor.advance()

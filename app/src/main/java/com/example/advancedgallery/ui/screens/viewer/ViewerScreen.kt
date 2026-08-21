@@ -303,6 +303,7 @@ fun ViewerScreen(
     ) { padding ->
         Box(
             modifier = Modifier
+                .padding(padding)
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
