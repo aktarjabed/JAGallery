@@ -14,6 +14,9 @@ JAGallery is a modern, high-performance Android gallery application built with J
   - **Metadata Info Sheet**: Displays file details including file name, MIME type, date added, album name, and Uri.
   - **Single & Batch Sharing**: Native Android sharing integration for single or multiple selected media files.
 - **Search & Filtering**: Search media files by name in real-time.
+- **Image Editing**: Basic image editor supporting cropping operations.
+- **Trash Management**: View deleted media and empty trash to permanently delete items.
+- **Hidden Media**: Hide sensitive media files and view or unhide them in a dedicated section.
 - **MediaStore & Deletion Handling**:
   - Uses `MediaStore.createDeleteRequest` for scoped storage on API 30+ / Android 11+.
   - Direct ContentResolver deletion fallback for API < 30.
