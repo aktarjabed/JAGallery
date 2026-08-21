@@ -32,7 +32,7 @@ interface MediaOperations {
     suspend fun unhideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit>
     suspend fun removeDeletedItems(deletedIds: List<String>): OperationResult<Unit>
     suspend fun copyMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
-    suspend fun moveMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
+    suspend fun moveMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): MoveOperationResult
     suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, targetAlbumName: String): MoveOperationResult
 }
 
@@ -153,6 +153,8 @@ class MediaOperationsImpl @Inject constructor(
         context: android.content.Context,
         sourceItem: MediaItem,
         targetAlbumName: String
+    ): MoveOperationResult {
+        return moveMediaBatch(context, listOf(sourceItem), targetAlbumName)
     ): OperationResult<android.net.Uri> {
         return try {
             val result = moveMediaBatch(context, listOf(sourceItem), targetAlbumName)
@@ -192,13 +194,7 @@ class MediaOperationsImpl @Inject constructor(
             if (pendingIntent != null) {
                 MoveOperationResult.RequestSourceDelete(successfulCopies, pendingIntent)
             } else {
-                val success = com.example.advancedgallery.util.FileUtils.deleteMediaItems(context.contentResolver, sourceUris)
-                if (success) {
-                    repository.removeDeletedItems(successfulCopies.map { it.first.id })
-                    MoveOperationResult.Success(successfulCopies)
-                } else {
-                    MoveOperationResult.CopiedSourceRetained(successfulCopies)
-                }
+                MoveOperationResult.CopiedSourceRetained(successfulCopies)
             }
         } catch (e: CancellationException) {
             throw e

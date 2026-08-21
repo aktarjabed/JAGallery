@@ -106,6 +106,8 @@ fun MediaSelectionHandler(
         val state = restoreState
         if (state is DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val selected = items.filter { state.batch.ids.contains(it.id) }
+                onRestoreSelected?.invoke(selected)
                 val restored = items.filter { state.batch.ids.contains(it.id) }
                 if (restored.isNotEmpty()) {
                     onRestoreSelected?.invoke(restored)
