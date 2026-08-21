@@ -71,12 +71,17 @@ class ViewerViewModel @Inject constructor(
     val state: StateFlow<ViewerState> = combine(
         repository.mediaLoadResult,
         repository.hiddenMediaLoadResult,
+        repository.trashedMediaLoadResult,
         _source
-    ) { normalResult, hiddenResult, currentSource ->
+    ) { normalResult, hiddenResult, trashedResult, currentSource ->
         if (currentSource == null) {
             return@combine ViewerState.Empty
         }
-        val targetResult = if (currentSource is MediaSource.Hidden) hiddenResult else normalResult
+        val targetResult = when (currentSource) {
+            is MediaSource.Hidden -> hiddenResult
+            is MediaSource.Trash -> trashedResult
+            else -> normalResult
+        }
         when (targetResult) {
             is MediaLoadResult.Loading -> ViewerState.Loading
             is MediaLoadResult.Error -> ViewerState.Error(targetResult.cause)
@@ -96,7 +101,7 @@ class ViewerViewModel @Inject constructor(
                         items.filter { it.albumKey == currentSource.albumKey }
                     }
                     is MediaSource.All -> items
-                    is MediaSource.Trash -> items.filter { it.isTrashed }
+                    is MediaSource.Trash -> items
                     is MediaSource.Hidden -> items
                 }
 
@@ -114,6 +119,12 @@ class ViewerViewModel @Inject constructor(
             Log.w(TAG, "Invalid navigation route parameters: sourceStr=$sourceStr, volumeName=$volumeName, bucketId=$bucketId, searchQuery=$searchQuery")
             viewModelScope.launch {
                 _navigationEvent.emit(ViewerNavigationEvent.PopBack)
+            }
+        }
+
+        if (initialSource is MediaSource.Trash) {
+            viewModelScope.launch {
+                repository.loadTrashedMedia()
             }
         }
 

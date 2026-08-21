@@ -158,8 +158,14 @@ class MediaOperationsImpl @Inject constructor(
             val result = moveMediaBatch(context, listOf(sourceItem), targetAlbumName)
             when (result) {
                 is MoveOperationResult.Success -> OperationResult.Success(result.movedItems.first().second)
-                is MoveOperationResult.RequestSourceDelete -> OperationResult.Success(result.successfulCopies.first().second)
-                is MoveOperationResult.CopiedSourceRetained -> OperationResult.Success(result.copiedItems.first().second)
+                is MoveOperationResult.RequestSourceDelete -> OperationResult.Error(
+                    Exception("Source deletion confirmation required"),
+                    "Source deletion confirmation required"
+                )
+                is MoveOperationResult.CopiedSourceRetained -> OperationResult.Error(
+                    Exception("Copied to album, but source retained"),
+                    "Copied to album, but source retained"
+                )
                 is MoveOperationResult.Error -> OperationResult.Error(Exception(result.message), result.message)
             }
         } catch (e: CancellationException) {
@@ -182,7 +188,6 @@ class MediaOperationsImpl @Inject constructor(
 
             val sourceUris = successfulCopies.map { it.first.uri }
             val pendingIntent = com.example.advancedgallery.util.FileUtils.createDeleteRequest(context.contentResolver, sourceUris)
-                ?: com.example.advancedgallery.util.FileUtils.createTrashRequest(context.contentResolver, sourceUris, true)
 
             if (pendingIntent != null) {
                 MoveOperationResult.RequestSourceDelete(successfulCopies, pendingIntent)

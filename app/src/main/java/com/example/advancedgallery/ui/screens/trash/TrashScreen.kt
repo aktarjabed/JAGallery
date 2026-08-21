@@ -33,6 +33,10 @@ fun TrashScreen(
             viewModel.removeDeletedItems(deletedIds)
             viewModel.refreshAll(context)
         },
+        onRestoreSelected = { restoredItems ->
+            viewModel.removeDeletedItems(restoredItems.map { it.id })
+            viewModel.refreshAll(context)
+        },
         emptyIcon = Icons.Default.Delete,
         emptyMessage = stringResource(R.string.no_trash_found),
         topBar = {

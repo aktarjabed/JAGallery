@@ -106,6 +106,10 @@ fun MediaSelectionHandler(
         val state = restoreState
         if (state is DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val restored = items.filter { state.batch.ids.contains(it.id) }
+                if (restored.isNotEmpty()) {
+                    onRestoreSelected?.invoke(restored)
+                }
                 onRemoveDeletedItems(state.batch.ids)
                 selectionState.clearSelection()
             }
@@ -209,20 +213,23 @@ fun MediaSelectionHandler(
                     selectionState.clearSelection()
                 }
             },
-            onRestoreSelected = {
-                val selected = selectionState.getSelectedItems(items)
-                if (selected.isNotEmpty()) {
-                    val batch = PendingDeleteBatch(
-                        ids = selected.map { it.id },
-                        uris = selected.map { it.uri }
-                    )
-                    val pendingIntent = FileUtils.createTrashRequest(context.contentResolver, batch.uris, false)
-                    if (pendingIntent != null) {
-                        restoreState = DeleteOperationState.SystemConfirmation(batch)
-                        restoreLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
-                    } else {
-                        onRestoreSelected?.invoke(selected)
-                        selectionState.clearSelection()
+            onRestoreSelected = onRestoreSelected?.let { callback ->
+                {
+                    val selected = selectionState.getSelectedItems(items)
+                    if (selected.isNotEmpty()) {
+                        val batch = PendingDeleteBatch(
+                            ids = selected.map { it.id },
+                            uris = selected.map { it.uri }
+                        )
+                        val pendingIntent = FileUtils.createTrashRequest(context.contentResolver, batch.uris, false)
+                        if (pendingIntent != null) {
+                            restoreState = DeleteOperationState.SystemConfirmation(batch)
+                            restoreLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                        } else {
+                            callback(selected)
+                            onRemoveDeletedItems(batch.ids)
+                            selectionState.clearSelection()
+                        }
                     }
                 }
             },

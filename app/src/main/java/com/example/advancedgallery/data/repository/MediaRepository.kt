@@ -217,7 +217,8 @@ class MediaRepository @Inject constructor(
     suspend fun copyMediaToAlbum(
         context: Context,
         sourceItem: MediaItem,
-        targetAlbumName: String
+        targetAlbumName: String,
+        skipRescan: Boolean = false
     ): android.net.Uri? = withContext(ioDispatcher) {
         val resolver = context.contentResolver
         val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
@@ -266,7 +267,9 @@ class MediaRepository @Inject constructor(
                 try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
                 null
             } else {
-                loadMedia(force = true, context = context)
+                if (!skipRescan) {
+                    loadMedia(force = true, context = context)
+                }
                 newUri
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -289,10 +292,13 @@ class MediaRepository @Inject constructor(
     ): List<Pair<MediaItem, android.net.Uri>> = withContext(ioDispatcher) {
         val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
         for (item in sourceItems) {
-            val newUri = copyMediaToAlbum(context, item, targetAlbumName)
+            val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipRescan = true)
             if (newUri != null) {
                 successfulCopies.add(Pair(item, newUri))
             }
+        }
+        if (successfulCopies.isNotEmpty()) {
+            loadMedia(force = true, context = context)
         }
         successfulCopies
     }

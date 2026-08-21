@@ -75,7 +75,7 @@ object VideoTrimmer {
 
             val buffer = ByteBuffer.allocate(maxBufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
-            var firstSampleTimeUs: Long? = null
+            var baseTimeUs: Long? = null
 
             while (true) {
                 bufferInfo.offset = 0
@@ -88,10 +88,10 @@ object VideoTrimmer {
                 val trackIndex = extractor.sampleTrackIndex
                 val dstTrackIndex = trackMap[trackIndex]
                 if (dstTrackIndex != null) {
-                    if (firstSampleTimeUs == null) {
-                        firstSampleTimeUs = presentationTimeUs
+                    if (baseTimeUs == null) {
+                        baseTimeUs = presentationTimeUs
                     }
-                    val normalizedUs = maxOf(0L, presentationTimeUs - (firstSampleTimeUs ?: presentationTimeUs))
+                    val normalizedUs = maxOf(0L, presentationTimeUs - baseTimeUs)
                     bufferInfo.presentationTimeUs = normalizedUs
                     bufferInfo.flags = extractor.sampleFlags
                     muxer.writeSampleData(dstTrackIndex, buffer, bufferInfo)
