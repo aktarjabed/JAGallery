@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import androidx.core.content.edit
 import com.example.advancedgallery.data.model.MediaItem
 import com.example.advancedgallery.data.model.MediaLoadResult
 import kotlinx.coroutines.CoroutineDispatcher
@@ -33,10 +34,10 @@ object MediaStoreHelper {
 
     fun persistVolumeSyncInfo(context: Context, volumeName: String, version: String?, generation: Long) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(KEY_VERSION_PREFIX + volumeName, version)
-            .putLong(KEY_GENERATION_PREFIX + volumeName, generation)
-            .apply()
+        prefs.edit {
+            putString(KEY_VERSION_PREFIX + volumeName, version)
+            putLong(KEY_GENERATION_PREFIX + volumeName, generation)
+        }
     }
 
     suspend fun getMediaItemsResult(
