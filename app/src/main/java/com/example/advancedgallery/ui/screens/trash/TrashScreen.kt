@@ -65,19 +65,21 @@ fun TrashScreen(
                 TextButton(onClick = {
                     showEmptyTrashDialog = false
                     if (items.isNotEmpty()) {
+                        val chunkedItems = items.take(2000)
                         val batch = PendingDeleteBatch(
-                            ids = items.map { it.id },
-                            uris = items.map { it.uri }
+                            ids = chunkedItems.map { it.id },
+                            uris = chunkedItems.map { it.uri }
                         )
-                        val pendingIntent = FileUtils.createDeleteRequest(context.contentResolver, batch.uris)
-                        if (pendingIntent != null) {
+                        val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
+                        if (pendingIntents.isNotEmpty()) {
                             emptyTrashState = DeleteOperationState.SystemConfirmation(batch)
-                            deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                            deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntents.first().intentSender).build())
                         } else {
                             val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
                             if (success) {
                                 viewModel.removeDeletedItems(batch.ids)
-                                viewModel.refreshAll(context)
+                                // Only update local state. MediaStore observer will rescan and clean up.
+                                // refreshAll is not needed here and causes re-flash.
                             } else {
                                 Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
                             }
@@ -99,11 +101,11 @@ fun TrashScreen(
         loadResult = loadResult,
         onRemoveDeletedItems = { deletedIds ->
             viewModel.removeDeletedItems(deletedIds)
-            viewModel.refreshAll(context)
+            // No refreshAll here -- observer handles post-delete rescan
         },
         onRestoreSelected = { restoredItems ->
             viewModel.removeDeletedItems(restoredItems.map { it.id })
-            viewModel.refreshAll(context)
+            viewModel.refreshAll(context) // refresh needed on restore path
         },
         emptyIcon = Icons.Default.Delete,
         emptyMessage = stringResource(R.string.no_trash_found),

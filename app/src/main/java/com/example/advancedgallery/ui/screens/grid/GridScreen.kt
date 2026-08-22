@@ -85,6 +85,9 @@ fun GridScreen(
                 when (moveResult) {
                     is MoveOperationResult.RequestSourceDelete -> {
                         pendingMoveDeleteCopies = moveResult.successfulCopies
+                        if (moveResult.failedItems.isNotEmpty()) {
+                            Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
+                        }
                         if (moveResult.pendingIntent != null) {
                             moveDeleteLauncher.launch(IntentSenderRequest.Builder(moveResult.pendingIntent.intentSender).build())
                         } else {

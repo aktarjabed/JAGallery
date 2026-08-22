@@ -79,8 +79,16 @@ class MediaRepository @Inject constructor(
         val hiddenUris = hiddenMedia.map { it.uri }.toSet()
         when (result) {
             is MediaLoadResult.Success -> {
+                val liveUris = result.items.map { it.id }.toSet()
+                val staleHiddenUris = hiddenMedia
+                    .filter { !liveUris.contains(it.uri) }
+                    .map { it.uri }
+                if (staleHiddenUris.isNotEmpty()) {
+                    mediaDao.unhideMediaBatch(staleHiddenUris)
+                }
+
                 val hiddenItems = result.items
-                    .filter { hiddenUris.contains(it.id) }
+                    .filter { hiddenUris.contains(it.id) && !staleHiddenUris.contains(it.id) }
                     .map { item -> item.copy(isFavorite = favoriteUris.contains(item.id)) }
                 if (hiddenItems.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(hiddenItems)
             }
@@ -94,30 +102,26 @@ class MediaRepository @Inject constructor(
             val existingJob = activeScanJob
             if (existingJob != null) {
                 if (force) {
-                    if (!isCurrentScanForced) {
-                        pendingForcedScan = true
-                        pendingContext = context
-                    }
+                    pendingForcedScan = true
+                    pendingContext = context
                 }
                 existingJob
             } else {
                 if (force && (currentTime - lastRescanTimeMs < RESCAN_THROTTLE_MS)) {
                     // Throttle fast sequential jobs by firing a delayed job to catch up
                     isCurrentScanForced = force
-                    val delayedJob = repositoryScope.async {
+                    lateinit var delayedJob: Deferred<Unit>
+                    delayedJob = repositoryScope.async {
                         kotlinx.coroutines.delay(RESCAN_THROTTLE_MS - (currentTime - lastRescanTimeMs))
-                        lastRescanTimeMs = System.currentTimeMillis()
-                        executeScanLoop(initialForce = force, initialContext = context)
+                        executeScanLoop(delayedJob, initialForce = force, initialContext = context)
                     }
                     activeScanJob = delayedJob
                     delayedJob
                 } else {
-                    if (force) {
-                        lastRescanTimeMs = currentTime
-                    }
                     isCurrentScanForced = force
-                    val newJob = repositoryScope.async {
-                        executeScanLoop(initialForce = force, initialContext = context)
+                    lateinit var newJob: Deferred<Unit>
+                    newJob = repositoryScope.async {
+                        executeScanLoop(newJob, initialForce = force, initialContext = context)
                     }
                     activeScanJob = newJob
                     newJob
@@ -127,11 +131,14 @@ class MediaRepository @Inject constructor(
         jobToAwait.await()
     }
 
-    private suspend fun executeScanLoop(initialForce: Boolean, initialContext: Context?) {
+    private suspend fun executeScanLoop(thisJob: Deferred<Unit>?, initialForce: Boolean, initialContext: Context?) {
         var forceForCurrentPass = initialForce
         var contextForCurrentPass = initialContext
 
         while (true) {
+            if (forceForCurrentPass) {
+                lastRescanTimeMs = System.currentTimeMillis()
+            }
             val current = _mediaLoadResult.value
             val skip = !forceForCurrentPass && contextForCurrentPass != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(contextForCurrentPass)
             if (!skip) {
@@ -148,8 +155,10 @@ class MediaRepository @Inject constructor(
                     pendingContext = null
                     true
                 } else {
-                    activeScanJob = null
-                    isCurrentScanForced = false
+                    if (thisJob == null || activeScanJob === thisJob) {
+                        activeScanJob = null
+                        isCurrentScanForced = false
+                    }
                     false
                 }
             }
@@ -264,23 +273,13 @@ class MediaRepository @Inject constructor(
 
         var newUri: android.net.Uri? = null
         try {
-            newUri = resolver.insert(collection, contentValues) ?: return@withContext null
-            var success = false
-            resolver.openInputStream(sourceItem.uri)?.use { input ->
-                resolver.openOutputStream(newUri)?.use { output ->
-                    input.copyTo(output)
-                    success = true
-                }
-            }
+            newUri = com.example.advancedgallery.util.FileUtils.insertPendingMediaEntry(resolver, collection, contentValues) ?: return@withContext null
 
-            if (success && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
-                val updated = resolver.update(newUri, contentValues, null, null)
-                if (updated != 1) {
-                    try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
-                    return@withContext null
-                }
+            val success = com.example.advancedgallery.util.FileUtils.copyMediaFile(resolver, sourceItem.uri, newUri)
+
+            if (success && !com.example.advancedgallery.util.FileUtils.publishPendingEntry(resolver, newUri, contentValues)) {
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                return@withContext null
             }
 
             if (!success) {
@@ -309,17 +308,20 @@ class MediaRepository @Inject constructor(
         context: Context,
         sourceItems: List<MediaItem>,
         targetAlbumName: String
-    ): List<Pair<MediaItem, android.net.Uri>> = withContext(ioDispatcher) {
+    ): Pair<List<Pair<MediaItem, android.net.Uri>>, List<MediaItem>> = withContext(ioDispatcher) {
         val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+        val failedItems = mutableListOf<MediaItem>()
         for (item in sourceItems) {
             val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipRescan = true)
             if (newUri != null) {
                 successfulCopies.add(Pair(item, newUri))
+            } else {
+                failedItems.add(item)
             }
         }
         if (successfulCopies.isNotEmpty()) {
             loadMedia(force = true, context = context)
         }
-        successfulCopies
+        Pair(successfulCopies, failedItems)
     }
 }

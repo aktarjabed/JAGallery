@@ -58,14 +58,14 @@ fun MetadataBottomSheet(
         withContext(Dispatchers.IO) {
             try {
                 if (!mediaItem.isVideo) {
-                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    context.contentResolver.openInputStream(mediaItem.uri)?.use { stream ->
-                        BitmapFactory.decodeStream(stream, null, options)
-                        dimensions = "${options.outWidth} x ${options.outHeight}"
-                    }
-
                     context.contentResolver.openInputStream(mediaItem.uri)?.use { stream ->
                         val exif = ExifInterface(stream)
+                        val width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
+                        val height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0)
+                        if (width > 0 && height > 0) {
+                            dimensions = "$width x $height"
+                        }
+
                         exifDate = exif.getAttribute(ExifInterface.TAG_DATETIME)
                         val make = exif.getAttribute(ExifInterface.TAG_MAKE)
                         val model = exif.getAttribute(ExifInterface.TAG_MODEL)
@@ -118,20 +118,6 @@ fun MetadataBottomSheet(
             if (exifDate != null) MetadataRow(label = "EXIF Date", value = exifDate!!, copyable = true)
             if (exifModel != null) MetadataRow(label = "Camera Model", value = exifModel!!, copyable = true)
             if (location != null) MetadataRow(label = "Location", value = location!!, copyable = true)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedButton(
-                onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("Media URI", mediaItem.uri.toString())
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "Copied URI to clipboard", Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Copy URI / Path")
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

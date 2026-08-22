@@ -40,15 +40,19 @@ fun ImageViewer(
                 )
             }
             .pointerInput(uri) {
-                detectTransformGestures { _, pan, zoom, _ ->
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    val prevScale = scale
                     scale = (scale * zoom).coerceIn(1f, 5f)
+
+                    val centroidOffset = centroid - Offset(size.width / 2f, size.height / 2f)
+                    offset = offset + (centroidOffset * (1 - zoom)) + pan
+
                     val maxOffsetX = (size.width * (scale - 1)) / 2
                     val maxOffsetY = (size.height * (scale - 1)) / 2
 
-                    val newOffset = offset + pan
                     offset = Offset(
-                        newOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
-                        newOffset.y.coerceIn(-maxOffsetY, maxOffsetY)
+                        offset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                        offset.y.coerceIn(-maxOffsetY, maxOffsetY)
                     )
                 }
             }

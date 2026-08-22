@@ -252,8 +252,8 @@ class MediaRepositoryTest {
         job1.join()
         job2.join()
 
-        // 1 scan pass = 2 queries total
-        assertEquals(2, scanCount.get())
+        // 2 scan passes = 4 queries total (because R1 bug fix ensures second force always queues a scan)
+        assertEquals(4, scanCount.get())
     }
 
     @Test

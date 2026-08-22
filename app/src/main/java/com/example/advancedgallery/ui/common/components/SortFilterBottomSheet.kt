@@ -3,6 +3,8 @@ package com.example.advancedgallery.ui.common.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +36,10 @@ fun SortFilterBottomSheet(
     onApply: (SortOption, SortOrder, MediaTypeFilter) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var pendingSortOption by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(currentSortOption) }
+    var pendingSortOrder by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(currentSortOrder) }
+    var pendingFilter by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(currentFilter) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -59,13 +65,13 @@ fun SortFilterBottomSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onApply(option, currentSortOrder, currentFilter) }
+                        .clickable { pendingSortOption = option }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = currentSortOption == option,
-                        onClick = { onApply(option, currentSortOrder, currentFilter) }
+                        selected = pendingSortOption == option,
+                        onClick = { pendingSortOption = option }
                     )
                     Text(
                         text = option.name.lowercase().replaceFirstChar { it.uppercase() },
@@ -87,8 +93,8 @@ fun SortFilterBottomSheet(
             ) {
                 SortOrder.entries.forEach { order ->
                     FilterChip(
-                        selected = currentSortOrder == order,
-                        onClick = { onApply(currentSortOption, order, currentFilter) },
+                        selected = pendingSortOrder == order,
+                        onClick = { pendingSortOrder = order },
                         label = { Text(order.name.lowercase().replaceFirstChar { it.uppercase() }) }
                     )
                 }
@@ -107,8 +113,8 @@ fun SortFilterBottomSheet(
             ) {
                 MediaTypeFilter.entries.forEach { filter ->
                     FilterChip(
-                        selected = currentFilter == filter,
-                        onClick = { onApply(currentSortOption, currentSortOrder, filter) },
+                        selected = pendingFilter == filter,
+                        onClick = { pendingFilter = filter },
                         label = {
                             Text(
                                 when (filter) {
@@ -130,6 +136,12 @@ fun SortFilterBottomSheet(
             ) {
                 TextButton(onClick = onDismiss) {
                     Text("Close")
+                }
+                Spacer(modifier = Modifier.padding(8.dp))
+                androidx.compose.material3.Button(onClick = {
+                    onApply(pendingSortOption, pendingSortOrder, pendingFilter)
+                }) {
+                    Text("Apply")
                 }
             }
         }

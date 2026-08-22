@@ -62,6 +62,7 @@ fun ViewerScreen(
         viewModel.operationEvent.collect { event ->
             when (event) {
                 is OperationEvent.Error -> snackbarHostState.showSnackbar(event.message)
+                is OperationEvent.Success -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }

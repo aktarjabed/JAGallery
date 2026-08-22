@@ -67,16 +67,15 @@ fun MediaGrid(
                 val time = if (item.dateAdded > 10000000000L) item.dateAdded else item.dateAdded * 1000
                 val cal = Calendar.getInstance().apply { timeInMillis = time }
                 val now = Calendar.getInstance()
+                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
 
-                if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
-                    if (cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
-                        "Today"
-                    } else if (now.get(Calendar.DAY_OF_YEAR) - cal.get(Calendar.DAY_OF_YEAR) == 1) {
-                        "Yesterday"
-                    } else {
-                        val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale.getDefault())
-                        month ?: "Earlier"
-                    }
+                if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                    "Today"
+                } else if (cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)) {
+                    "Yesterday"
+                } else if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                    val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale.getDefault())
+                    month ?: "Earlier"
                 } else {
                     cal.get(Calendar.YEAR).toString()
                 }
