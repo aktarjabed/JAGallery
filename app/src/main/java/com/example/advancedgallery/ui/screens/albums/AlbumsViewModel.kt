@@ -74,6 +74,9 @@ class AlbumsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = mediaOperations.renameAlbum(context, items, newAlbumName)) {
                 is com.example.advancedgallery.domain.MoveOperationResult.RequestSourceDelete -> {
+                    if (result.failedItems.isNotEmpty()) {
+                        _operationErrors.emit("Failed to copy ${result.failedItems.size} items. Proceeding with deletion for successful ones.")
+                    }
                     _operationSuccess.emit("Album renaming copied items. Please confirm deletion of old items.")
                 }
                 is com.example.advancedgallery.domain.MoveOperationResult.Success -> {

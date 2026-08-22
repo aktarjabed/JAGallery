@@ -14,6 +14,7 @@ sealed interface OperationResult<out T> {
 sealed interface MoveOperationResult {
     data class RequestSourceDelete(
         val successfulCopies: List<Pair<MediaItem, android.net.Uri>>,
+        val failedItems: List<MediaItem>,
         val pendingIntent: android.app.PendingIntent?
     ) : MoveOperationResult
 
@@ -165,7 +166,7 @@ class MediaOperationsImpl @Inject constructor(
         targetAlbumName: String
     ): MoveOperationResult {
         return try {
-            val successfulCopies = repository.copyMediaBatchToAlbum(context, sourceItems, targetAlbumName)
+            val (successfulCopies, failedItems) = repository.copyMediaBatchToAlbum(context, sourceItems, targetAlbumName)
             if (successfulCopies.isEmpty()) {
                 return MoveOperationResult.Error("Failed to copy media items to target album")
             }
@@ -174,7 +175,7 @@ class MediaOperationsImpl @Inject constructor(
             val pendingIntent = com.example.advancedgallery.util.FileUtils.createDeleteRequest(context.contentResolver, sourceUris)
 
             if (pendingIntent != null) {
-                MoveOperationResult.RequestSourceDelete(successfulCopies, pendingIntent)
+                MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, pendingIntent)
             } else {
                 MoveOperationResult.CopiedSourceRetained(successfulCopies)
             }

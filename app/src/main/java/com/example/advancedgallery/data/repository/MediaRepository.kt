@@ -79,6 +79,14 @@ class MediaRepository @Inject constructor(
         val hiddenUris = hiddenMedia.map { it.uri }.toSet()
         when (result) {
             is MediaLoadResult.Success -> {
+                val liveUris = result.items.map { it.id }.toSet()
+                val staleHiddenUris = hiddenMedia
+                    .filter { !liveUris.contains(it.uri) }
+                    .map { it.uri }
+                if (staleHiddenUris.isNotEmpty()) {
+                    mediaDao.unhideMediaBatch(staleHiddenUris)
+                }
+
                 val hiddenItems = result.items
                     .filter { hiddenUris.contains(it.id) }
                     .map { item -> item.copy(isFavorite = favoriteUris.contains(item.id)) }
@@ -309,17 +317,20 @@ class MediaRepository @Inject constructor(
         context: Context,
         sourceItems: List<MediaItem>,
         targetAlbumName: String
-    ): List<Pair<MediaItem, android.net.Uri>> = withContext(ioDispatcher) {
+    ): Pair<List<Pair<MediaItem, android.net.Uri>>, List<MediaItem>> = withContext(ioDispatcher) {
         val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+        val failedItems = mutableListOf<MediaItem>()
         for (item in sourceItems) {
             val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipRescan = true)
             if (newUri != null) {
                 successfulCopies.add(Pair(item, newUri))
+            } else {
+                failedItems.add(item)
             }
         }
         if (successfulCopies.isNotEmpty()) {
             loadMedia(force = true, context = context)
         }
-        successfulCopies
+        Pair(successfulCopies, failedItems)
     }
 }

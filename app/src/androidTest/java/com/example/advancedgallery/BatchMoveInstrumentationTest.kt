@@ -93,6 +93,7 @@ class BatchMoveInstrumentationTest {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             assertTrue("Move operation must return RequestSourceDelete on API 30+", result is MoveOperationResult.RequestSourceDelete)
             val req = result as MoveOperationResult.RequestSourceDelete
+            assertTrue("Failed items should be empty", req.failedItems.isEmpty())
             assertEquals(1, req.successfulCopies.size)
             val destinationUri = req.successfulCopies.first().second
             createdUris.add(destinationUri)

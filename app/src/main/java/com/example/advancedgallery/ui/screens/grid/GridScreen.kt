@@ -19,7 +19,7 @@ import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.domain.MoveOperationResult
 import com.example.advancedgallery.ui.common.components.MediaCollectionContent
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import com.example.advancedgallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
@@ -84,6 +84,9 @@ fun GridScreen(
                 val moveResult = viewModel.moveMediaBatch(context, items, targetAlbum)
                 when (moveResult) {
                     is MoveOperationResult.RequestSourceDelete -> {
+                        if (moveResult.failedItems.isNotEmpty()) {
+                            Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
+                        }
                         pendingMoveDeleteCopies = moveResult.successfulCopies
                         if (moveResult.pendingIntent != null) {
                             moveDeleteLauncher.launch(IntentSenderRequest.Builder(moveResult.pendingIntent.intentSender).build())
@@ -115,7 +118,7 @@ fun GridScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSortFilterSheet = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort and Filter")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort and Filter")
                     }
                 },
                 navigationIcon = {
