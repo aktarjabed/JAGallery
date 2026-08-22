@@ -341,9 +341,6 @@ object ImageEditorUtils {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "EDIT_${System.currentTimeMillis()}.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
         }
 
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && sourceUri != null) {
@@ -362,7 +359,7 @@ object ImageEditorUtils {
         var newUri: Uri? = null
 
         try {
-            newUri = resolver.insert(collection, contentValues)
+            newUri = FileUtils.insertPendingMediaEntry(resolver, collection, contentValues)
             if (newUri == null) return@withContext null
 
             var success = false
@@ -378,18 +375,9 @@ object ImageEditorUtils {
                 }
             }
 
-            if (success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                val updatedRows = resolver.update(newUri, contentValues, null, null)
-                if (updatedRows != 1) {
-                    try {
-                        resolver.delete(newUri, null, null)
-                    } catch (e: Exception) {
-                        // ignore
-                    }
-                    return@withContext null
-                }
+            if (success && !FileUtils.publishPendingEntry(resolver, newUri, contentValues)) {
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                return@withContext null
             }
 
             if (!success) {

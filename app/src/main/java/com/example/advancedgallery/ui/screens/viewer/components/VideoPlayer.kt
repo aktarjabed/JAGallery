@@ -31,12 +31,14 @@ fun VideoPlayer(
     val exoPlayer = remember(uri) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(uri))
-            prepare()
         }
     }
 
     LaunchedEffect(isPageVisible) {
         if (isPageVisible) {
+            if (exoPlayer.playbackState == androidx.media3.common.Player.STATE_IDLE) {
+                exoPlayer.prepare()
+            }
             exoPlayer.play()
         } else {
             exoPlayer.pause()

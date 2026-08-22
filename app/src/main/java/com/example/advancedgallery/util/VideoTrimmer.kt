@@ -75,9 +75,30 @@ object VideoTrimmer {
 
             val buffer = ByteBuffer.allocate(maxBufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
-            val firstSampleTimeUsMap = HashMap<Int, Long>()
-            var baseTimeUs: Long? = null
 
+            // Pass 1: Probe true first timestamps
+            val firstSampleTimeUsMap = HashMap<Int, Long>()
+            while (true) {
+                val size = extractor.readSampleData(buffer, 0)
+                if (size < 0) break
+                val presentationTimeUs = extractor.sampleTime
+                if (presentationTimeUs > endUs) break
+                val trackIndex = extractor.sampleTrackIndex
+                if (trackMap.containsKey(trackIndex) && !firstSampleTimeUsMap.containsKey(trackIndex)) {
+                    firstSampleTimeUsMap[trackIndex] = presentationTimeUs
+                }
+                if (firstSampleTimeUsMap.size == trackMap.size) break
+                extractor.advance()
+            }
+
+            val baseTimeUs = if (firstSampleTimeUsMap.isNotEmpty()) {
+                firstSampleTimeUsMap.values.minOrNull() ?: 0L
+            } else {
+                0L
+            }
+
+            // Pass 2: Mux using baseTimeUs
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
             while (true) {
                 bufferInfo.offset = 0
                 bufferInfo.size = extractor.readSampleData(buffer, 0)
@@ -89,10 +110,6 @@ object VideoTrimmer {
                 val trackIndex = extractor.sampleTrackIndex
                 val dstTrackIndex = trackMap[trackIndex]
                 if (dstTrackIndex != null) {
-                    val firstSampleTimeUs = firstSampleTimeUsMap.getOrPut(trackIndex) { presentationTimeUs }
-                    if (baseTimeUs == null) {
-                        baseTimeUs = presentationTimeUs
-                    }
                     val normalizedUs = maxOf(0L, presentationTimeUs - baseTimeUs)
                     bufferInfo.presentationTimeUs = normalizedUs
                     bufferInfo.flags = if (extractor.sampleFlags and android.media.MediaExtractor.SAMPLE_FLAG_SYNC != 0) android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
@@ -137,26 +154,30 @@ object VideoTrimmer {
             val contentValues = android.content.ContentValues().apply {
                 put(MediaStore.Video.Media.DISPLAY_NAME, "TRIM_${System.currentTimeMillis()}.mp4")
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Video.Media.IS_PENDING, 1)
-                }
             }
 
-            newUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+            newUri = FileUtils.insertPendingMediaEntry(resolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
             if (newUri != null) {
                 var success = false
-                FileInputStream(tempFile).use { input ->
-                    resolver.openOutputStream(newUri)?.use { output ->
-                        input.copyTo(output)
-                        success = true
+                try {
+                    FileInputStream(tempFile).use { input ->
+                        resolver.openOutputStream(newUri!!)?.use { output ->
+                            val buffer = ByteArray(64 * 1024)
+                            var bytesRead: Int = 0
+                            while (input.read(buffer).also { bytesRead = it } >= 0) {
+                                output.write(buffer, 0, bytesRead)
+                            }
+                            output.flush()
+                            success = true
+                        }
                     }
+                } catch (e: Exception) {
+                    success = false
                 }
 
-                if (success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Video.Media.IS_PENDING, 0)
-                    resolver.update(newUri, contentValues, null, null)
-                } else if (!success) {
+                if (success) {
+                    FileUtils.publishPendingEntry(resolver, newUri, contentValues)
+                } else {
                     try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
                     newUri = null
                 }

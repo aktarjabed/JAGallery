@@ -14,6 +14,7 @@ sealed interface OperationResult<out T> {
 sealed interface MoveOperationResult {
     data class RequestSourceDelete(
         val successfulCopies: List<Pair<MediaItem, android.net.Uri>>,
+        val failedItems: List<MediaItem>,
         val pendingIntent: android.app.PendingIntent?
     ) : MoveOperationResult
 
@@ -165,16 +166,16 @@ class MediaOperationsImpl @Inject constructor(
         targetAlbumName: String
     ): MoveOperationResult {
         return try {
-            val successfulCopies = repository.copyMediaBatchToAlbum(context, sourceItems, targetAlbumName)
+            val (successfulCopies, failedItems) = repository.copyMediaBatchToAlbum(context, sourceItems, targetAlbumName)
             if (successfulCopies.isEmpty()) {
-                return MoveOperationResult.Error("Failed to copy media items to target album")
+                return MoveOperationResult.Error("All items failed to copy")
             }
 
             val sourceUris = successfulCopies.map { it.first.uri }
             val pendingIntent = com.example.advancedgallery.util.FileUtils.createDeleteRequest(context.contentResolver, sourceUris)
 
             if (pendingIntent != null) {
-                MoveOperationResult.RequestSourceDelete(successfulCopies, pendingIntent)
+                MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, pendingIntent)
             } else {
                 MoveOperationResult.CopiedSourceRetained(successfulCopies)
             }
@@ -194,17 +195,10 @@ class MediaOperationsImpl @Inject constructor(
             val resolver = context.contentResolver
             val values = android.content.ContentValues().apply {
                 put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, newName)
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
-                }
             }
 
             val updated = resolver.update(item.uri, values, null, null)
             if (updated > 0) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    val pubValues = android.content.ContentValues().apply { put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0) }
-                    resolver.update(item.uri, pubValues, null, null)
-                }
                 repository.loadMedia(force = true, context = context)
                 OperationResult.Success(item.uri)
             } else {

@@ -181,7 +181,9 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             brightness = _brightness.value,
             contrast = _contrast.value,
             saturation = _saturation.value,
-            cropRect = _cropRect.value
+            cropRect = _cropRect.value,
+            flipHorizontal = _flipHorizontal.value,
+            flipVertical = _flipVertical.value
         )
 
         viewModelScope.launch {

@@ -53,16 +53,49 @@ fun AlbumsScreen(
     var albumToRename by remember { mutableStateOf<com.example.advancedgallery.data.model.Album?>(null) }
 
     LaunchedEffect(Unit) {
-        viewModel.operationErrors.collect { error ->
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+        viewModel.operationEvent.collect { event ->
+            when (event) {
+                is com.example.advancedgallery.ui.common.OperationEvent.Error -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is com.example.advancedgallery.ui.common.OperationEvent.Success -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
+    var pendingDeletedUris by remember { mutableStateOf<List<String>?>(null) }
+
     LaunchedEffect(Unit) {
-        viewModel.operationSuccess.collect { msg ->
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        viewModel.pendingDeletedUris.collect { uris ->
+            pendingDeletedUris = uris
         }
     }
+
+    val deleteLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val uris = pendingDeletedUris
+            if (uris != null) {
+                viewModel.removeDeletedItems(uris)
+            }
+            Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+        }
+        pendingDeletedUris = null
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.pendingAlbumRenameDelete.collect { pendingIntent ->
+            if (pendingIntent != null) {
+                deleteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+            }
+        }
+    }
+
     var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(

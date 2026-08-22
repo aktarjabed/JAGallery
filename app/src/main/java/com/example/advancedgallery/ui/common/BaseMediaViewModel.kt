@@ -12,16 +12,17 @@ import kotlinx.coroutines.launch
 
 sealed interface OperationEvent {
     data class Error(val message: String) : OperationEvent
+    data class Success(val message: String) : OperationEvent
 }
 
 abstract class BaseMediaViewModel(
     protected val mediaOperations: MediaOperations
 ) : ViewModel() {
 
-    private val _operationEvent = MutableSharedFlow<OperationEvent>()
+    protected val _operationEvent = MutableSharedFlow<OperationEvent>()
     val operationEvent: SharedFlow<OperationEvent> = _operationEvent.asSharedFlow()
 
-    fun removeDeletedItems(deletedIds: List<String>) {
+    open fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
             when (val result = mediaOperations.removeDeletedItems(deletedIds)) {
                 is OperationResult.Error -> {
@@ -32,20 +33,14 @@ abstract class BaseMediaViewModel(
         }
     }
 
-        protected val _operationErrors = MutableSharedFlow<String>()
-    val operationErrors = _operationErrors.asSharedFlow()
-
-    protected val _operationSuccess = MutableSharedFlow<String>()
-    val operationSuccess = _operationSuccess.asSharedFlow()
-
     fun renameMedia(context: android.content.Context, item: com.example.advancedgallery.data.model.MediaItem, newName: String) {
         viewModelScope.launch {
             when (val result = mediaOperations.renameMedia(context, item, newName)) {
                 is com.example.advancedgallery.domain.OperationResult.Success -> {
-                    _operationSuccess.emit("Media renamed successfully.")
+                    _operationEvent.emit(OperationEvent.Success("Media renamed successfully."))
                 }
                 is com.example.advancedgallery.domain.OperationResult.Error -> {
-                    _operationErrors.emit("Failed to rename media: ${result.message}")
+                    _operationEvent.emit(OperationEvent.Error("Failed to rename media: ${result.message}"))
                 }
             }
         }

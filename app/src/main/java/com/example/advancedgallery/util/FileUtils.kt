@@ -26,6 +26,20 @@ object FileUtils {
         }
     }
 
+    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): List<PendingIntent> {
+        if (uris.isEmpty()) return emptyList()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
+
+        return uris.chunked(MAX_BATCH_SIZE).mapNotNull { chunk ->
+            try {
+                MediaStore.createDeleteRequest(contentResolver, chunk)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create delete request for chunk", e)
+                null
+            }
+        }
+    }
+
     fun createTrashRequest(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): PendingIntent? {
         if (uris.isEmpty()) return null
         val batchedUris = uris.take(MAX_BATCH_SIZE)
@@ -76,5 +90,40 @@ object FileUtils {
             Log.e(TAG, "Failed to copy media file from $sourceUri to $destUri", e)
             false
         }
+    }
+
+    fun insertPendingMediaEntry(
+        contentResolver: ContentResolver,
+        collection: Uri,
+        contentValues: android.content.ContentValues
+    ): Uri? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        return try {
+            contentResolver.insert(collection, contentValues)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to insert pending media entry", e)
+            null
+        }
+    }
+
+    fun publishPendingEntry(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        contentValues: android.content.ContentValues
+    ): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentValues.clear()
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            return try {
+                val updated = contentResolver.update(uri, contentValues, null, null)
+                updated == 1
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to publish pending entry", e)
+                false
+            }
+        }
+        return true // No IS_PENDING before API 29
     }
 }
