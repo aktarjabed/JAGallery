@@ -57,4 +57,24 @@ object FileUtils {
         }
         return success
     }
+
+    fun copyMediaFile(contentResolver: ContentResolver, sourceUri: Uri, destUri: Uri): Boolean {
+        return try {
+            contentResolver.openInputStream(sourceUri)?.use { input ->
+                contentResolver.openOutputStream(destUri)?.use { output ->
+                    // Use a 64KB buffer for faster copying of large media files
+                    val buffer = ByteArray(64 * 1024)
+                    var bytesRead: Int = 0
+                    while (input.read(buffer).also { bytesRead = it } >= 0) {
+                        output.write(buffer, 0, bytesRead)
+                    }
+                    output.flush()
+                    true
+                }
+            } ?: false
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy media file from $sourceUri to $destUri", e)
+            false
+        }
+    }
 }
