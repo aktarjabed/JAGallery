@@ -1,0 +1,141 @@
+# Implementation Matrix
+
+## Core Gallery
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Gallery/Grid | ✅ Implemented | Core grid/gallery works | |
+| Image/Video Viewer | ✅ Implemented | Image viewer + Media3 video playback | |
+| Multi-selection | ✅ Implemented | Shared selection architecture | |
+| Metadata | ✅ Implemented | Metadata bottom sheet | Complete metadata/EXIF presentation |
+| Slideshow | ❌ Missing | | |
+| Set wallpaper | ❌ Missing | | |
+| Open With | ❌ Missing | | |
+
+## Storage/MediaStore
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Room persistence | ✅ Implemented | Auxiliary state, not a complete MediaStore metadata cache | |
+| Multi-volume MediaStore | ✅ Implemented | Volume-aware querying/observation | |
+| Copy | ✅ Implemented | MediaStore destination creation | Complete Copy UX |
+| Move | ⚠️ Partial | Copy + source deletion request; not atomic | Complete Move UX |
+| Batch rollback | ❌ Missing | No transactional rollback | |
+| Trash | ✅ Implemented | MediaStore trash/restore integration | Robust Trash UX |
+| Restore | ✅ Implemented | MediaStore trashed-item query/restore flow | Robust Restore UX |
+| Rename individual media | ❌ Missing | | |
+| External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
+
+## Organization
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Albums | ✅ Implemented | MediaStore/folder-based albums | |
+| Sort/Filter | ✅ Implemented | Bottom-sheet based | Images/Videos filtering and sorting |
+| Create album | ✅ Implemented | Available through MediaStore folder creation | |
+| Rename album | ⚠️ Partial | Verify UI workflow | Rename/create/manage albums |
+| Timeline/date grouping | ❌ Missing | | |
+| Favorites persistence | ✅ Implemented | | |
+
+## Editing
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Basic image editing | ⚠️ Partial | Rotate/brightness/contrast/saturation; not a full editor | Advanced editor controls |
+| Advanced photo editor | ❌ Missing | Crop/advanced tools absent | |
+| Crop | ❌ Missing | | |
+| Flip horizontal/vertical | ❌ Missing | | |
+| GIF-specific editing | ❌ Missing | | |
+| Advanced EXIF editor | ❌ Missing | | |
+
+## Video
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Video trimming | ✅ Implemented | Dedicated trimming/export pipeline | |
+| Video trim UI | ⚠️ Partial | Utility exists | Complete user workflow should be verified |
+| Video mute | ❌ Missing | | |
+| Video frame extraction | ❌ Missing | | |
+
+## Privacy
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Android 14 permissions | ✅ Implemented | Full/selected/type-specific handling | |
+| Hide/unhide | ⚠️ Partial | UI-level hiding only | |
+| Hidden album UI | ⚠️ Partial | Hide state exists | Secure locking missing |
+| Secure vault | ❌ Missing | Media remains in public MediaStore | |
+| Biometric lock / unlock | ❌ Missing | No authentication layer | |
+
+## Search/Discovery
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| Filename search | ✅ Implemented | Debounced in-memory filtering | |
+| FTS | ❌ Missing | No Room FTS | |
+| GPS/map view | ❌ Missing | | |
+| OCR-based search | ❌ Missing | | |
+
+## Advanced Processing
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| SHA-256 duplicates | ⚠️ Partial | Exact duplicate utility exists | |
+| Duplicate review UI | ❌ Missing | No complete user workflow | |
+| Persistent hash cache | ❌ Missing | Hashes aren't persisted | |
+| Perceptual similarity | ❌ Missing | No pHash/visual similarity | |
+| Cloud-aware albums | ❌ Missing | No cloud/custom-album synchronization | |
+| Duplicate cleaner | ❌ Missing | | |
+| Motion/Live Photo | ❌ Missing | | |
+| People/face grouping | ❌ Missing | | |
+
+## Build/Testing
+
+| Feature | Status | Actual Implementation | Remaining Work |
+|---------|--------|-----------------------|----------------|
+| R8/release hardening | ✅ Implemented | Configured | Release runtime still needs device validation |
+
+---
+
+## Architectural Distinction
+
+JAGallery should currently be classified as:
+
+> A modern MediaStore-based gallery and media organizer with Room-backed auxiliary state, multi-volume support, basic image editing, video trimming, system trash, copy/move, and exact duplicate-detection infrastructure.
+
+It is not yet:
+- a secure vault;
+- a Google Photos-class intelligent gallery;
+- an FTS search engine;
+- a complete professional photo editor;
+- a complete duplicate-cleaner application;
+- a cloud-backed gallery.
+
+## Recommended Roadmap
+
+### Phase 1 — essential gallery completion
+1. Rename media.
+2. Rename/create/manage albums.
+3. Crop + flip.
+4. Timeline/date grouping.
+5. Complete Move/Copy UX.
+6. Complete metadata/EXIF presentation.
+7. Robust Trash/Restore UX.
+8. Images/Videos filtering and sorting.
+
+### Phase 2 — advanced gallery
+1. Secure hidden vault + BiometricPrompt.
+2. Duplicate review/cleanup.
+3. Persistent hash cache.
+4. Slideshow.
+5. Video trimming UI improvements.
+6. Open With.
+7. Set Wallpaper.
+8. Advanced editor controls.
+
+### Phase 3 — intelligence
+1. Perceptual duplicate/similar-image detection.
+2. OCR-based search.
+3. People/face grouping.
+4. Location/map organization.
+5. Cloud/backup integration.

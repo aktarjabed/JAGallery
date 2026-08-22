@@ -2,6 +2,8 @@
 
 JAGallery is a modern, high-performance Android gallery application built with Jetpack Compose, Kotlin Coroutines & Flow, Material 3, Room, and Hilt.
 
+[Implementation Status → IMPLEMENTATION_MATRIX.md](IMPLEMENTATION_MATRIX.md)
+
 ## Key Features
 
 - **Album View**: Displays media grouped by folders/albums with item counts and cover thumbnails.
