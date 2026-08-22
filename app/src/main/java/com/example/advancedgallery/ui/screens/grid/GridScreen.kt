@@ -19,7 +19,7 @@ import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.domain.MoveOperationResult
 import com.example.advancedgallery.ui.common.components.MediaCollectionContent
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import com.example.advancedgallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
@@ -115,7 +115,7 @@ fun GridScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSortFilterSheet = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort and Filter")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort and Filter")
                     }
                 },
                 navigationIcon = {
