@@ -11,8 +11,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
+import com.example.advancedgallery.ui.common.components.MediaTypeFilter
+import com.example.advancedgallery.ui.common.components.SortOption
+import com.example.advancedgallery.ui.common.components.SortOrder
+
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,16 +36,59 @@ class GridViewModel @Inject constructor(
         MediaSource.All
     }
 
+
+    private val _sortOption = MutableStateFlow(SortOption.DATE)
+    val sortOption: StateFlow<SortOption> = _sortOption
+
+    private val _sortOrder = MutableStateFlow(SortOrder.DESCENDING)
+    val sortOrder: StateFlow<SortOrder> = _sortOrder
+
+    private val _mediaFilter = MutableStateFlow(MediaTypeFilter.ALL)
+    val mediaFilter: StateFlow<MediaTypeFilter> = _mediaFilter
+
+    fun setSortAndFilter(option: SortOption, order: SortOrder, filter: MediaTypeFilter) {
+        _sortOption.value = option
+        _sortOrder.value = order
+        _mediaFilter.value = filter
+    }
     private val _source = MutableStateFlow<MediaSource>(initialSource)
     val source: StateFlow<MediaSource> = _source
 
-    val mediaLoadResult: StateFlow<MediaLoadResult> = combine(repository.mediaLoadResult, _source) { result, currentSource ->
+    val mediaLoadResult: StateFlow<MediaLoadResult> = combine(
+        repository.mediaLoadResult,
+        _source,
+        _sortOption,
+        _sortOrder,
+        _mediaFilter
+    ) { result, currentSource, sortOpt, sortOrd, mediaFilt ->
         when (result) {
             is MediaLoadResult.Success -> {
-                val filtered = when (currentSource) {
+                var filtered = when (currentSource) {
                     is MediaSource.Album -> result.items.filter { it.albumKey == currentSource.albumKey }
                     else -> result.items
                 }
+
+                filtered = when (mediaFilt) {
+                    MediaTypeFilter.ALL -> filtered
+                    MediaTypeFilter.IMAGES_ONLY -> filtered.filter { !it.isVideo }
+                    MediaTypeFilter.VIDEOS_ONLY -> filtered.filter { it.isVideo }
+                }
+
+                filtered = when (sortOpt) {
+                    SortOption.DATE -> {
+                        if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.dateAdded }, { it.name }))
+                        else filtered.sortedWith(compareByDescending<com.example.advancedgallery.data.model.MediaItem> { it.dateAdded }.thenByDescending { it.name })
+                    }
+                    SortOption.NAME -> {
+                        if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.name.lowercase() }, { it.dateAdded }))
+                        else filtered.sortedWith(compareByDescending<com.example.advancedgallery.data.model.MediaItem> { it.name.lowercase() }.thenByDescending { it.dateAdded })
+                    }
+                    SortOption.SIZE -> {
+                        if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.size }, { it.dateAdded }))
+                        else filtered.sortedWith(compareByDescending<com.example.advancedgallery.data.model.MediaItem> { it.size }.thenByDescending { it.dateAdded })
+                    }
+                }
+
                 if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
             }
             else -> result

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Crop
 import android.graphics.RectF
 import androidx.compose.material3.*
@@ -47,6 +49,9 @@ fun EditorScreen(
     val contrast by viewModel.contrast.collectAsState()
     val saturation by viewModel.saturation.collectAsState()
     val saveState by viewModel.saveState.collectAsState()
+    val flipHorizontal by viewModel.flipHorizontal.collectAsState()
+    val flipVertical by viewModel.flipVertical.collectAsState()
+
 
     var activeTab by remember { mutableIntStateOf(0) }
 
@@ -141,13 +146,15 @@ fun EditorScreen(
                         ) {
                             Button(onClick = { viewModel.rotateLeft() }) {
                                 Icon(Icons.AutoMirrored.Filled.RotateLeft, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.ccw_90))
                             }
                             Button(onClick = { viewModel.rotateRight() }) {
                                 Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.cw_90))
+                            }
+                            Button(onClick = { viewModel.toggleFlipHorizontal() }) {
+                                Icon(Icons.Default.SwapHoriz, contentDescription = "Flip Horizontal")
+                            }
+                            Button(onClick = { viewModel.toggleFlipVertical() }) {
+                                Icon(Icons.Default.SwapVert, contentDescription = "Flip Vertical")
                             }
                         }
                     } else {

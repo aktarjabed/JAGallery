@@ -19,6 +19,8 @@ import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.domain.MoveOperationResult
 import com.example.advancedgallery.ui.common.components.MediaCollectionContent
+import androidx.compose.material.icons.filled.Sort
+import com.example.advancedgallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +38,14 @@ fun GridScreen(
         viewModel.setSource(source)
     }
 
+
     val loadResult by viewModel.mediaLoadResult.collectAsState()
+    val sortOption by viewModel.sortOption.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
+    val mediaFilter by viewModel.mediaFilter.collectAsState()
+
+    var showSortFilterSheet by remember { mutableStateOf(false) }
+
 
     var pendingMoveDeleteCopies by remember { mutableStateOf<List<Pair<MediaItem, Uri>>?>(null) }
 
@@ -104,6 +113,11 @@ fun GridScreen(
                         titleText ?: stringResource(R.string.tab_all_media)
                     )
                 },
+                actions = {
+                    IconButton(onClick = { showSortFilterSheet = true }) {
+                        Icon(Icons.Default.Sort, contentDescription = "Sort and Filter")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -115,4 +129,18 @@ fun GridScreen(
             onNavigateToViewer(item.id, source)
         }
     )
+    if (showSortFilterSheet) {
+        val sheetState = rememberModalBottomSheetState()
+        SortFilterBottomSheet(
+            sheetState = sheetState,
+            currentSortOption = sortOption,
+            currentSortOrder = sortOrder,
+            currentFilter = mediaFilter,
+            onApply = { opt, ord, filt ->
+                viewModel.setSortAndFilter(opt, ord, filt)
+                showSortFilterSheet = false
+            },
+            onDismiss = { showSortFilterSheet = false }
+        )
+    }
 }

@@ -15,10 +15,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.advancedgallery.domain.MediaOperations
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 sealed interface AlbumsUiState {
     data object Loading : AlbumsUiState
-    data class Success(val albums: List<Album>, val totalCount: Int, val coverUri: Uri?) : AlbumsUiState
+    data class Success(val albums: List<Album>, val totalCount: Int, val coverUri: Uri?, val rawItems: List<com.example.advancedgallery.data.model.MediaItem>) : AlbumsUiState
     data object Empty : AlbumsUiState
     data class Error(val cause: Throwable) : AlbumsUiState
 }
@@ -26,6 +29,7 @@ sealed interface AlbumsUiState {
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
     private val repository: MediaRepository,
+    private val mediaOperations: MediaOperations,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -52,12 +56,38 @@ class AlbumsViewModel @Inject constructor(
                     AlbumsUiState.Success(
                         albums = albumsList,
                         totalCount = items.size,
-                        coverUri = items.firstOrNull()?.uri
+                        coverUri = items.firstOrNull()?.uri,
+                        rawItems = items
                     )
                 }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
+
+        private val _operationErrors = MutableSharedFlow<String>()
+    val operationErrors = _operationErrors.asSharedFlow()
+
+    private val _operationSuccess = MutableSharedFlow<String>()
+    val operationSuccess = _operationSuccess.asSharedFlow()
+
+    fun renameAlbum(context: android.content.Context, items: List<com.example.advancedgallery.data.model.MediaItem>, newAlbumName: String) {
+        viewModelScope.launch {
+            when (val result = mediaOperations.renameAlbum(context, items, newAlbumName)) {
+                is com.example.advancedgallery.domain.MoveOperationResult.RequestSourceDelete -> {
+                    _operationSuccess.emit("Album renaming copied items. Please confirm deletion of old items.")
+                }
+                is com.example.advancedgallery.domain.MoveOperationResult.Success -> {
+                    _operationSuccess.emit("Album renamed successfully.")
+                }
+                is com.example.advancedgallery.domain.MoveOperationResult.CopiedSourceRetained -> {
+                     _operationSuccess.emit("Album renamed successfully. Old album items retained.")
+                }
+                is com.example.advancedgallery.domain.MoveOperationResult.Error -> {
+                    _operationErrors.emit(result.message)
+                }
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {

@@ -29,10 +29,12 @@ data class TransformationPlan(
     val brightness: Float = 0f,
     val contrast: Float = 1f,
     val saturation: Float = 1f,
-    val cropRect: RectF? = null
+    val cropRect: RectF? = null,
+    val flipHorizontal: Boolean = false,
+    val flipVertical: Boolean = false
 ) {
     fun isIdentity(): Boolean =
-        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && cropRect == null
+        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && cropRect == null && !flipHorizontal && !flipVertical
 }
 
 object ImageEditorUtils {
@@ -157,6 +159,8 @@ object ImageEditorUtils {
         val sourceForRotation = cropped ?: sourceBitmap
 
         val matrix = Matrix().apply {
+            if (plan.flipHorizontal) postScale(-1f, 1f)
+            if (plan.flipVertical) postScale(1f, -1f)
             postRotate(plan.rotationDegrees)
         }
 
@@ -319,11 +323,13 @@ object ImageEditorUtils {
         rotationDegrees: Float,
         brightness: Float,
         contrast: Float,
-        saturation: Float
+        saturation: Float,
+        flipHorizontal: Boolean = false,
+        flipVertical: Boolean = false
     ): Pair<Uri?, String?> = exportEditedImageWithProgressiveFallback(
         context,
         uri,
-        TransformationPlan(rotationDegrees, brightness, contrast, saturation)
+        TransformationPlan(rotationDegrees, brightness, contrast, saturation, null, flipHorizontal, flipVertical)
     )
 
     suspend fun saveEditedImage(

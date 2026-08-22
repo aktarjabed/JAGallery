@@ -51,6 +51,22 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     private val _cropRect = MutableStateFlow<RectF?>(null)
     val cropRect: StateFlow<RectF?> = _cropRect.asStateFlow()
+    private val _flipHorizontal = MutableStateFlow(false)
+    val flipHorizontal: StateFlow<Boolean> = _flipHorizontal.asStateFlow()
+
+    private val _flipVertical = MutableStateFlow(false)
+    val flipVertical: StateFlow<Boolean> = _flipVertical.asStateFlow()
+
+    fun toggleFlipHorizontal() {
+        _flipHorizontal.value = !_flipHorizontal.value
+        updatePreview()
+    }
+
+    fun toggleFlipVertical() {
+        _flipVertical.value = !_flipVertical.value
+        updatePreview()
+    }
+
 
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState.asStateFlow()
@@ -109,6 +125,8 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _contrast.value = 1f
         _saturation.value = 1f
         _cropRect.value = null
+        _flipHorizontal.value = false
+        _flipVertical.value = false
 
         val oldTransformed = currentPreviewBitmap
         currentPreviewBitmap = null
@@ -129,7 +147,9 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 brightness = _brightness.value,
                 contrast = _contrast.value,
                 saturation = _saturation.value,
-                cropRect = _cropRect.value
+                cropRect = _cropRect.value,
+                flipHorizontal = _flipHorizontal.value,
+                flipVertical = _flipVertical.value
             )
 
             val updated = ImageEditorUtils.applyTransformationPlan(
