@@ -41,6 +41,10 @@ class MediaRepository @Inject constructor(
     private var pendingForcedScan = false
     private var pendingContext: Context? = null
 
+    // Throttling for bulk rescans
+    private var lastRescanTimeMs: Long = 0
+    private val RESCAN_THROTTLE_MS = 2000L
+
     val mediaLoadResult: Flow<MediaLoadResult> = combine(
         _mediaLoadResult,
         mediaDao.getFavorites(),
@@ -86,6 +90,7 @@ class MediaRepository @Inject constructor(
 
     suspend fun loadMedia(force: Boolean = false, context: Context? = null) = withContext(ioDispatcher) {
         val jobToAwait = loadMutex.withLock {
+            val currentTime = System.currentTimeMillis()
             val existingJob = activeScanJob
             if (existingJob != null) {
                 if (force) {
@@ -96,12 +101,27 @@ class MediaRepository @Inject constructor(
                 }
                 existingJob
             } else {
-                isCurrentScanForced = force
-                val newJob = repositoryScope.async {
-                    executeScanLoop(initialForce = force, initialContext = context)
+                if (force && (currentTime - lastRescanTimeMs < RESCAN_THROTTLE_MS)) {
+                    // Throttle fast sequential jobs by firing a delayed job to catch up
+                    isCurrentScanForced = force
+                    val delayedJob = repositoryScope.async {
+                        kotlinx.coroutines.delay(RESCAN_THROTTLE_MS - (currentTime - lastRescanTimeMs))
+                        lastRescanTimeMs = System.currentTimeMillis()
+                        executeScanLoop(initialForce = force, initialContext = context)
+                    }
+                    activeScanJob = delayedJob
+                    delayedJob
+                } else {
+                    if (force) {
+                        lastRescanTimeMs = currentTime
+                    }
+                    isCurrentScanForced = force
+                    val newJob = repositoryScope.async {
+                        executeScanLoop(initialForce = force, initialContext = context)
+                    }
+                    activeScanJob = newJob
+                    newJob
                 }
-                activeScanJob = newJob
-                newJob
             }
         }
         jobToAwait.await()
