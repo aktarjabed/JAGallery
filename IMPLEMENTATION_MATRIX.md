@@ -7,7 +7,7 @@
 | Gallery/Grid | ✅ Implemented | Core grid/gallery works | |
 | Image/Video Viewer | ✅ Implemented | Image viewer + Media3 video playback | |
 | Multi-selection | ✅ Implemented | Shared selection architecture | |
-| Metadata | ✅ Implemented | Metadata bottom sheet | Complete metadata/EXIF presentation |
+| Metadata | ✅ Implemented | Complete EXIF parsing, copyable fields | |
 | Slideshow | ❌ Missing | | |
 | Set wallpaper | ❌ Missing | | |
 | Open With | ❌ Missing | | |
@@ -19,11 +19,11 @@
 | Room persistence | ✅ Implemented | Auxiliary state, not a complete MediaStore metadata cache | |
 | Multi-volume MediaStore | ✅ Implemented | Volume-aware querying/observation | |
 | Copy | ✅ Implemented | MediaStore destination creation | Complete Copy UX |
-| Move | ⚠️ Partial | Copy + source deletion request; not atomic | Complete Move UX |
+| Move | ✅ Implemented | Copy + source deletion via MediaStore batching | |
 | Batch rollback | ❌ Missing | No transactional rollback | |
 | Trash | ✅ Implemented | MediaStore trash/restore integration | Robust Trash UX |
 | Restore | ✅ Implemented | MediaStore trashed-item query/restore flow | Robust Restore UX |
-| Rename individual media | ❌ Missing | | |
+| Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
 | External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
 
 ## Organization
@@ -31,20 +31,20 @@
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Albums | ✅ Implemented | MediaStore/folder-based albums | |
-| Sort/Filter | ✅ Implemented | Bottom-sheet based | Images/Videos filtering and sorting |
+| Sort/Filter | ✅ Implemented | Bottom-sheet based | |
 | Create album | ✅ Implemented | Available through MediaStore folder creation | |
-| Rename album | ⚠️ Partial | Verify UI workflow | Rename/create/manage albums |
-| Timeline/date grouping | ❌ Missing | | |
+| Rename album | ✅ Implemented | Batch move + delete intent flow | |
+| Timeline/date grouping | ✅ Implemented | Today/Yesterday/Month grid separators | |
 | Favorites persistence | ✅ Implemented | | |
 
 ## Editing
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| Basic image editing | ⚠️ Partial | Rotate/brightness/contrast/saturation; not a full editor | Advanced editor controls |
+| Basic image editing | ✅ Implemented | Rotate/brightness/contrast/saturation/flip | Advanced editor controls |
 | Advanced photo editor | ❌ Missing | Crop/advanced tools absent | |
-| Crop | ❌ Missing | | |
-| Flip horizontal/vertical | ❌ Missing | | |
+| Crop | ✅ Implemented | Aspect ratio crop (Square/Free/Original) | |
+| Flip horizontal/vertical | ✅ Implemented | Matrix postScale flip operations | |
 | GIF-specific editing | ❌ Missing | | |
 | Advanced EXIF editor | ❌ Missing | | |
 

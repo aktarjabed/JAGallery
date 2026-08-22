@@ -32,6 +32,8 @@ import com.example.advancedgallery.ui.common.OperationEvent
 import com.example.advancedgallery.ui.common.selection.shareMediaItems
 import com.example.advancedgallery.ui.screens.viewer.components.ImageViewer
 import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
+import com.example.advancedgallery.ui.common.components.MetadataBottomSheet
+import androidx.compose.material.icons.filled.MoreVert
 import com.example.advancedgallery.util.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -159,6 +161,8 @@ fun ViewerScreen(
     }
 
     var showControls by remember { mutableStateOf(true) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var deleteState by remember { mutableStateOf<com.example.advancedgallery.ui.common.selection.DeleteOperationState>(com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle) }
 
@@ -177,31 +181,41 @@ fun ViewerScreen(
     }
 
     if (showInfoDialog) {
-        val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
-        val dateStr = remember(currentItem.dateAdded) {
-            val millis = if (currentItem.dateAdded > 10000000000L) currentItem.dateAdded else currentItem.dateAdded * 1000
-            dateFormat.format(Date(millis))
-        }
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        MetadataBottomSheet(
+            sheetState = sheetState,
+            mediaItem = currentItem,
+            onDismiss = { showInfoDialog = false }
+        )
+    }
 
+
+    if (showRenameDialog) {
+        var newName by remember { mutableStateOf(currentItem.name) }
         AlertDialog(
-            onDismissRequest = { showInfoDialog = false },
-            title = { Text(stringResource(R.string.media_info_title)) },
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text(stringResource(R.string.rename_media)) },
             text = {
-                Column {
-                    Text(text = "${stringResource(R.string.media_info_name)} ${currentItem.name}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${stringResource(R.string.media_info_mime_type)} ${currentItem.mimeType.ifEmpty { if (currentItem.isVideo) "video/*" else "image/*" }}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${stringResource(R.string.media_info_date_added)} $dateStr")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${stringResource(R.string.media_info_album)} ${currentItem.bucketName.ifEmpty { stringResource(R.string.internal_storage) }}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${stringResource(R.string.media_info_uri)} ${currentItem.uri}")
-                }
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text(stringResource(R.string.new_name)) },
+                    singleLine = true
+                )
             },
             confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) {
+                TextButton(onClick = {
+                    if (newName.isNotBlank()) {
+                        viewModel.renameMedia(context, currentItem, newName.trim())
+                    }
+                    showRenameDialog = false
+                }) {
                     Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -277,8 +291,27 @@ fun ViewerScreen(
                         }) {
                             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         }
-                        IconButton(onClick = { showInfoDialog = true }) {
-                            Icon(Icons.Default.Info, contentDescription = stringResource(R.string.info))
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.info)) },
+                                onClick = {
+                                    showMenu = false
+                                    showInfoDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.rename_media)) },
+                                onClick = {
+                                    showMenu = false
+                                    showRenameDialog = true
+                                }
+                            )
                         }
                         IconButton(onClick = { viewModel.toggleFavorite(currentItem) }) {
                             Icon(

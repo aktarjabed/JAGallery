@@ -26,6 +26,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.advancedgallery.R
@@ -42,6 +48,21 @@ fun AlbumsScreen(
     onNavigateToTrash: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    var albumToRename by remember { mutableStateOf<com.example.advancedgallery.data.model.Album?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.operationErrors.collect { error ->
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.operationSuccess.collect { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -152,12 +173,43 @@ fun AlbumsScreen(
                             title = album.name.ifBlank { stringResource(R.string.album_default_title) },
                             count = album.mediaCount,
                             coverUri = album.coverUri,
-                            onClick = { onNavigateToGrid(MediaSource.Album(album.key)) }
+                            onClick = { onNavigateToGrid(MediaSource.Album(album.key)) },
+                            onLongClick = { albumToRename = album }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (albumToRename != null) {
+        var newName by remember { mutableStateOf(albumToRename!!.name) }
+        AlertDialog(
+            onDismissRequest = { albumToRename = null },
+            title = { Text(stringResource(R.string.rename_album)) },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text(stringResource(R.string.new_name)) },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == albumToRename!!.key } ?: emptyList()
+                    viewModel.renameAlbum(context, items, newName)
+                    albumToRename = null
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { albumToRename = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
@@ -166,13 +218,21 @@ fun AlbumCard(
     title: String,
     count: Int,
     coverUri: Uri,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
             .padding(4.dp)
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onClick() },
+                    onLongPress = {
+                        onLongClick?.invoke()
+                    }
+                )
+            }
     ) {
         Column {
             AsyncImage(

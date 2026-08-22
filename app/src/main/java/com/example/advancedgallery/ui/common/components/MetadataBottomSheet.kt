@@ -29,6 +29,16 @@ import androidx.compose.ui.unit.dp
 import com.example.advancedgallery.data.model.MediaItem
 import java.text.DateFormat
 import java.util.Date
+import androidx.compose.foundation.clickable
+import androidx.exifinterface.media.ExifInterface
+import android.graphics.BitmapFactory
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +48,41 @@ fun MetadataBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+
+    var dimensions by remember { mutableStateOf<String?>(null) }
+    var exifDate by remember { mutableStateOf<String?>(null) }
+    var exifModel by remember { mutableStateOf<String?>(null) }
+    var location by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(mediaItem) {
+        withContext(Dispatchers.IO) {
+            try {
+                if (!mediaItem.isVideo) {
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(mediaItem.uri)?.use { stream ->
+                        BitmapFactory.decodeStream(stream, null, options)
+                        dimensions = "${options.outWidth} x ${options.outHeight}"
+                    }
+
+                    context.contentResolver.openInputStream(mediaItem.uri)?.use { stream ->
+                        val exif = ExifInterface(stream)
+                        exifDate = exif.getAttribute(ExifInterface.TAG_DATETIME)
+                        val make = exif.getAttribute(ExifInterface.TAG_MAKE)
+                        val model = exif.getAttribute(ExifInterface.TAG_MODEL)
+                        if (make != null || model != null) {
+                            exifModel = "${make ?: ""} ${model ?: ""}".trim()
+                        }
+                        val latLong = exif.latLong
+                        if (latLong != null) {
+                            location = "${latLong[0]}, ${latLong[1]}"
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore EXIF parsing errors safely
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -67,7 +112,12 @@ fun MetadataBottomSheet(
             if (mediaItem.size > 0L) {
                 MetadataRow(label = "File Size", value = formatFileSize(mediaItem.size))
             }
-            MetadataRow(label = "URI / Path", value = mediaItem.uri.toString())
+            MetadataRow(label = "URI / Path", value = mediaItem.uri.toString(), copyable = true)
+
+            if (dimensions != null) MetadataRow(label = "Dimensions", value = dimensions!!, copyable = true)
+            if (exifDate != null) MetadataRow(label = "EXIF Date", value = exifDate!!, copyable = true)
+            if (exifModel != null) MetadataRow(label = "Camera Model", value = exifModel!!, copyable = true)
+            if (location != null) MetadataRow(label = "Location", value = location!!, copyable = true)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -98,11 +148,23 @@ fun MetadataBottomSheet(
 }
 
 @Composable
-private fun MetadataRow(label: String, value: String) {
+private fun MetadataRow(label: String, value: String, copyable: Boolean = false) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
+            .then(
+                if (copyable) {
+                    Modifier.clickable {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText(label, value)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Copied $label", Toast.LENGTH_SHORT).show()
+                    }
+                } else Modifier
+            )
     ) {
         Text(
             text = label,

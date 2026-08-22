@@ -34,6 +34,8 @@ interface MediaOperations {
     suspend fun copyMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
     suspend fun moveMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): MoveOperationResult
     suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, targetAlbumName: String): MoveOperationResult
+    suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): OperationResult<android.net.Uri>
+    suspend fun renameAlbum(context: android.content.Context, items: List<MediaItem>, newAlbumName: String): MoveOperationResult
 }
 
 @Singleton
@@ -181,5 +183,41 @@ class MediaOperationsImpl @Inject constructor(
         } catch (e: Exception) {
             MoveOperationResult.Error(e.message ?: "Move operation failed", e)
         }
+    }
+
+    override suspend fun renameMedia(
+        context: android.content.Context,
+        item: MediaItem,
+        newName: String
+    ): OperationResult<android.net.Uri> {
+        return try {
+            val resolver = context.contentResolver
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, newName)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            }
+
+            val updated = resolver.update(item.uri, values, null, null)
+            if (updated > 0) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    val pubValues = android.content.ContentValues().apply { put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0) }
+                    resolver.update(item.uri, pubValues, null, null)
+                }
+                repository.loadMedia(force = true, context = context)
+                OperationResult.Success(item.uri)
+            } else {
+                OperationResult.Error(Exception("Failed to update media store"))
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            OperationResult.Error(e, e.message)
+        }
+    }
+
+    override suspend fun renameAlbum(context: android.content.Context, items: List<MediaItem>, newAlbumName: String): MoveOperationResult {
+        return moveMediaBatch(context, items, newAlbumName)
     }
 }

@@ -15,10 +15,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import java.util.Calendar
+import java.util.Date
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.font.FontWeight
 import com.example.advancedgallery.data.model.MediaItem
 
 @Composable
@@ -55,19 +61,53 @@ fun MediaGrid(
             }
         }
     } else {
+        // Group items by timeline
+        val groupedItems = remember(items) {
+            items.groupBy { item ->
+                val time = if (item.dateAdded > 10000000000L) item.dateAdded else item.dateAdded * 1000
+                val cal = Calendar.getInstance().apply { timeInMillis = time }
+                val now = Calendar.getInstance()
+
+                if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                    if (cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                        "Today"
+                    } else if (now.get(Calendar.DAY_OF_YEAR) - cal.get(Calendar.DAY_OF_YEAR) == 1) {
+                        "Yesterday"
+                    } else {
+                        val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale.getDefault())
+                        month ?: "Earlier"
+                    }
+                } else {
+                    cal.get(Calendar.YEAR).toString()
+                }
+            }
+        }
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(2.dp)
         ) {
-            items(items, key = { it.id }) { item ->
-                MediaThumbnail(
-                    mediaItem = item,
-                    isSelected = selectedIds.contains(item.id),
-                    selectionMode = selectionMode,
-                    onClick = { onItemClick(item) },
-                    onLongClick = { onItemLongClick(item) }
-                )
+            groupedItems.forEach { (header, list) ->
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = header,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 16.dp)
+                    )
+                }
+                items(list, key = { it.id }) { item ->
+                    MediaThumbnail(
+                        mediaItem = item,
+                        isSelected = selectedIds.contains(item.id),
+                        selectionMode = selectionMode,
+                        onClick = { onItemClick(item) },
+                        onLongClick = { onItemLongClick(item) }
+                    )
+                }
             }
         }
     }

@@ -41,7 +41,7 @@ class AlbumsViewModelTest {
 
     @Test
     fun albums_initialStateIsEmptyOrLoading() = runTest {
-        val viewModel = AlbumsViewModel(repository, context)
+        val viewModel = AlbumsViewModel(repository, mock(), context)
         val state = viewModel.uiState.value
         assertTrue(state is AlbumsUiState.Loading || state is AlbumsUiState.Empty)
     }

@@ -75,4 +75,10 @@
     <string name="crop_original">Original</string>
     <string name="crop_square">Square</string>
     <string name="crop_free">Free</string>
+
+    <string name="rename_media">Rename Media</string>
+    <string name="rename_album">Rename Album</string>
+    <string name="new_name">New Name</string>
+    <string name="album_renamed">Album renamed</string>
+    <string name="media_renamed">Media renamed</string>
 </resources>
