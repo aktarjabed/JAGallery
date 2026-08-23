@@ -3,6 +3,7 @@ package com.example.advancedgallery.ui.common.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SelectAll
@@ -29,7 +30,8 @@ fun SelectionToolbar(
     onHideSelected: (() -> Unit)? = null,
     onUnhideSelected: (() -> Unit)? = null,
     onRestoreSelected: (() -> Unit)? = null,
-    onMoveSelected: (() -> Unit)? = null
+    onMoveSelected: (() -> Unit)? = null,
+    onCopySelected: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text("$selectedCount ${stringResource(R.string.selected)}") },
@@ -52,6 +54,11 @@ fun SelectionToolbar(
             if (onHideSelected != null) {
                 IconButton(onClick = onHideSelected) {
                     Icon(Icons.Default.VisibilityOff, contentDescription = stringResource(R.string.hide))
+                }
+            }
+            if (onCopySelected != null) {
+                IconButton(onClick = onCopySelected) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.copy_to_album))
                 }
             }
             if (onMoveSelected != null) {

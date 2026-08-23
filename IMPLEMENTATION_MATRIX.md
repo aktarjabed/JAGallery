@@ -18,11 +18,11 @@
 |---------|--------|-----------------------|----------------|
 | Room persistence | ✅ Implemented | Auxiliary state, not a complete MediaStore metadata cache | |
 | Multi-volume MediaStore | ✅ Implemented | Volume-aware querying/observation | |
-| Copy | ✅ Implemented | MediaStore destination creation | Complete Copy UX |
-| Move | ✅ Implemented | Copy + source deletion via MediaStore batching | |
+| Copy | ✅ Implemented | MediaStore destination creation + Complete Copy UX | |
+| Move | ✅ Implemented | Copy + source deletion + Complete Move UX | |
 | Batch rollback | ❌ Missing | No transactional rollback | |
-| Trash | ✅ Implemented | MediaStore trash/restore integration | Robust Trash UX |
-| Restore | ✅ Implemented | MediaStore trashed-item query/restore flow | Robust Restore UX |
+| Trash | ✅ Implemented | MediaStore trash/restore integration + Robust Trash UX | |
+| Restore | ✅ Implemented | MediaStore trashed-item query/restore flow + Robust Restore UX | |
 | Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
 | External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
 
@@ -53,7 +53,7 @@
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Video trimming | ✅ Implemented | Dedicated trimming/export pipeline | |
-| Video trim UI | ⚠️ Partial | Utility exists | Complete user workflow should be verified |
+| Video trim UI | ✅ Implemented | Full trim workflow with bottom sheet | |
 | Video mute | ❌ Missing | | |
 | Video frame extraction | ❌ Missing | | |
 
@@ -114,14 +114,14 @@ It is not yet:
 ## Recommended Roadmap
 
 ### Phase 1 — essential gallery completion
-1. Rename media.
-2. Rename/create/manage albums.
-3. Crop + flip.
-4. Timeline/date grouping.
-5. Complete Move/Copy UX.
-6. Complete metadata/EXIF presentation.
-7. Robust Trash/Restore UX.
-8. Images/Videos filtering and sorting.
+1. ~~Rename media.~~
+2. ~~Rename/create/manage albums.~~
+3. ~~Crop + flip.~~
+4. ~~Timeline/date grouping.~~
+5. ~~Complete Move/Copy UX.~~
+6. ~~Complete metadata/EXIF presentation.~~
+7. ~~Robust Trash/Restore UX.~~
+8. ~~Images/Videos filtering and sorting.~~
 
 ### Phase 2 — advanced gallery
 1. Secure hidden vault + BiometricPrompt.

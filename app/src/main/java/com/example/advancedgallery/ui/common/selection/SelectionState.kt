@@ -3,16 +3,32 @@ package com.example.advancedgallery.ui.common.selection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.example.advancedgallery.data.model.MediaItem
 
-class SelectionState {
-    var selectionMode by mutableStateOf(false)
+class SelectionState(initialSelectionMode: Boolean = false, initialSelectedIds: Set<String> = emptySet()) {
+    var selectionMode by mutableStateOf(initialSelectionMode)
         private set
 
-    var selectedIds by mutableStateOf(setOf<String>())
+    var selectedIds by mutableStateOf(initialSelectedIds)
         private set
+
+    companion object {
+        val Saver: Saver<SelectionState, *> = Saver(
+            save = { state ->
+                listOf(state.selectionMode, state.selectedIds.toList())
+            },
+            restore = { value ->
+                @Suppress("UNCHECKED_CAST")
+                val list = value as List<Any>
+                val mode = list[0] as Boolean
+                val ids = list[1] as List<String>
+                SelectionState(mode, ids.toSet())
+            }
+        )
+    }
 
     val selectedCount: Int get() = selectedIds.size
 
@@ -64,5 +80,5 @@ class SelectionState {
 
 @Composable
 fun rememberSelectionState(): SelectionState {
-    return remember { SelectionState() }
+    return rememberSaveable(saver = SelectionState.Saver) { SelectionState() }
 }

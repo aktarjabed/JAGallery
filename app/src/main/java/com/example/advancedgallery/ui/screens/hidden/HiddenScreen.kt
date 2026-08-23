@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.hidden
 
 import androidx.compose.material.icons.Icons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -29,7 +30,7 @@ fun HiddenScreen(
         }
     }
 
-    val loadResult by viewModel.mediaLoadResult.collectAsState()
+    val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = loadResult,

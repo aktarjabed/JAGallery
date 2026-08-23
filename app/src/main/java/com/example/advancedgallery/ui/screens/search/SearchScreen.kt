@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.search
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -20,8 +21,8 @@ fun SearchScreen(
     onBack: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
-    val query by viewModel.searchQuery.collectAsState()
-    val searchResult by viewModel.searchResult.collectAsState()
+    val query by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = searchResult,

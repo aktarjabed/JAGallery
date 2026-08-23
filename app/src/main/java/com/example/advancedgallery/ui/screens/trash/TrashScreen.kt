@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.trash
 
 import androidx.compose.material.icons.Icons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
@@ -44,7 +45,7 @@ fun TrashScreen(
         }
     }
 
-    val loadResult by viewModel.trashedMediaLoadResult.collectAsState()
+    val loadResult by viewModel.trashedMediaLoadResult.collectAsStateWithLifecycle()
 
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
     var emptyTrashState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
@@ -91,44 +92,35 @@ fun TrashScreen(
         val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
         val count = items.size
 
-        AlertDialog(
-            onDismissRequest = { showEmptyTrashDialog = false },
-            title = { Text(stringResource(R.string.empty_trash)) },
-            text = { Text(stringResource(R.string.delete_confirm_message, count)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showEmptyTrashDialog = false
-                    if (items.isNotEmpty()) {
-                        val batch = PendingDeleteBatch(
-                            ids = items.map { it.id },
-                            uris = items.map { it.uri }
+        DeleteConfirmationDialog(
+            count = count,
+            isPermanent = true,
+            onConfirm = {
+                showEmptyTrashDialog = false
+                if (items.isNotEmpty()) {
+                    val batch = PendingDeleteBatch(
+                        ids = items.map { it.id },
+                        uris = items.map { it.uri }
+                    )
+                    val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
+                    if (pendingIntents.isNotEmpty()) {
+                        emptyTrashState = DeleteOperationState.SystemConfirmation(
+                            batch = batch,
+                            pendingIntents = pendingIntents,
+                            currentIndex = 0
                         )
-                        val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
-                        if (pendingIntents.isNotEmpty()) {
-                            emptyTrashState = DeleteOperationState.SystemConfirmation(
-                                batch = batch,
-                                pendingIntents = pendingIntents,
-                                currentIndex = 0
-                            )
+                    } else {
+                        val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
+                        if (success) {
+                            viewModel.removeDeletedItems(batch.ids)
                         } else {
-                            val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
-                            if (success) {
-                                viewModel.removeDeletedItems(batch.ids)
-                                // Only update local state. MediaStore observer will rescan and clean up.
-                                // refreshAll is not needed here and causes re-flash.
-                            } else {
-                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
-                            }
+                            Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
                         }
                     }
-                }) {
-                    Text(stringResource(R.string.empty_trash))
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showEmptyTrashDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
+            onDismiss = {
+                showEmptyTrashDialog = false
             }
         )
     }

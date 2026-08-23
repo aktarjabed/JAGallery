@@ -63,8 +63,13 @@ fun ImageViewer(
                 translationY = if (scale > 1f) offset.y else 0f
             )
     ) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val imageRequest = coil.request.ImageRequest.Builder(context)
+            .data(uri)
+            .crossfade(true)
+            .build()
         AsyncImage(
-            model = uri,
+            model = imageRequest,
             contentDescription = "Full Image",
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize()
