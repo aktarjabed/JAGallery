@@ -65,34 +65,56 @@ fun AlbumsScreen(
         }
     }
 
-    var pendingDeletedUris by remember { mutableStateOf<List<String>?>(null) }
+    data class AlbumRenameState(
+        val uris: List<String>,
+        val pendingIntents: List<android.app.PendingIntent>,
+        val currentIndex: Int = 0,
+        val processedIds: List<String> = emptyList()
+    )
 
-    LaunchedEffect(Unit) {
-        viewModel.pendingDeletedUris.collect { uris ->
-            pendingDeletedUris = uris
-        }
-    }
+    var albumRenameState by remember { mutableStateOf<AlbumRenameState?>(null) }
 
     val deleteLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val uris = pendingDeletedUris
-            if (uris != null) {
-                viewModel.removeDeletedItems(uris)
+        val state = albumRenameState
+        if (state != null) {
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
+                val processedBatchIds = state.uris.drop(state.currentIndex * chunkSize).take(chunkSize)
+                val updatedProcessedIds = state.processedIds + processedBatchIds
+
+                if (state.currentIndex + 1 < state.pendingIntents.size) {
+                    val nextIndex = state.currentIndex + 1
+                    albumRenameState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
+                } else {
+                    viewModel.removeDeletedItems(updatedProcessedIds)
+                    Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
+                    albumRenameState = null
+                }
+            } else {
+                if (state.processedIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(state.processedIds)
+                }
+                Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                albumRenameState = null
             }
-            Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
         }
-        pendingDeletedUris = null
     }
 
     LaunchedEffect(Unit) {
-        viewModel.pendingAlbumRenameDelete.collect { pendingIntent ->
-            if (pendingIntent != null) {
-                deleteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        viewModel.albumRenameDeleteEvent.collect { (uris, pendingIntents) ->
+            if (pendingIntents.isNotEmpty()) {
+                albumRenameState = AlbumRenameState(uris, pendingIntents)
             }
+        }
+    }
+
+    LaunchedEffect(albumRenameState) {
+        val state = albumRenameState
+        if (state != null && state.pendingIntents.isNotEmpty()) {
+            val intentSender = state.pendingIntents[state.currentIndex].intentSender
+            deleteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(intentSender).build())
         }
     }
 
