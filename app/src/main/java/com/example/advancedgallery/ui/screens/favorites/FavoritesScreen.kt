@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.favorites
 
 import androidx.compose.material.icons.Icons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
@@ -18,7 +19,7 @@ fun FavoritesScreen(
     onBack: () -> Unit,
     viewModel: FavoritesViewModel = hiltViewModel()
 ) {
-    val loadResult by viewModel.mediaLoadResult.collectAsState()
+    val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = loadResult,

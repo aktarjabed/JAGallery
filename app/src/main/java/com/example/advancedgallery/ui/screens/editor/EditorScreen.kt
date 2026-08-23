@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.editor
 
 import android.net.Uri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,14 +44,14 @@ fun EditorScreen(
         viewModel.loadImage(context, imageUri)
     }
 
-    val previewBitmap by viewModel.previewBitmap.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val brightness by viewModel.brightness.collectAsState()
-    val contrast by viewModel.contrast.collectAsState()
-    val saturation by viewModel.saturation.collectAsState()
-    val saveState by viewModel.saveState.collectAsState()
-    val flipHorizontal by viewModel.flipHorizontal.collectAsState()
-    val flipVertical by viewModel.flipVertical.collectAsState()
+    val previewBitmap by viewModel.previewBitmap.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val brightness by viewModel.brightness.collectAsStateWithLifecycle()
+    val contrast by viewModel.contrast.collectAsStateWithLifecycle()
+    val saturation by viewModel.saturation.collectAsStateWithLifecycle()
+    val saveState by viewModel.saveState.collectAsStateWithLifecycle()
+    val flipHorizontal by viewModel.flipHorizontal.collectAsStateWithLifecycle()
+    val flipVertical by viewModel.flipVertical.collectAsStateWithLifecycle()
 
 
     var activeTab by remember { mutableIntStateOf(0) }

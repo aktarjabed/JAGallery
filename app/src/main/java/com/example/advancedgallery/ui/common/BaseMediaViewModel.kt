@@ -92,6 +92,14 @@ abstract class BaseMediaViewModel(
         }
     }
 
+    suspend fun copyMedia(
+        context: android.content.Context,
+        mediaItem: MediaItem,
+        targetAlbumName: String
+    ): OperationResult<android.net.Uri> {
+        return mediaOperations.copyMedia(context, mediaItem, targetAlbumName)
+    }
+
     suspend fun moveMediaBatch(
         context: android.content.Context,
         mediaItems: List<MediaItem>,

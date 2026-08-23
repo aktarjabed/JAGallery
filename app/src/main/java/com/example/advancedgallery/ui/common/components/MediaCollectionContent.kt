@@ -28,6 +28,7 @@ fun MediaCollectionContent(
     onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
     onMoveSelected: ((List<MediaItem>, String) -> Unit)? = null,
+    onCopySelected: ((List<MediaItem>, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val selectionState = rememberSelectionState()
@@ -43,6 +44,7 @@ fun MediaCollectionContent(
                 onUnhideSelected = onUnhideSelected,
                 onRestoreSelected = onRestoreSelected,
                 onMoveSelected = onMoveSelected,
+                onCopySelected = onCopySelected,
                 topBarContent = topBar
             )
         },

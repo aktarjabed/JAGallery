@@ -51,6 +51,9 @@ object DuplicateDetector {
             }
             val hashBytes = digest.digest()
             hashBytes.joinToString("") { "%02x".format(it) }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "SecurityException reading ${item.uri} (possibly due to partial Android 14 permissions)", e)
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Failed to compute SHA-256 for ${item.uri}", e)
             null

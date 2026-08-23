@@ -28,20 +28,51 @@ object VideoTrimmer {
         endMs: Long
     ): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
-        val tempFile = File(context.cacheDir, "trimmed_temp_${System.currentTimeMillis()}.mp4")
         var newUri: Uri? = null
 
         var extractor: MediaExtractor? = null
-        var pfd: ParcelFileDescriptor? = null
+        var sourcePfd: ParcelFileDescriptor? = null
+        var destPfd: ParcelFileDescriptor? = null
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
 
         try {
-            extractor = MediaExtractor()
-            pfd = resolver.openFileDescriptor(sourceUri, "r") ?: return@withContext null
-            extractor.setDataSource(pfd.fileDescriptor)
+            // Insert into MediaStore first
+            val contentValues = android.content.ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, "TRIM_${System.currentTimeMillis()}.mp4")
+                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            }
 
-            muxer = MediaMuxer(tempFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            }
+
+            newUri = FileUtils.insertPendingMediaEntry(resolver, collection, contentValues)
+            if (newUri == null) {
+                return@withContext null
+            }
+
+            extractor = MediaExtractor()
+            sourcePfd = resolver.openFileDescriptor(sourceUri, "r")
+            if (sourcePfd == null) {
+                if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
+            }
+            extractor.setDataSource(sourcePfd.fileDescriptor)
+
+            destPfd = resolver.openFileDescriptor(newUri, "rw")
+            if (destPfd == null) {
+                if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                muxer = MediaMuxer(destPfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            } else {
+                throw UnsupportedOperationException("MediaMuxer requires API 26+ for FileDescriptor")
+            }
             val trackCount = extractor.trackCount
             val trackMap = HashMap<Int, Int>()
             var maxBufferSize = DEFAULT_BUFFER_SIZE
@@ -117,12 +148,25 @@ object VideoTrimmer {
                 }
                 extractor.advance()
             }
+
+            muxer.stop()
+            isMuxerStarted = false
+
+            val finalContentValues = android.content.ContentValues().apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Video.Media.IS_PENDING, 0)
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                resolver.update(newUri, finalContentValues, null, null)
+            }
+
         } catch (e: CancellationException) {
-            if (tempFile.exists()) tempFile.delete()
+            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed during video trimming pipeline", e)
-            if (tempFile.exists()) tempFile.delete()
+            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
             return@withContext null
         } finally {
             if (isMuxerStarted) {
@@ -143,54 +187,15 @@ object VideoTrimmer {
                 Log.w(TAG, "Error releasing MediaExtractor", e)
             }
             try {
-                pfd?.close()
+                sourcePfd?.close()
             } catch (e: Exception) {
                 Log.w(TAG, "Error closing ParcelFileDescriptor", e)
             }
-        }
-
-        try {
-            // Insert into MediaStore
-            val contentValues = android.content.ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, "TRIM_${System.currentTimeMillis()}.mp4")
-                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            try {
+                destPfd?.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error closing dest ParcelFileDescriptor", e)
             }
-
-            newUri = FileUtils.insertPendingMediaEntry(resolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
-            if (newUri != null) {
-                var success = false
-                try {
-                    FileInputStream(tempFile).use { input ->
-                        resolver.openOutputStream(newUri!!)?.use { output ->
-                            val buffer = ByteArray(64 * 1024)
-                            var bytesRead: Int = 0
-                            while (input.read(buffer).also { bytesRead = it } >= 0) {
-                                output.write(buffer, 0, bytesRead)
-                            }
-                            output.flush()
-                            success = true
-                        }
-                    }
-                } catch (e: Exception) {
-                    success = false
-                }
-
-                if (success) {
-                    FileUtils.publishPendingEntry(resolver, newUri, contentValues)
-                } else {
-                    try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                    newUri = null
-                }
-            }
-        } catch (e: CancellationException) {
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-            throw e
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to insert trimmed video into MediaStore", e)
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-            newUri = null
-        } finally {
-            if (tempFile.exists()) tempFile.delete()
         }
 
         newUri

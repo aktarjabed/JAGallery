@@ -75,6 +75,7 @@ fun MediaSelectionHandler(
     onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
     onMoveSelected: ((List<MediaItem>, String) -> Unit)? = null,
+    onCopySelected: ((List<MediaItem>, String) -> Unit)? = null,
     topBarContent: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -85,7 +86,8 @@ fun MediaSelectionHandler(
     }
 
     var restoreState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
-    var showAlbumDialog by remember { mutableStateOf(false) }
+    var showMoveAlbumDialog by remember { mutableStateOf(false) }
+    var showCopyAlbumDialog by remember { mutableStateOf(false) }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
@@ -223,21 +225,29 @@ fun MediaSelectionHandler(
         selectionState.clearSelection()
     }
 
-    if (showAlbumDialog && onMoveSelected != null) {
+    if ((showMoveAlbumDialog || showCopyAlbumDialog) && (onMoveSelected != null || onCopySelected != null)) {
         val albumNames = remember(items) {
             items.mapNotNull { it.bucketName.ifBlank { null } }.distinct().sorted()
         }
         AlbumSelectionDialog(
             albumNames = albumNames,
             onAlbumSelected = { albumName ->
-                showAlbumDialog = false
                 val selected = selectionState.getSelectedItems(items)
                 if (selected.isNotEmpty()) {
-                    onMoveSelected(selected, albumName)
+                    if (showMoveAlbumDialog && onMoveSelected != null) {
+                        onMoveSelected(selected, albumName)
+                    } else if (showCopyAlbumDialog && onCopySelected != null) {
+                        onCopySelected(selected, albumName)
+                    }
                 }
+                showMoveAlbumDialog = false
+                showCopyAlbumDialog = false
                 selectionState.clearSelection()
             },
-            onDismiss = { showAlbumDialog = false }
+            onDismiss = {
+                showMoveAlbumDialog = false
+                showCopyAlbumDialog = false
+            }
         )
     }
 
@@ -304,7 +314,12 @@ fun MediaSelectionHandler(
             },
             onMoveSelected = if (onMoveSelected != null) {
                 {
-                    showAlbumDialog = true
+                    showMoveAlbumDialog = true
+                }
+            } else null,
+            onCopySelected = if (onCopySelected != null) {
+                {
+                    showCopyAlbumDialog = true
                 }
             } else null
         )

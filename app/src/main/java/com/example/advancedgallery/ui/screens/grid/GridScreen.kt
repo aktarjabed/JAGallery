@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.grid
 
 import androidx.compose.material.icons.Icons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PhotoLibrary
 import android.net.Uri
@@ -48,10 +49,10 @@ fun GridScreen(
     }
 
 
-    val loadResult by viewModel.mediaLoadResult.collectAsState()
-    val sortOption by viewModel.sortOption.collectAsState()
-    val sortOrder by viewModel.sortOrder.collectAsState()
-    val mediaFilter by viewModel.mediaFilter.collectAsState()
+    val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
+    val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val mediaFilter by viewModel.mediaFilter.collectAsStateWithLifecycle()
 
     var showSortFilterSheet by remember { mutableStateOf(false) }
 
@@ -140,6 +141,24 @@ fun GridScreen(
                     is MoveOperationResult.Error -> {
                         Toast.makeText(context, moveResult.message, Toast.LENGTH_SHORT).show()
                     }
+                }
+            }
+        },
+        onCopySelected = { items, targetAlbum ->
+            coroutineScope.launch {
+                var successCount = 0
+                for (item in items) {
+                    when (viewModel.copyMedia(context, item, targetAlbum)) {
+                        is com.example.advancedgallery.domain.OperationResult.Success -> successCount++
+                        else -> {}
+                    }
+                }
+                if (successCount == items.size) {
+                    Toast.makeText(context, "Copy completed", Toast.LENGTH_SHORT).show()
+                } else if (successCount > 0) {
+                    Toast.makeText(context, "Partial copy completed", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Copy failed", Toast.LENGTH_SHORT).show()
                 }
             }
         },

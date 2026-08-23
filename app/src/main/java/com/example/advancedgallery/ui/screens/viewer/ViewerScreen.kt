@@ -1,6 +1,7 @@
 package com.example.advancedgallery.ui.screens.viewer
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -68,7 +70,7 @@ fun ViewerScreen(
         }
     }
 
-    val viewerState by viewModel.state.collectAsState()
+    val viewerState by viewModel.state.collectAsStateWithLifecycle()
 
     val mediaItems = when (val currentState = viewerState) {
         is ViewerState.Loading -> {
@@ -164,12 +166,37 @@ fun ViewerScreen(
 
     var showControls by remember { mutableStateOf(true) }
     var showRenameDialog by remember { mutableStateOf(false) }
+
+    var isTrimming by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var deleteState by remember { mutableStateOf<com.example.advancedgallery.ui.common.selection.DeleteOperationState>(com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    var showVideoTrimSheet by remember { mutableStateOf(false) }
+    var trimStartMs by remember { mutableStateOf(0f) }
+    var trimEndMs by remember { mutableStateOf(10000f) }
+    var videoDurationMs by remember { mutableStateOf(60000f) }
+
+    LaunchedEffect(showVideoTrimSheet, currentItem, context) {
+        if (showVideoTrimSheet && currentItem.isVideo) {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, currentItem.uri)
+                val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val duration = time?.toLongOrNull() ?: 60000L
+                videoDurationMs = duration.toFloat()
+                trimStartMs = 0f
+                trimEndMs = duration.toFloat()
+            } catch (e: Exception) {
+                videoDurationMs = 60000f
+            } finally {
+                retriever.release()
+            }
+        }
+    }
 
     var pendingRename by remember { mutableStateOf<com.example.advancedgallery.domain.RenameOperationResult.NeedsPermission?>(null) }
     val renamePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -213,6 +240,65 @@ fun ViewerScreen(
         )
     }
 
+
+    if (showVideoTrimSheet && currentItem.isVideo) {
+        AlertDialog(
+            onDismissRequest = { if (!isTrimming) showVideoTrimSheet = false },
+            title = { Text("Trim Video") },
+            text = {
+                Column {
+                    if (isTrimming) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                        Text("Trimming video...", modifier = Modifier.padding(top = 8.dp))
+                    } else {
+                        Text("Start: ${trimStartMs.toInt()} ms")
+                        Slider(
+                            value = trimStartMs,
+                            onValueChange = { if (it < trimEndMs) trimStartMs = it },
+                            valueRange = 0f..videoDurationMs
+                        )
+                        Text("End: ${trimEndMs.toInt()} ms")
+                        Slider(
+                            value = trimEndMs,
+                            onValueChange = { if (it > trimStartMs) trimEndMs = it },
+                            valueRange = 0f..videoDurationMs
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (!isTrimming) {
+                    TextButton(onClick = {
+                        isTrimming = true
+                        coroutineScope.launch {
+                            val newUri = com.example.advancedgallery.util.VideoTrimmer.trimVideo(
+                                context = context,
+                                sourceUri = currentItem.uri,
+                                startMs = trimStartMs.toLong(),
+                                endMs = trimEndMs.toLong()
+                            )
+                            isTrimming = false
+                            showVideoTrimSheet = false
+                            if (newUri != null) {
+                                android.widget.Toast.makeText(context, "Video trimmed and saved", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                android.widget.Toast.makeText(context, "Failed to trim video", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Text("Trim")
+                    }
+                }
+            },
+            dismissButton = {
+                if (!isTrimming) {
+                    TextButton(onClick = { showVideoTrimSheet = false }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
 
     if (showRenameDialog) {
         var newName by remember { mutableStateOf(currentItem.name) }
@@ -321,6 +407,10 @@ fun ViewerScreen(
                         if (!currentItem.isVideo) {
                             IconButton(onClick = { onNavigateToEditor(currentItem.uri.toString()) }) {
                                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+                            }
+                        } else {
+                            IconButton(onClick = { showVideoTrimSheet = true }) {
+                                Icon(Icons.Default.ContentCut, contentDescription = "Trim Video")
                             }
                         }
                         IconButton(onClick = {
