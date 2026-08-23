@@ -35,6 +35,7 @@ import com.example.advancedgallery.ui.screens.viewer.components.VideoPlayer
 import com.example.advancedgallery.ui.common.components.MetadataBottomSheet
 import androidx.compose.material.icons.filled.MoreVert
 import com.example.advancedgallery.util.FileUtils
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -168,6 +169,28 @@ fun ViewerScreen(
     var deleteState by remember { mutableStateOf<com.example.advancedgallery.ui.common.selection.DeleteOperationState>(com.example.advancedgallery.ui.common.selection.DeleteOperationState.Idle) }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var pendingRename by remember { mutableStateOf<com.example.advancedgallery.domain.RenameOperationResult.NeedsPermission?>(null) }
+    val renamePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val pending = pendingRename
+        pendingRename = null
+        if (pending != null && result.resultCode == android.app.Activity.RESULT_OK) {
+            coroutineScope.launch {
+                when (val retry = viewModel.renameMedia(context, pending.item, pending.newName)) {
+                    is com.example.advancedgallery.domain.RenameOperationResult.Success -> {
+                        android.widget.Toast.makeText(context, "Media renamed successfully.", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        android.widget.Toast.makeText(context, "Failed to rename media.", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else {
+            android.widget.Toast.makeText(context, "Rename cancelled: Permission denied.", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
@@ -207,7 +230,20 @@ fun ViewerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (newName.isNotBlank()) {
-                        viewModel.renameMedia(context, currentItem, newName.trim())
+                        coroutineScope.launch {
+                            when (val result = viewModel.renameMedia(context, currentItem, newName.trim())) {
+                                is com.example.advancedgallery.domain.RenameOperationResult.Success -> {
+                                    android.widget.Toast.makeText(context, "Media renamed successfully.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                                is com.example.advancedgallery.domain.RenameOperationResult.NeedsPermission -> {
+                                    pendingRename = result
+                                    renamePermissionLauncher.launch(IntentSenderRequest.Builder(result.pendingIntent.intentSender).build())
+                                }
+                                is com.example.advancedgallery.domain.RenameOperationResult.Error -> {
+                                    android.widget.Toast.makeText(context, "Failed to rename media: ${result.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     }
                     showRenameDialog = false
                 }) {

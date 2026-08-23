@@ -23,6 +23,16 @@ sealed interface MoveOperationResult {
     data class Error(val message: String, val cause: Throwable? = null) : MoveOperationResult
 }
 
+sealed interface RenameOperationResult {
+    data class Success(val uri: android.net.Uri) : RenameOperationResult
+    data class NeedsPermission(
+        val pendingIntent: android.app.PendingIntent,
+        val item: MediaItem,
+        val newName: String
+    ) : RenameOperationResult
+    data class Error(val message: String, val cause: Throwable? = null) : RenameOperationResult
+}
+
 interface MediaOperations {
     suspend fun favoriteMedia(mediaItem: MediaItem): OperationResult<Unit>
     suspend fun unfavoriteMedia(mediaItem: MediaItem): OperationResult<Unit>
@@ -35,7 +45,7 @@ interface MediaOperations {
     suspend fun copyMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): OperationResult<android.net.Uri>
     suspend fun moveMedia(context: android.content.Context, sourceItem: MediaItem, targetAlbumName: String): MoveOperationResult
     suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, targetAlbumName: String): MoveOperationResult
-    suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): OperationResult<android.net.Uri>
+    suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): RenameOperationResult
     suspend fun renameAlbum(context: android.content.Context, items: List<MediaItem>, newAlbumName: String): MoveOperationResult
 }
 
@@ -190,7 +200,7 @@ class MediaOperationsImpl @Inject constructor(
         context: android.content.Context,
         item: MediaItem,
         newName: String
-    ): OperationResult<android.net.Uri> {
+    ): RenameOperationResult {
         return try {
             val resolver = context.contentResolver
             val values = android.content.ContentValues().apply {
@@ -200,14 +210,16 @@ class MediaOperationsImpl @Inject constructor(
             val updated = resolver.update(item.uri, values, null, null)
             if (updated > 0) {
                 repository.loadMedia(force = true, context = context)
-                OperationResult.Success(item.uri)
+                RenameOperationResult.Success(item.uri)
             } else {
-                OperationResult.Error(Exception("Failed to update media store"))
+                RenameOperationResult.Error("Failed to update media store")
             }
+        } catch (e: android.app.RecoverableSecurityException) {
+            RenameOperationResult.NeedsPermission(e.userAction.actionIntent, item, newName)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
+            RenameOperationResult.Error(e.message ?: "Rename operation failed", e)
         }
     }
 

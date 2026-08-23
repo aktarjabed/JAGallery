@@ -86,6 +86,27 @@ object FileUtils {
         return success
     }
 
+    fun untrashMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return true
+        var success = true
+        for (uri in uris) {
+            try {
+                val contentValues = android.content.ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_TRASHED, 0)
+                }
+                val rows = contentResolver.update(uri, contentValues, null, null)
+                if (rows <= 0) {
+                    Log.w(TAG, "No rows updated for untrashing URI $uri")
+                    success = false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception untrashing URI $uri", e)
+                success = false
+            }
+        }
+        return success
+    }
+
     fun copyMediaFile(contentResolver: ContentResolver, sourceUri: Uri, destUri: Uri): Boolean {
         return try {
             contentResolver.openInputStream(sourceUri)?.use { input ->

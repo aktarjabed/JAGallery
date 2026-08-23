@@ -33,17 +33,8 @@ abstract class BaseMediaViewModel(
         }
     }
 
-    fun renameMedia(context: android.content.Context, item: com.example.advancedgallery.data.model.MediaItem, newName: String) {
-        viewModelScope.launch {
-            when (val result = mediaOperations.renameMedia(context, item, newName)) {
-                is com.example.advancedgallery.domain.OperationResult.Success -> {
-                    _operationEvent.emit(OperationEvent.Success("Media renamed successfully."))
-                }
-                is com.example.advancedgallery.domain.OperationResult.Error -> {
-                    _operationEvent.emit(OperationEvent.Error("Failed to rename media: ${result.message}"))
-                }
-            }
-        }
+    suspend fun renameMedia(context: android.content.Context, item: com.example.advancedgallery.data.model.MediaItem, newName: String): com.example.advancedgallery.domain.RenameOperationResult {
+        return mediaOperations.renameMedia(context, item, newName)
     }
 
     fun toggleFavorite(mediaItem: MediaItem) {
