@@ -35,6 +35,15 @@ fun TrashScreen(
         viewModel.loadTrashedMedia(context)
     }
 
+    LaunchedEffect(viewModel.operationEvent) {
+        viewModel.operationEvent.collect { event ->
+            when (event) {
+                is com.example.advancedgallery.ui.common.OperationEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is com.example.advancedgallery.ui.common.OperationEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     val loadResult by viewModel.trashedMediaLoadResult.collectAsState()
 
     var showEmptyTrashDialog by remember { mutableStateOf(false) }

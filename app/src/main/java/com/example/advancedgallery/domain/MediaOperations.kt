@@ -15,7 +15,7 @@ sealed interface MoveOperationResult {
     data class RequestSourceDelete(
         val successfulCopies: List<Pair<MediaItem, android.net.Uri>>,
         val failedItems: List<MediaItem>,
-        val pendingIntent: android.app.PendingIntent?
+        val pendingIntents: List<android.app.PendingIntent> = emptyList()
     ) : MoveOperationResult
 
     data class Success(val movedItems: List<Pair<MediaItem, android.net.Uri>>) : MoveOperationResult
@@ -182,10 +182,10 @@ class MediaOperationsImpl @Inject constructor(
             }
 
             val sourceUris = successfulCopies.map { it.first.uri }
-            val pendingIntent = com.example.advancedgallery.util.FileUtils.createDeleteRequest(context.contentResolver, sourceUris)
+            val pendingIntents = com.example.advancedgallery.util.FileUtils.createDeleteRequests(context.contentResolver, sourceUris)
 
-            if (pendingIntent != null) {
-                MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, pendingIntent)
+            if (pendingIntents.isNotEmpty()) {
+                MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, pendingIntents)
             } else {
                 MoveOperationResult.CopiedSourceRetained(successfulCopies)
             }

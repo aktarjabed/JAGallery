@@ -64,11 +64,8 @@ class AlbumsViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
 
-    private val _pendingAlbumRenameDelete = MutableSharedFlow<android.app.PendingIntent?>()
-    val pendingAlbumRenameDelete = _pendingAlbumRenameDelete.asSharedFlow()
-
-    private val _pendingDeletedUris = MutableSharedFlow<List<String>>()
-    val pendingDeletedUris = _pendingDeletedUris.asSharedFlow()
+    private val _albumRenameDeleteEvent = MutableSharedFlow<Pair<List<String>, List<android.app.PendingIntent>>>()
+    val albumRenameDeleteEvent = _albumRenameDeleteEvent.asSharedFlow()
 
     override fun removeDeletedItems(deletedIds: List<String>) {
         viewModelScope.launch {
@@ -80,9 +77,10 @@ class AlbumsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = mediaOperations.renameAlbum(context, items, newAlbumName)) {
                 is com.example.advancedgallery.domain.MoveOperationResult.RequestSourceDelete -> {
-                    if (result.pendingIntent != null) {
-                        _pendingDeletedUris.emit(result.successfulCopies.map { it.first.id })
-                        _pendingAlbumRenameDelete.emit(result.pendingIntent)
+                    if (result.pendingIntents.isNotEmpty()) {
+                        _albumRenameDeleteEvent.emit(
+                            Pair(result.successfulCopies.map { it.first.id }, result.pendingIntents)
+                        )
                     } else {
                         repository.removeDeletedItems(result.successfulCopies.map { it.first.id })
                         _operationEvent.emit(com.example.advancedgallery.ui.common.OperationEvent.Success("Album renamed successfully."))

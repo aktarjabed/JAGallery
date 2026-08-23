@@ -18,6 +18,17 @@ fun HiddenScreen(
     onBack: () -> Unit,
     viewModel: HiddenViewModel = hiltViewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(viewModel.operationEvent) {
+        viewModel.operationEvent.collect { event ->
+            when (event) {
+                is com.example.advancedgallery.ui.common.OperationEvent.Error -> android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+                is com.example.advancedgallery.ui.common.OperationEvent.Success -> android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     val loadResult by viewModel.mediaLoadResult.collectAsState()
 
     MediaCollectionContent(

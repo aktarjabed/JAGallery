@@ -38,6 +38,15 @@ fun GridScreen(
         viewModel.setSource(source)
     }
 
+    LaunchedEffect(viewModel.operationEvent) {
+        viewModel.operationEvent.collect { event ->
+            when (event) {
+                is com.example.advancedgallery.ui.common.OperationEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is com.example.advancedgallery.ui.common.OperationEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
     val loadResult by viewModel.mediaLoadResult.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
@@ -47,21 +56,49 @@ fun GridScreen(
     var showSortFilterSheet by remember { mutableStateOf(false) }
 
 
-    var pendingMoveDeleteCopies by remember { mutableStateOf<List<Pair<MediaItem, Uri>>?>(null) }
+    data class MoveDeleteState(
+        val copies: List<Pair<MediaItem, Uri>>,
+        val pendingIntents: List<android.app.PendingIntent>,
+        val currentIndex: Int = 0,
+        val processedIds: List<String> = emptyList()
+    )
+
+    var moveDeleteState by remember { mutableStateOf<MoveDeleteState?>(null) }
 
     val moveDeleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        val copies = pendingMoveDeleteCopies
-        if (copies != null) {
+        val state = moveDeleteState
+        if (state != null) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
-                viewModel.removeDeletedItems(copies.map { it.first.id })
-                Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
+                val processedBatchIds = state.copies.map { it.first.id }.drop(state.currentIndex * chunkSize).take(chunkSize)
+                val updatedProcessedIds = state.processedIds + processedBatchIds
+
+                if (state.currentIndex + 1 < state.pendingIntents.size) {
+                    val nextIndex = state.currentIndex + 1
+                    moveDeleteState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
+                } else {
+                    viewModel.removeDeletedItems(updatedProcessedIds)
+                    Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                    moveDeleteState = null
+                }
             } else {
+                if (state.processedIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(state.processedIds)
+                }
                 Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                moveDeleteState = null
             }
         }
-        pendingMoveDeleteCopies = null
+    }
+
+    LaunchedEffect(moveDeleteState) {
+        val state = moveDeleteState
+        if (state != null && state.pendingIntents.isNotEmpty()) {
+            val intentSender = state.pendingIntents[state.currentIndex].intentSender
+            moveDeleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+        }
     }
 
     val albumTitle = stringResource(R.string.album_default_title)
@@ -84,12 +121,11 @@ fun GridScreen(
                 val moveResult = viewModel.moveMediaBatch(context, items, targetAlbum)
                 when (moveResult) {
                     is MoveOperationResult.RequestSourceDelete -> {
-                        pendingMoveDeleteCopies = moveResult.successfulCopies
                         if (moveResult.failedItems.isNotEmpty()) {
                             Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
                         }
-                        if (moveResult.pendingIntent != null) {
-                            moveDeleteLauncher.launch(IntentSenderRequest.Builder(moveResult.pendingIntent.intentSender).build())
+                        if (moveResult.pendingIntents.isNotEmpty()) {
+                            moveDeleteState = MoveDeleteState(moveResult.successfulCopies, moveResult.pendingIntents)
                         } else {
                             viewModel.removeDeletedItems(moveResult.successfulCopies.map { it.first.id })
                             Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
