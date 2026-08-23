@@ -18,6 +18,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -29,13 +32,33 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
     val exoPlayer = remember(uri) {
-        ExoPlayer.Builder(context).build().apply {
+        ExoPlayer.Builder(context)
+            .setSeekBackIncrementMs(10000)
+            .setSeekForwardIncrementMs(10000)
+            .build().apply {
             setMediaItem(MediaItem.fromUri(uri))
         }
     }
 
-    LaunchedEffect(isPageVisible) {
-        if (isPageVisible) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isAppInForeground = remember { androidx.compose.runtime.mutableStateOf(true) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                isAppInForeground.value = false
+            } else if (event == Lifecycle.Event.ON_RESUME) {
+                isAppInForeground.value = true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(isPageVisible, isAppInForeground.value) {
+        if (isPageVisible && isAppInForeground.value) {
             if (exoPlayer.playbackState == androidx.media3.common.Player.STATE_IDLE) {
                 exoPlayer.prepare()
             }

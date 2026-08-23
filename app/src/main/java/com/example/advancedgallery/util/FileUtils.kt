@@ -9,7 +9,7 @@ import android.util.Log
 
 object FileUtils {
     private const val TAG = "FileUtils"
-    private const val MAX_BATCH_SIZE = 2000
+    private const val MAX_BATCH_SIZE = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
 
     fun createDeleteRequest(contentResolver: ContentResolver, uris: List<Uri>): PendingIntent? {
         if (uris.isEmpty()) return null
@@ -23,6 +23,20 @@ object FileUtils {
             }
         } else {
             null
+        }
+    }
+
+    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): List<PendingIntent> {
+        if (uris.isEmpty()) return emptyList()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
+
+        return uris.chunked(MAX_BATCH_SIZE).mapNotNull { chunk ->
+            try {
+                MediaStore.createTrashRequest(contentResolver, chunk, value)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create trash request for chunk", e)
+                null
+            }
         }
     }
 

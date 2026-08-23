@@ -63,7 +63,21 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    val trashedMediaLoadResult: Flow<MediaLoadResult> = _trashedMediaLoadResult
+    val trashedMediaLoadResult: Flow<MediaLoadResult> = combine(
+        _trashedMediaLoadResult,
+        mediaDao.getFavorites()
+    ) { result, favorites ->
+        val favoriteUris = favorites.map { it.uri }.toSet()
+        when (result) {
+            is MediaLoadResult.Success -> {
+                val updated = result.items.map { item ->
+                    item.copy(isFavorite = favoriteUris.contains(item.id))
+                }
+                if (updated.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(updated)
+            }
+            else -> result
+        }
+    }
 
     suspend fun loadTrashedMedia(context: Context? = null) = withContext(ioDispatcher) {
         val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context, includeTrashed = true)

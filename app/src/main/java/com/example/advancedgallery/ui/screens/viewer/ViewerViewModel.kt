@@ -8,10 +8,12 @@ import com.example.advancedgallery.data.model.MediaLoadResult
 import com.example.advancedgallery.data.model.MediaSource
 import com.example.advancedgallery.data.repository.MediaRepository
 import com.example.advancedgallery.domain.MediaOperations
+import android.content.Context
 import com.example.advancedgallery.domain.OperationResult
 import com.example.advancedgallery.ui.common.BaseMediaViewModel
 import com.example.advancedgallery.ui.navigation.parseMediaSource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,6 +39,7 @@ sealed interface ViewerNavigationEvent {
 
 @HiltViewModel
 class ViewerViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: MediaRepository,
     mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
@@ -124,7 +127,7 @@ class ViewerViewModel @Inject constructor(
 
         if (initialSource is MediaSource.Trash) {
             viewModelScope.launch {
-                repository.loadTrashedMedia()
+                repository.loadTrashedMedia(context)
             }
         }
 
