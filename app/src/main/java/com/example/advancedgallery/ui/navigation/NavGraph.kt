@@ -106,7 +106,7 @@ fun NavGraph() {
             )
         ) { backStackEntry ->
             val sourceStr = backStackEntry.arguments?.getString("source")
-            val volumeNameStr = backStackEntry.arguments?.getString("volumeName")?.let { android.net.Uri.decode(it) }
+            val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, null)
@@ -160,13 +160,12 @@ fun NavGraph() {
                 }
             )
         ) { backStackEntry ->
-            val encodedMediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
-            val mediaId = android.net.Uri.decode(encodedMediaId)
+            val mediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
             val sourceStr = backStackEntry.arguments?.getString("source")
-            val volumeNameStr = backStackEntry.arguments?.getString("volumeName")?.let { android.net.Uri.decode(it) }
+            val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
             val bucketId = bucketIdStr?.toLongOrNull()
-            val searchQuery = backStackEntry.arguments?.getString("searchQuery")?.let { android.net.Uri.decode(it) }
+            val searchQuery = backStackEntry.arguments?.getString("searchQuery")
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, searchQuery)
 
             if (source == null) {
@@ -190,8 +189,8 @@ fun NavGraph() {
                 navArgument("imageUri") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val encodedUri = backStackEntry.arguments?.getString("imageUri") ?: return@composable
-            val imageUri = android.net.Uri.parse(android.net.Uri.decode(encodedUri))
+            val uriStr = backStackEntry.arguments?.getString("imageUri") ?: return@composable
+            val imageUri = android.net.Uri.parse(uriStr)
             EditorScreen(
                 imageUri = imageUri,
                 onBack = { navController.popBackStack() },

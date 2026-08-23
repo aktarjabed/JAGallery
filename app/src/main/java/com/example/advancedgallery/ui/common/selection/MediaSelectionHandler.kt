@@ -290,9 +290,14 @@ fun MediaSelectionHandler(
                                 currentIndex = 0
                             )
                         } else {
-                            callback(selected)
-                            onRemoveDeletedItems(batch.ids)
-                            selectionState.clearSelection()
+                            val success = FileUtils.untrashMediaItems(context.contentResolver, batch.uris)
+                            if (success) {
+                                callback(selected)
+                                onRemoveDeletedItems(batch.ids)
+                                selectionState.clearSelection()
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
