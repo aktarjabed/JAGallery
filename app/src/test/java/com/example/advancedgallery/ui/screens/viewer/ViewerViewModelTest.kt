@@ -39,7 +39,7 @@ class ViewerViewModelTest {
 
     @Test
     fun toggleFavorite_invokesRepositoryToggle() = runTest {
-        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
+        val viewModel = ViewerViewModel(mock(android.content.Context::class.java), repository, mediaOperations, SavedStateHandle())
         val item = MediaTestData.image(id = 10L, uriString = "content://media/external/images/media/10")
 
         viewModel.toggleFavorite(item)
@@ -52,7 +52,7 @@ class ViewerViewModelTest {
     @Test
     fun removeDeletedItem_clearsFromFavorites() = runTest {
         fakeDao.insert(MediaTestData.favorite(uriString = "content://media/external/images/media/10"))
-        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
+        val viewModel = ViewerViewModel(mock(android.content.Context::class.java), repository, mediaOperations, SavedStateHandle())
 
         viewModel.removeDeletedItem("content://media/external/images/media/10")
 
@@ -62,14 +62,14 @@ class ViewerViewModelTest {
 
     @Test
     fun state_initialStateIsLoading() = runTest {
-        val viewModel = ViewerViewModel(repository, mediaOperations, SavedStateHandle())
+        val viewModel = ViewerViewModel(mock(android.content.Context::class.java), repository, mediaOperations, SavedStateHandle())
         assertEquals(ViewerState.Loading, viewModel.state.value)
     }
 
     @Test
     fun invalidRoute_emitsPopBackNavigationEvent() = runTest {
         val savedStateHandle = SavedStateHandle(mapOf("source" to "INVALID_SOURCE"))
-        val viewModel = ViewerViewModel(repository, mediaOperations, savedStateHandle)
+        val viewModel = ViewerViewModel(mock(android.content.Context::class.java), repository, mediaOperations, savedStateHandle)
 
         val navEvent = viewModel.navigationEvent.first()
         assertEquals(ViewerNavigationEvent.PopBack, navEvent)

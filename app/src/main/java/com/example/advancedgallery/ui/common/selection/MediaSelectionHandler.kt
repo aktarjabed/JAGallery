@@ -93,11 +93,36 @@ fun MediaSelectionHandler(
         val state = deleteState
         if (state is DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
-                onRemoveDeletedItems(state.batch.ids)
-                selectionState.clearSelection()
+                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
+                val processedBatchIds = state.batch.ids.drop(state.currentIndex * chunkSize).take(chunkSize)
+                val updatedProcessedIds = state.processedIds + processedBatchIds
+
+                if (state.currentIndex + 1 < state.pendingIntents.size) {
+                    val nextIndex = state.currentIndex + 1
+                    deleteState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
+                } else {
+                    onRemoveDeletedItems(updatedProcessedIds)
+                    selectionState.clearSelection()
+                    deleteState = DeleteOperationState.Idle
+                }
+            } else {
+                if (state.processedIds.isNotEmpty()) {
+                    onRemoveDeletedItems(state.processedIds)
+                    selectionState.clearSelection()
+                }
+                deleteState = DeleteOperationState.Idle
             }
+        } else {
+            deleteState = DeleteOperationState.Idle
         }
-        deleteState = DeleteOperationState.Idle
+    }
+
+    LaunchedEffect(deleteState) {
+        val state = deleteState
+        if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
+            val intentSender = state.pendingIntents[state.currentIndex].intentSender
+            deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+        }
     }
 
     val restoreLauncher = rememberLauncherForActivityResult(
@@ -106,15 +131,44 @@ fun MediaSelectionHandler(
         val state = restoreState
         if (state is DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val selected = items.filter { state.batch.ids.contains(it.id) }
-                if (selected.isNotEmpty()) {
-                    onRestoreSelected?.invoke(selected)
+                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
+                val processedBatchIds = state.batch.ids.drop(state.currentIndex * chunkSize).take(chunkSize)
+                val updatedProcessedIds = state.processedIds + processedBatchIds
+
+                if (state.currentIndex + 1 < state.pendingIntents.size) {
+                    val nextIndex = state.currentIndex + 1
+                    restoreState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
+                } else {
+                    val selected = items.filter { updatedProcessedIds.contains(it.id) }
+                    if (selected.isNotEmpty()) {
+                        onRestoreSelected?.invoke(selected)
+                    }
+                    onRemoveDeletedItems(updatedProcessedIds)
+                    selectionState.clearSelection()
+                    restoreState = DeleteOperationState.Idle
                 }
-                onRemoveDeletedItems(state.batch.ids)
-                selectionState.clearSelection()
+            } else {
+                if (state.processedIds.isNotEmpty()) {
+                    val selected = items.filter { state.processedIds.contains(it.id) }
+                    if (selected.isNotEmpty()) {
+                        onRestoreSelected?.invoke(selected)
+                    }
+                    onRemoveDeletedItems(state.processedIds)
+                    selectionState.clearSelection()
+                }
+                restoreState = DeleteOperationState.Idle
             }
+        } else {
+            restoreState = DeleteOperationState.Idle
         }
-        restoreState = DeleteOperationState.Idle
+    }
+
+    LaunchedEffect(restoreState) {
+        val state = restoreState
+        if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
+            val intentSender = state.pendingIntents[state.currentIndex].intentSender
+            restoreLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+        }
     }
 
     when (val currentState = deleteState) {
@@ -125,16 +179,21 @@ fun MediaSelectionHandler(
                 isPermanent = isTrashedBatch,
                 onConfirm = {
                     val isTrashedBatch = items.any { currentState.batch.ids.contains(it.id) && it.isTrashed }
-                    val pendingIntent = if (isTrashedBatch) {
-                        FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                    val pendingIntents = if (isTrashedBatch) {
+                        FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                     } else {
-                        FileUtils.createTrashRequest(context.contentResolver, currentState.batch.uris, true)
-                            ?: FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                        val trashRequests = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
+                        trashRequests.ifEmpty {
+                            FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
+                        }
                     }
 
-                    if (pendingIntent != null) {
-                        deleteState = DeleteOperationState.SystemConfirmation(currentState.batch)
-                        deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    if (pendingIntents.isNotEmpty()) {
+                        deleteState = DeleteOperationState.SystemConfirmation(
+                            batch = currentState.batch,
+                            pendingIntents = pendingIntents,
+                            currentIndex = 0
+                        )
                     } else {
                         val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
                         if (success) {
@@ -223,10 +282,13 @@ fun MediaSelectionHandler(
                             ids = selected.map { it.id },
                             uris = selected.map { it.uri }
                         )
-                        val pendingIntent = FileUtils.createTrashRequest(context.contentResolver, batch.uris, false)
-                        if (pendingIntent != null) {
-                            restoreState = DeleteOperationState.SystemConfirmation(batch)
-                            restoreLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                        val pendingIntents = FileUtils.createTrashRequests(context.contentResolver, batch.uris, false)
+                        if (pendingIntents.isNotEmpty()) {
+                            restoreState = DeleteOperationState.SystemConfirmation(
+                                batch = batch,
+                                pendingIntents = pendingIntents,
+                                currentIndex = 0
+                            )
                         } else {
                             callback(selected)
                             onRemoveDeletedItems(batch.ids)

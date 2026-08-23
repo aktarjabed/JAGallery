@@ -46,11 +46,36 @@ fun TrashScreen(
         val state = emptyTrashState
         if (state is DeleteOperationState.SystemConfirmation) {
             if (result.resultCode == android.app.Activity.RESULT_OK) {
-                viewModel.removeDeletedItems(state.batch.ids)
-                viewModel.refreshAll(context)
+                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
+                val processedBatchIds = state.batch.ids.drop(state.currentIndex * chunkSize).take(chunkSize)
+                val updatedProcessedIds = state.processedIds + processedBatchIds
+
+                if (state.currentIndex + 1 < state.pendingIntents.size) {
+                    val nextIndex = state.currentIndex + 1
+                    emptyTrashState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
+                } else {
+                    viewModel.removeDeletedItems(updatedProcessedIds)
+                    viewModel.refreshAll(context)
+                    emptyTrashState = DeleteOperationState.Idle
+                }
+            } else {
+                if (state.processedIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(state.processedIds)
+                    viewModel.refreshAll(context)
+                }
+                emptyTrashState = DeleteOperationState.Idle
             }
+        } else {
+            emptyTrashState = DeleteOperationState.Idle
         }
-        emptyTrashState = DeleteOperationState.Idle
+    }
+
+    LaunchedEffect(emptyTrashState) {
+        val state = emptyTrashState
+        if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
+            val intentSender = state.pendingIntents[state.currentIndex].intentSender
+            deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+        }
     }
 
     if (showEmptyTrashDialog) {
@@ -65,15 +90,17 @@ fun TrashScreen(
                 TextButton(onClick = {
                     showEmptyTrashDialog = false
                     if (items.isNotEmpty()) {
-                        val chunkedItems = items.take(2000)
                         val batch = PendingDeleteBatch(
-                            ids = chunkedItems.map { it.id },
-                            uris = chunkedItems.map { it.uri }
+                            ids = items.map { it.id },
+                            uris = items.map { it.uri }
                         )
                         val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
                         if (pendingIntents.isNotEmpty()) {
-                            emptyTrashState = DeleteOperationState.SystemConfirmation(batch)
-                            deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntents.first().intentSender).build())
+                            emptyTrashState = DeleteOperationState.SystemConfirmation(
+                                batch = batch,
+                                pendingIntents = pendingIntents,
+                                currentIndex = 0
+                            )
                         } else {
                             val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
                             if (success) {
