@@ -57,14 +57,14 @@ object VideoTrimmer {
             extractor = MediaExtractor()
             sourcePfd = resolver.openFileDescriptor(sourceUri, "r")
             if (sourcePfd == null) {
-                if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
                 return@withContext null
             }
             extractor.setDataSource(sourcePfd.fileDescriptor)
 
             destPfd = resolver.openFileDescriptor(newUri, "rw")
             if (destPfd == null) {
-                if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
                 return@withContext null
             }
 

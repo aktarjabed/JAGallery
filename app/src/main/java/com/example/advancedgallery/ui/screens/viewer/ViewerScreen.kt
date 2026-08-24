@@ -354,10 +354,10 @@ fun ViewerScreen(
                     TextButton(onClick = {
                         val isTrashed = currentItem?.isTrashed == true
                         val pendingIntent = if (isTrashed) {
-                            FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                            FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris).firstOrNull()
                         } else {
-                            FileUtils.createTrashRequest(context.contentResolver, currentState.batch.uris, true)
-                                ?: FileUtils.createDeleteRequest(context.contentResolver, currentState.batch.uris)
+                            FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true).firstOrNull()
+                                ?: FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris).firstOrNull()
                         }
 
                         if (pendingIntent != null) {

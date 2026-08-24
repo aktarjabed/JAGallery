@@ -11,21 +11,6 @@ object FileUtils {
     private const val TAG = "FileUtils"
     private const val MAX_BATCH_SIZE = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
 
-    fun createDeleteRequest(contentResolver: ContentResolver, uris: List<Uri>): PendingIntent? {
-        if (uris.isEmpty()) return null
-        val batchedUris = uris.take(MAX_BATCH_SIZE)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                MediaStore.createDeleteRequest(contentResolver, batchedUris)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create delete request", e)
-                null
-            }
-        } else {
-            null
-        }
-    }
-
     fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): List<PendingIntent> {
         if (uris.isEmpty()) return emptyList()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
@@ -51,21 +36,6 @@ object FileUtils {
                 Log.e(TAG, "Failed to create delete request for chunk", e)
                 null
             }
-        }
-    }
-
-    fun createTrashRequest(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): PendingIntent? {
-        if (uris.isEmpty()) return null
-        val batchedUris = uris.take(MAX_BATCH_SIZE)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                MediaStore.createTrashRequest(contentResolver, batchedUris, value)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create trash request", e)
-                null
-            }
-        } else {
-            null
         }
     }
 

@@ -21,10 +21,10 @@ class SelectionState(initialSelectionMode: Boolean = false, initialSelectedIds: 
                 listOf(state.selectionMode, state.selectedIds.toList())
             },
             restore = { value ->
-                @Suppress("UNCHECKED_CAST")
-                val list = value as List<Any>
-                val mode = list[0] as Boolean
-                val ids = list[1] as List<String>
+                val list = value as? List<*>
+                val mode = list?.getOrNull(0) as? Boolean ?: false
+                val idsList = list?.getOrNull(1) as? List<*>
+                val ids = idsList?.filterIsInstance<String>() ?: emptyList()
                 SelectionState(mode, ids.toSet())
             }
         )
