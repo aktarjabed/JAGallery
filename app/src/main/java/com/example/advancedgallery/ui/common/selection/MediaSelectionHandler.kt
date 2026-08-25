@@ -69,6 +69,7 @@ fun shareMediaItems(context: Context, items: List<MediaItem>) {
 @Composable
 fun MediaSelectionHandler(
     items: List<MediaItem>,
+    allAlbumNames: List<String>,
     selectionState: SelectionState,
     onRemoveDeletedItems: (List<String>) -> Unit,
     onHideSelected: ((List<MediaItem>) -> Unit)? = null,
@@ -226,9 +227,7 @@ fun MediaSelectionHandler(
     }
 
     if ((showMoveAlbumDialog || showCopyAlbumDialog) && (onMoveSelected != null || onCopySelected != null)) {
-        val albumNames = remember(items) {
-            items.mapNotNull { it.bucketName.ifBlank { null } }.distinct().sorted()
-        }
+        val albumNames = remember(allAlbumNames) { allAlbumNames }
         AlbumSelectionDialog(
             albumNames = albumNames,
             onAlbumSelected = { albumName ->

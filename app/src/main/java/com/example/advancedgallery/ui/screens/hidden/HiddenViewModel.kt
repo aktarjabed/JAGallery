@@ -15,7 +15,7 @@ import javax.inject.Inject
 class HiddenViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     val mediaLoadResult: StateFlow<MediaLoadResult> = repository.hiddenMediaLoadResult.stateIn(
         scope = viewModelScope,

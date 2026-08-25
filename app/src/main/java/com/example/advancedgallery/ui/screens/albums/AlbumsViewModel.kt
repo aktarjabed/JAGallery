@@ -28,10 +28,10 @@ sealed interface AlbumsUiState {
 
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
-    private val repository: MediaRepository,
+    repository: MediaRepository,
     mediaOperations: MediaOperations,
     @ApplicationContext private val context: Context
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     val uiState: StateFlow<AlbumsUiState> = repository.mediaLoadResult.map { result ->
         when (result) {

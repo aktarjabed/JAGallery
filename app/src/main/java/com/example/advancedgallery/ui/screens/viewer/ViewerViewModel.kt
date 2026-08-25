@@ -40,10 +40,10 @@ sealed interface ViewerNavigationEvent {
 @HiltViewModel
 class ViewerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val repository: MediaRepository,
+    repository: MediaRepository,
     mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     companion object {
         private const val TAG = "ViewerViewModel"

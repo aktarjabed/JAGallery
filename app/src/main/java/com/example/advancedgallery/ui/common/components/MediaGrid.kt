@@ -61,8 +61,13 @@ fun MediaGrid(
             }
         }
     } else {
+        val currentDayKey = remember {
+            val now = Calendar.getInstance()
+            "${now.get(Calendar.YEAR)}-${now.get(Calendar.DAY_OF_YEAR)}"
+        }
+
         // Group items by timeline
-        val groupedItems = remember(items) {
+        val groupedItems = remember(items, currentDayKey) {
             items.groupBy { item ->
                 val time = if (item.dateAdded > 10000000000L) item.dateAdded else item.dateAdded * 1000
                 val cal = Calendar.getInstance().apply { timeInMillis = time }

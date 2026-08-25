@@ -46,6 +46,7 @@ fun TrashScreen(
     }
 
     val loadResult by viewModel.trashedMediaLoadResult.collectAsStateWithLifecycle()
+    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
 
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
     var emptyTrashState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
@@ -127,6 +128,7 @@ fun TrashScreen(
 
     MediaCollectionContent(
         loadResult = loadResult,
+        allAlbumNames = allAlbumNames,
         onRemoveDeletedItems = { deletedIds ->
             viewModel.removeDeletedItems(deletedIds)
             // No refreshAll here -- observer handles post-delete rescan

@@ -23,9 +23,11 @@ fun SearchScreen(
 ) {
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
+    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = searchResult,
+        allAlbumNames = allAlbumNames,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         emptyIcon = Icons.Default.Search,
         emptyMessage = if (query.isBlank()) stringResource(R.string.search_hint) else stringResource(R.string.no_search_results),

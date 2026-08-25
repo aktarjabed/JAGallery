@@ -19,6 +19,7 @@ import com.example.advancedgallery.ui.common.selection.rememberSelectionState
 @Composable
 fun MediaCollectionContent(
     loadResult: MediaLoadResult,
+    allAlbumNames: List<String>,
     onRemoveDeletedItems: (List<String>) -> Unit,
     emptyIcon: ImageVector,
     emptyMessage: String,
@@ -38,6 +39,7 @@ fun MediaCollectionContent(
         topBar = {
             MediaSelectionHandler(
                 items = items,
+                allAlbumNames = allAlbumNames,
                 selectionState = selectionState,
                 onRemoveDeletedItems = onRemoveDeletedItems,
                 onHideSelected = onHideSelected,

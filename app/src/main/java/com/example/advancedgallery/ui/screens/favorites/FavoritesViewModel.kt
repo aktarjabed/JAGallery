@@ -16,7 +16,7 @@ import javax.inject.Inject
 class FavoritesViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     val mediaLoadResult: StateFlow<MediaLoadResult> = repository.mediaLoadResult.map { result ->
         when (result) {

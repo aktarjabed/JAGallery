@@ -9,6 +9,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import com.example.advancedgallery.data.repository.MediaRepository
+import com.example.advancedgallery.data.model.MediaLoadResult
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 
 sealed interface OperationEvent {
     data class Error(val message: String) : OperationEvent
@@ -16,8 +22,25 @@ sealed interface OperationEvent {
 }
 
 abstract class BaseMediaViewModel(
-    protected val mediaOperations: MediaOperations
+    protected val mediaOperations: MediaOperations,
+    protected val repository: MediaRepository
 ) : ViewModel() {
+
+    val allAlbumNames: StateFlow<List<String>> = repository.mediaLoadResult
+        .map { result ->
+            when (result) {
+                is MediaLoadResult.Success -> result.items
+                    .mapNotNull { it.bucketName.takeIf { name -> name.isNotBlank() } }
+                    .distinct()
+                    .sorted()
+                else -> emptyList()
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     protected val _operationEvent = MutableSharedFlow<OperationEvent>()
     val operationEvent: SharedFlow<OperationEvent> = _operationEvent.asSharedFlow()

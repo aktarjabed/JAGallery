@@ -37,6 +37,12 @@ import coil.compose.AsyncImage
 import com.example.advancedgallery.R
 import com.example.advancedgallery.data.model.MediaSource
 
+private data class AlbumRenameState(
+    val pendingIntents: List<android.app.PendingIntent>,
+    val currentIndex: Int,
+    val processedIds: List<String>
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumsScreen(
@@ -65,56 +71,51 @@ fun AlbumsScreen(
         }
     }
 
-    data class AlbumRenameState(
-        val uris: List<String>,
-        val pendingIntents: List<android.app.PendingIntent>,
-        val currentIndex: Int = 0,
-        val processedIds: List<String> = emptyList()
-    )
-
     var albumRenameState by remember { mutableStateOf<AlbumRenameState?>(null) }
 
     val deleteLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        val state = albumRenameState
-        if (state != null) {
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val chunkSize = com.example.advancedgallery.util.Constants.MAX_BATCH_SIZE
-                val processedBatchIds = state.uris.drop(state.currentIndex * chunkSize).take(chunkSize)
-                val updatedProcessedIds = state.processedIds + processedBatchIds
-
-                if (state.currentIndex + 1 < state.pendingIntents.size) {
-                    val nextIndex = state.currentIndex + 1
-                    albumRenameState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
-                } else {
-                    viewModel.removeDeletedItems(updatedProcessedIds)
-                    Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
-                    albumRenameState = null
-                }
-            } else {
-                if (state.processedIds.isNotEmpty()) {
-                    viewModel.removeDeletedItems(state.processedIds)
-                }
-                Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-                albumRenameState = null
+        val state = albumRenameState ?: return@rememberLauncherForActivityResult
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            // User cancelled — items from confirmed chunks are already deleted; remainder retained
+            if (state.processedIds.isNotEmpty()) {
+                viewModel.removeDeletedItems(state.processedIds)
             }
+            Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+            albumRenameState = null
+            return@rememberLauncherForActivityResult
+        }
+        val nextIndex = state.currentIndex + 1
+        if (nextIndex < state.pendingIntents.size) {
+            albumRenameState = state.copy(currentIndex = nextIndex)
+        } else {
+            viewModel.removeDeletedItems(state.processedIds)
+            Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
+            albumRenameState = null
         }
     }
 
     LaunchedEffect(Unit) {
         viewModel.albumRenameDeleteEvent.collect { (uris, pendingIntents) ->
             if (pendingIntents.isNotEmpty()) {
-                albumRenameState = AlbumRenameState(uris, pendingIntents)
+                albumRenameState = AlbumRenameState(
+                    pendingIntents = pendingIntents,
+                    currentIndex = 0,
+                    processedIds = uris
+                )
             }
         }
     }
 
     LaunchedEffect(albumRenameState) {
-        val state = albumRenameState
-        if (state != null && state.pendingIntents.isNotEmpty()) {
-            val intentSender = state.pendingIntents[state.currentIndex].intentSender
-            deleteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(intentSender).build())
+        val state = albumRenameState ?: return@LaunchedEffect
+        if (state.currentIndex < state.pendingIntents.size) {
+            deleteLauncher.launch(
+                androidx.activity.result.IntentSenderRequest.Builder(
+                    state.pendingIntents[state.currentIndex].intentSender
+                ).build()
+            )
         }
     }
 

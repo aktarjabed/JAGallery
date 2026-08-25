@@ -21,7 +21,7 @@ class SearchViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     val searchQuery: StateFlow<String> = savedStateHandle.getStateFlow("searchQuery", "")
 

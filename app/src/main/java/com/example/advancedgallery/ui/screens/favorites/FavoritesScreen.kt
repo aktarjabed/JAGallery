@@ -20,9 +20,11 @@ fun FavoritesScreen(
     viewModel: FavoritesViewModel = hiltViewModel()
 ) {
     val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
+    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = loadResult,
+        allAlbumNames = allAlbumNames,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         emptyIcon = Icons.Default.FavoriteBorder,
         emptyMessage = stringResource(R.string.no_favorites_found),
