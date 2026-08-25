@@ -82,4 +82,32 @@
     <string name="new_name">New Name</string>
     <string name="album_renamed">Album renamed</string>
     <string name="media_renamed">Media renamed</string>
+
+    <!-- AlbumSelectionDialog -->
+    <string name="create_new_album">+ Create New Album</string>
+    <string name="album_name_hint">Album Name</string>
+    <string name="no_existing_albums">No existing albums</string>
+
+    <!-- SortFilterBottomSheet -->
+    <string name="sort_filter_title">Sort &amp; Filter</string>
+    <string name="sort_by_label">Sort By</string>
+    <string name="sort_order_label">Order</string>
+    <string name="filter_media_label">Filter Media</string>
+    <string name="filter_all">All</string>
+    <string name="filter_images_only">Images Only</string>
+    <string name="filter_videos_only">Videos Only</string>
+    <string name="sort_filter_close">Close</string>
+    <string name="sort_filter_apply">Apply</string>
+
+    <!-- MetadataBottomSheet -->
+    <string name="metadata_title">Media Details</string>
+    <string name="metadata_field_filename">File Name</string>
+    <string name="metadata_field_size">File Size</string>
+    <string name="metadata_field_date">Date Added</string>
+    <string name="metadata_field_dimensions">Dimensions</string>
+    <string name="metadata_field_type">Type</string>
+    <string name="metadata_field_path">URI / Path</string>
+    <string name="metadata_copy_uri">Copy URI / Path</string>
+    <string name="metadata_uri_copied">Copied URI to clipboard</string>
+    <string name="metadata_close">Close</string>
 </resources>

@@ -131,4 +131,12 @@ object FileUtils {
         }
         return true // No IS_PENDING before API 29
     }
+
+    fun formatFileSize(bytes: Long): String {
+        if (bytes <= 0L) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
+        val clamped = digitGroups.coerceIn(0, units.size - 1)
+        return String.format("%.1f %s", bytes / Math.pow(1024.0, clamped.toDouble()), units[clamped])
+    }
 }

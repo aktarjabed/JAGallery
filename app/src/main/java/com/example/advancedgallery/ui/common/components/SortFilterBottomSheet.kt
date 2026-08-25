@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.advancedgallery.R
 
 enum class SortOption { DATE, NAME, SIZE }
 enum class SortOrder { ASCENDING, DESCENDING }
@@ -50,14 +52,14 @@ fun SortFilterBottomSheet(
                 .padding(24.dp)
         ) {
             Text(
-                text = "Sort & Filter",
+                text = androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.sort_filter_title),
                 style = androidx.compose.material3.MaterialTheme.typography.titleLarge
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Sort By",
+                text = androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.sort_by_label),
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium
             )
 
@@ -83,7 +85,7 @@ fun SortFilterBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Order",
+                text = androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.sort_order_label),
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium
             )
 
@@ -103,7 +105,7 @@ fun SortFilterBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Filter Media",
+                text = androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.filter_media_label),
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium
             )
 
@@ -118,9 +120,9 @@ fun SortFilterBottomSheet(
                         label = {
                             Text(
                                 when (filter) {
-                                    MediaTypeFilter.ALL -> "All"
-                                    MediaTypeFilter.IMAGES_ONLY -> "Images Only"
-                                    MediaTypeFilter.VIDEOS_ONLY -> "Videos Only"
+                                    MediaTypeFilter.ALL -> androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.filter_all)
+                                    MediaTypeFilter.IMAGES_ONLY -> androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.filter_images_only)
+                                    MediaTypeFilter.VIDEOS_ONLY -> androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.filter_videos_only)
                                 }
                             )
                         }
@@ -135,13 +137,13 @@ fun SortFilterBottomSheet(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onDismiss) {
-                    Text("Close")
+                    Text(androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.sort_filter_close))
                 }
                 Spacer(modifier = Modifier.padding(8.dp))
                 androidx.compose.material3.Button(onClick = {
                     onApply(pendingSortOption, pendingSortOrder, pendingFilter)
                 }) {
-                    Text("Apply")
+                    Text(androidx.compose.ui.res.stringResource(com.example.advancedgallery.R.string.sort_filter_apply))
                 }
             }
         }

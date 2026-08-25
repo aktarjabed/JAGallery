@@ -24,7 +24,7 @@ class GridViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations,
     private val savedStateHandle: SavedStateHandle
-) : BaseMediaViewModel(mediaOperations) {
+) : BaseMediaViewModel(mediaOperations, repository) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
     private val volumeName: String? = savedStateHandle.get<String>("volumeName")

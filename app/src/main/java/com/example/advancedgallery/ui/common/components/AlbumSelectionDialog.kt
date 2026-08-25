@@ -30,10 +30,10 @@ fun AlbumSelectionDialog(
                         onClick = { isCreatingNew = true },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     ) {
-                        Text("+ Create New Album")
+                        Text(stringResource(R.string.create_new_album))
                     }
                     if (albumNames.isEmpty()) {
-                        Text("No existing albums", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.no_existing_albums), style = MaterialTheme.typography.bodyMedium)
                     } else {
                         LazyColumn(modifier = Modifier.heightIn(max = 240.dp)) {
                             items(albumNames) { name ->
@@ -53,7 +53,7 @@ fun AlbumSelectionDialog(
                     OutlinedTextField(
                         value = newAlbumName,
                         onValueChange = { newAlbumName = it },
-                        label = { Text("Album Name") },
+                        label = { Text(stringResource(R.string.album_name_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

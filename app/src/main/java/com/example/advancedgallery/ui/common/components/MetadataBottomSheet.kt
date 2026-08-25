@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.advancedgallery.data.model.MediaItem
 import java.text.DateFormat
+import androidx.compose.ui.res.stringResource
+import com.example.advancedgallery.R
+import androidx.compose.foundation.clickable
 import java.util.Date
 import androidx.compose.foundation.clickable
 import androidx.exifinterface.media.ExifInterface
@@ -95,26 +98,26 @@ fun MetadataBottomSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Media Details",
+                text = stringResource(R.string.metadata_title),
                 style = MaterialTheme.typography.titleLarge
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            MetadataRow(label = "File Name", value = mediaItem.name)
+            MetadataRow(label = stringResource(R.string.metadata_field_filename), value = mediaItem.name)
             MetadataRow(
-                label = "Date Added",
+                label = stringResource(R.string.metadata_field_date),
                 value = DateFormat.getDateTimeInstance().format(Date(mediaItem.dateAdded * 1000L))
             )
-            MetadataRow(label = "MIME Type", value = mediaItem.mimeType)
+            MetadataRow(label = stringResource(R.string.metadata_field_type), value = mediaItem.mimeType)
             MetadataRow(label = "Album", value = mediaItem.bucketName.ifBlank { "Root" })
             MetadataRow(label = "Volume", value = mediaItem.volumeName.ifBlank { "Primary" })
             if (mediaItem.size > 0L) {
-                MetadataRow(label = "File Size", value = formatFileSize(mediaItem.size))
+                MetadataRow(label = stringResource(R.string.metadata_field_size), value = com.example.advancedgallery.util.FileUtils.formatFileSize(mediaItem.size))
             }
-            MetadataRow(label = "URI / Path", value = mediaItem.uri.toString(), copyable = true)
+            MetadataRow(label = stringResource(R.string.metadata_field_path), value = mediaItem.uri.toString(), copyable = true)
 
-            if (dimensions != null) MetadataRow(label = "Dimensions", value = dimensions!!, copyable = true)
+            if (dimensions != null) MetadataRow(label = stringResource(R.string.metadata_field_dimensions), value = dimensions!!, copyable = true)
             if (exifDate != null) MetadataRow(label = "EXIF Date", value = exifDate!!, copyable = true)
             if (exifModel != null) MetadataRow(label = "Camera Model", value = exifModel!!, copyable = true)
             if (location != null) MetadataRow(label = "Location", value = location!!, copyable = true)
@@ -126,7 +129,7 @@ fun MetadataBottomSheet(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onDismiss) {
-                    Text("Close")
+                    Text(stringResource(R.string.metadata_close))
                 }
             }
         }
@@ -143,11 +146,12 @@ private fun MetadataRow(label: String, value: String, copyable: Boolean = false)
             .padding(vertical = 6.dp)
             .then(
                 if (copyable) {
+                    val copiedMessage = stringResource(R.string.metadata_uri_copied)
                     Modifier.clickable {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText(label, value)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied $label", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                     }
                 } else Modifier
             )
@@ -165,9 +169,3 @@ private fun MetadataRow(label: String, value: String, copyable: Boolean = false)
     }
 }
 
-private fun formatFileSize(size: Long): String {
-    if (size <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
-    return String.format(java.util.Locale.getDefault(), "%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
-}
