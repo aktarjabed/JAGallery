@@ -19,6 +19,7 @@ JAGallery is a modern, high-performance Android gallery application built with J
 - **Image Editing**: Basic image editor supporting cropping operations.
 - **Trash Management**: View deleted media and empty trash to permanently delete items.
 - **Hidden Media**: Hide sensitive media files and view or unhide them in a dedicated section.
+  - *Note: Hidden media is only filtered from this app's view. Files remain in device storage and are visible to other apps and file managers.*
 - **MediaStore & Deletion Handling**:
   - Uses `MediaStore.createDeleteRequest` for scoped storage on API 30+ / Android 11+.
   - Direct ContentResolver deletion fallback for API < 30.
