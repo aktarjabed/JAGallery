@@ -147,24 +147,7 @@ fun GridScreen(
                 }
             }
         },
-        onCopySelected = { items, targetAlbum ->
-            coroutineScope.launch {
-                var successCount = 0
-                for (item in items) {
-                    when (viewModel.copyMedia(context, item, targetAlbum)) {
-                        is com.example.advancedgallery.domain.OperationResult.Success -> successCount++
-                        else -> {}
-                    }
-                }
-                if (successCount == items.size) {
-                    Toast.makeText(context, "Copy completed", Toast.LENGTH_SHORT).show()
-                } else if (successCount > 0) {
-                    Toast.makeText(context, "Partial copy completed", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Copy failed", Toast.LENGTH_SHORT).show()
-                }
-            }
-        },
+        onCopySelected = { _, _ -> },
         emptyIcon = Icons.Default.PhotoLibrary,
         emptyMessage = stringResource(R.string.no_media_found),
         topBar = {
