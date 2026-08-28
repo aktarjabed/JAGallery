@@ -73,7 +73,7 @@
 |---------|--------|-----------------------|----------------|
 | Filename search | ✅ Implemented | Debounced in-memory filtering | |
 | FTS | ❌ Missing | No Room FTS | |
-| GPS/map view | ✅ Implemented | osmdroid-based map view with Marker rendering | |
+| GPS/map view | ❌ Missing | | |
 | OCR-based search | ❌ Missing | | |
 
 ## Advanced Processing
@@ -104,9 +104,11 @@ JAGallery should currently be classified as:
 > A modern MediaStore-based gallery and media organizer with Room-backed auxiliary state, multi-volume support, basic image editing, video trimming, system trash, copy/move, and exact duplicate-detection infrastructure.
 
 It is not yet:
+- a secure vault;
 - a Google Photos-class intelligent gallery;
 - an FTS search engine;
 - a complete professional photo editor;
+- a complete duplicate-cleaner application;
 - a cloud-backed gallery.
 
 ## Recommended Roadmap
