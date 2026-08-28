@@ -19,6 +19,8 @@ sealed class Screen(val route: String) {
     object Search : Screen("search")
     object Hidden : Screen("hidden")
     object Trash : Screen("trash")
+    object Map : Screen("map")
+    object Duplicates : Screen("duplicates")
     object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&searchQuery={searchQuery}") {
         fun createRoute(
             mediaId: String,

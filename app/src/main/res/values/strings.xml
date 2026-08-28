@@ -110,4 +110,18 @@
     <string name="metadata_copy_uri">Copy URI / Path</string>
     <string name="metadata_uri_copied">Copied URI to clipboard</string>
     <string name="metadata_close">Close</string>
+
+    <!-- Map View -->
+    <string name="map_view_title">Photo Map</string>
+    <string name="map_permission_denied">Location permission is required for the map view.</string>
+    <string name="no_gps_photos">No photos with location data found.</string>
+
+    <!-- Duplicates -->
+    <string name="duplicates_title">Find Duplicates</string>
+    <string name="rescan">Rescan</string>
+    <string name="keep_first">Keep First</string>
+    <string name="delete_selected">Delete Selected</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="no_duplicates_found">No duplicates found</string>
+    <string name="no_duplicates_subtitle">Your gallery is clean!</string>
 </resources>
