@@ -127,21 +127,12 @@ class DuplicateViewModel @Inject constructor(
                 return@launch
             }
 
-            // Use MediaStore delete request for API 30+
+            // Use FileUtils for batching delete requests
             val pendingIntents = withContext(Dispatchers.IO) {
-                itemsToDelete.mapNotNull { item ->
-                    try {
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                            val uri = item.uri
-                            android.provider.MediaStore.createDeleteRequest(
-                                context.contentResolver,
-                                listOf(uri)
-                            )
-                        } else null
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
+                com.example.advancedgallery.util.FileUtils.createDeleteRequests(
+                    context.contentResolver,
+                    itemsToDelete.map { it.uri }
+                )
             }
 
             if (pendingIntents.isNotEmpty()) {

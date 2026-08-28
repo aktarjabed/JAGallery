@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,7 +53,9 @@ fun AlbumsScreen(
     onNavigateToFavorites: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToHidden: () -> Unit,
-    onNavigateToTrash: () -> Unit
+    onNavigateToTrash: () -> Unit,
+    onNavigateToMap: () -> Unit,
+    onNavigateToDuplicates: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -153,6 +157,22 @@ fun AlbumsScreen(
                             onClick = {
                                 showMenu = false
                                 onNavigateToTrash()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.map_view_title)) },
+                            leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToMap()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.duplicates_title)) },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToDuplicates()
                             }
                         )
                     }

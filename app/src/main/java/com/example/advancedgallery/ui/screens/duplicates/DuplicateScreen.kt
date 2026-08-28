@@ -66,26 +66,40 @@ fun DuplicateScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selections by viewModel.selections.collectAsStateWithLifecycle()
 
-    var pendingDelete by remember { mutableStateOf<Pair<List<android.app.PendingIntent>, List<String>>?>(null) }
+    data class DeleteState(
+        val pendingIntents: List<android.app.PendingIntent>,
+        val deletedIds: List<String>,
+        val currentIndex: Int = 0
+    )
+    var deleteState by remember { mutableStateOf<DeleteState?>(null) }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        val pending = pendingDelete
-        pendingDelete = null
-        viewModel.onDeletePermissionResult(
-            result.resultCode == Activity.RESULT_OK,
-            pending?.second ?: emptyList()
-        )
+        val state = deleteState ?: return@rememberLauncherForActivityResult
+        if (result.resultCode != Activity.RESULT_OK) {
+            viewModel.onDeletePermissionResult(false, emptyList())
+            deleteState = null
+            return@rememberLauncherForActivityResult
+        }
+
+        val nextIndex = state.currentIndex + 1
+        if (nextIndex < state.pendingIntents.size) {
+            deleteState = state.copy(currentIndex = nextIndex)
+        } else {
+            viewModel.onDeletePermissionResult(true, state.deletedIds)
+            deleteState = null
+        }
     }
 
-    LaunchedEffect(pendingDelete) {
-        pendingDelete?.let { (intents, _) ->
-            intents.forEach { intent ->
-                deleteLauncher.launch(
-                    IntentSenderRequest.Builder(intent.intentSender).build()
-                )
-            }
+    LaunchedEffect(deleteState) {
+        val state = deleteState ?: return@LaunchedEffect
+        if (state.currentIndex < state.pendingIntents.size) {
+            deleteLauncher.launch(
+                IntentSenderRequest.Builder(
+                    state.pendingIntents[state.currentIndex].intentSender
+                ).build()
+            )
         }
     }
 
@@ -132,7 +146,7 @@ fun DuplicateScreen(
                     onClick = {
                         val state = uiState as? DuplicateViewModel.UiState.Success ?: return@FloatingActionButton
                         viewModel.deleteSelected(state.groups) { intents, ids ->
-                            pendingDelete = intents to ids
+                            deleteState = DeleteState(intents, ids)
                         }
                     }
                 ) {

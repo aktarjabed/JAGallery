@@ -17,6 +17,8 @@ import com.example.advancedgallery.ui.screens.hidden.HiddenScreen
 import com.example.advancedgallery.ui.screens.search.SearchScreen
 import com.example.advancedgallery.ui.screens.trash.TrashScreen
 import com.example.advancedgallery.ui.screens.viewer.ViewerScreen
+import com.example.advancedgallery.ui.screens.map.MapScreen
+import com.example.advancedgallery.ui.screens.duplicates.DuplicateScreen
 
 fun parseMediaSource(
     sourceStr: String?,
@@ -69,7 +71,26 @@ fun NavGraph() {
                 },
                 onNavigateToTrash = {
                     navController.navigate(Screen.Trash.route)
+                },
+                onNavigateToMap = {
+                    navController.navigate(Screen.Map.route)
+                },
+                onNavigateToDuplicates = {
+                    navController.navigate(Screen.Duplicates.route)
                 }
+            )
+        }
+        composable(Screen.Map.route) {
+            MapScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToViewer = { mediaId ->
+                    navController.navigate(Screen.Viewer.createRoute(mediaId, MediaSource.All))
+                }
+            )
+        }
+        composable(Screen.Duplicates.route) {
+            DuplicateScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Hidden.route) {
