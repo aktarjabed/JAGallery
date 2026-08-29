@@ -1,0 +1,78 @@
+package com.aktarjabed.jagallery.ui.screens.viewer.components
+
+import android.net.Uri
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+
+@Composable
+fun ImageViewer(
+    uri: Uri,
+    modifier: Modifier = Modifier,
+    onTap: () -> Unit = {}
+) {
+    var scale by remember(uri) { mutableFloatStateOf(1f) }
+    var offset by remember(uri) { mutableStateOf(Offset.Zero) }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(uri) {
+                detectTapGestures(
+                    onTap = { onTap() },
+                    onDoubleTap = {
+                        if (scale > 1f) {
+                            scale = 1f
+                            offset = Offset.Zero
+                        } else {
+                            scale = 2.5f
+                            offset = Offset.Zero
+                        }
+                    }
+                )
+            }
+            .pointerInput(uri) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    val prevScale = scale
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+
+                    val centroidOffset = centroid - Offset(size.width / 2f, size.height / 2f)
+                    offset = offset + (centroidOffset * (1 - zoom)) + pan
+
+                    val maxOffsetX = (size.width * (scale - 1)) / 2
+                    val maxOffsetY = (size.height * (scale - 1)) / 2
+
+                    offset = Offset(
+                        offset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                        offset.y.coerceIn(-maxOffsetY, maxOffsetY)
+                    )
+                }
+            }
+            .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale,
+                translationX = if (scale > 1f) offset.x else 0f,
+                translationY = if (scale > 1f) offset.y else 0f
+            )
+    ) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val imageRequest = coil.request.ImageRequest.Builder(context)
+            .data(uri)
+            .crossfade(true)
+            .build()
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = "Full Image",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}

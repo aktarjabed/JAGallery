@@ -124,4 +124,28 @@
     <string name="deselect_all">Deselect All</string>
     <string name="no_duplicates_found">No duplicates found</string>
     <string name="no_duplicates_subtitle">Your gallery is clean!</string>
+
+
+    <!-- GridScreen copy -->
+    <string name="copy_completed">Copy completed</string>
+    <string name="copy_partial_n_failed">%1$d item(s) failed to copy</string>
+
+    <!-- ViewerScreen rename -->
+    <string name="rename_success">Media renamed successfully</string>
+    <string name="rename_failed">Failed to rename media</string>
+    <string name="rename_cancelled">Rename cancelled: permission denied</string>
+
+    <!-- ViewerScreen trim -->
+    <string name="trim_video_title">Trim Video</string>
+    <string name="trim_video_trimming">Trimming video…</string>
+    <string name="trim_video_success">Video trimmed and saved</string>
+    <string name="trim_video_failed">Failed to trim video</string>
+    <string name="trim_video_action">Trim</string>
+    <string name="trim_video_duration_unavailable">Could not read video duration</string>
+
+    <!-- DuplicateGroupCard -->
+    <plurals name="duplicate_count">
+        <item quantity="one">%1$d duplicate</item>
+        <item quantity="other">%1$d duplicates</item>
+    </plurals>
 </resources>
