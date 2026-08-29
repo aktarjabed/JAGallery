@@ -240,7 +240,8 @@ fun AlbumsScreen(
     }
 
     if (albumToRename != null) {
-        var newName by remember { mutableStateOf(albumToRename!!.name) }
+        val album = albumToRename ?: return@AlbumsScreen
+        var newName by remember(album) { mutableStateOf(album.name) }
         AlertDialog(
             onDismissRequest = { albumToRename = null },
             title = { Text(stringResource(R.string.rename_album)) },
@@ -254,7 +255,7 @@ fun AlbumsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == albumToRename!!.key } ?: emptyList()
+                    val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == album.key } ?: emptyList()
                     viewModel.renameAlbum(context, items, newName)
                     albumToRename = null
                 }) {

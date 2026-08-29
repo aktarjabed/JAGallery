@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -50,13 +51,20 @@ class DuplicateViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                mediaRepository.loadMedia(force = false, context = context)
-                val result = mediaRepository.mediaLoadResult
-                    .filterIsInstance<com.aktarjabed.jagallery.data.model.MediaLoadResult.Success>()
-                    .first()
+                mediaRepository.loadMedia(force = true, context = context)
+                val result = withTimeoutOrNull(30_000L) {
+                    mediaRepository.mediaLoadResult
+                        .filterIsInstance<com.aktarjabed.jagallery.data.model.MediaLoadResult.Success>()
+                        .first()
+                }
+                if (result == null) {
+                    _uiState.value = UiState.Error("Failed to load media")
+                    return@launch
+                }
+                val allItems = result.items
 
                 val groups = withContext(Dispatchers.IO) {
-                    DuplicateDetector.findDuplicates(context, result.items)
+                    DuplicateDetector.findDuplicates(context, allItems)
                 }
 
                 _uiState.value = if (groups.isEmpty()) UiState.Empty else UiState.Success(groups)

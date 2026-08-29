@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import android.util.Log
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,21 +37,23 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                mediaRepository.loadMedia(force = false, context = context)
-                val result = mediaRepository.mediaLoadResult
-                    .filterIsInstance<MediaLoadResult.Success>()
-                    .first()
-
-                val items = withContext(Dispatchers.IO) {
-                    result.items.mapNotNull { item ->
-                        ExifGpsExtractor.extractLatLng(context, item.uri)?.let { (lat, lng) ->
-                            GeoMediaItem(item, lat, lng)
-                        }
-                    }
+                mediaRepository.loadMedia(force = true, context = context)
+                val result = withTimeoutOrNull(30_000L) {
+                    mediaRepository.mediaLoadResult
+                        .filterIsInstance<MediaLoadResult.Success>()
+                        .first()
                 }
-                _geoItems.value = items
+                if (result == null) {
+                    _isLoading.value = false
+                    return@launch
+                }
+                val geoItems = result.items.mapNotNull { item ->
+                    val latLng = ExifGpsExtractor.extractLatLng(context, item.uri)
+                    latLng?.let { GeoMediaItem(item, it.first, it.second) }
+                }
+                _geoItems.value = geoItems
             } catch (e: Exception) {
-                _geoItems.value = emptyList()
+                Log.e("MapViewModel", "Failed to load geo items", e)
             } finally {
                 _isLoading.value = false
             }
