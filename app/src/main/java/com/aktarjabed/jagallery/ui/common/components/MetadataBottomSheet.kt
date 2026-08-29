@@ -117,10 +117,10 @@ fun MetadataBottomSheet(
             }
             MetadataRow(label = stringResource(R.string.metadata_field_path), value = mediaItem.uri.toString(), copyable = true)
 
-            if (dimensions != null) MetadataRow(label = stringResource(R.string.metadata_field_dimensions), value = dimensions!!, copyable = true)
-            if (exifDate != null) MetadataRow(label = "EXIF Date", value = exifDate!!, copyable = true)
-            if (exifModel != null) MetadataRow(label = "Camera Model", value = exifModel!!, copyable = true)
-            if (location != null) MetadataRow(label = "Location", value = location!!, copyable = true)
+            dimensions?.let { MetadataRow(label = stringResource(R.string.metadata_field_dimensions), value = it, copyable = true) }
+            exifDate?.let   { MetadataRow(label = "EXIF Date", value = it, copyable = true) }
+            exifModel?.let  { MetadataRow(label = "Camera Model", value = it, copyable = true) }
+            location?.let   { MetadataRow(label = "Location", value = it, copyable = true) }
 
             Spacer(modifier = Modifier.height(16.dp))
 

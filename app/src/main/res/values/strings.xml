@@ -144,6 +144,11 @@
     <string name="trim_video_duration_unavailable">Could not read video duration</string>
 
     <!-- DuplicateGroupCard -->
+    <plurals name="media_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
     <plurals name="duplicate_count">
         <item quantity="one">%1$d duplicate</item>
         <item quantity="other">%1$d duplicates</item>
