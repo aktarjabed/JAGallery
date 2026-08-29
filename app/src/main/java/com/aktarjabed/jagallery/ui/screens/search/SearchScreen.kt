@@ -1,0 +1,56 @@
+package com.aktarjabed.jagallery.ui.screens.search
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aktarjabed.jagallery.R
+import com.aktarjabed.jagallery.data.model.MediaSource
+import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScreen(
+    onNavigateToViewer: (mediaId: String, source: MediaSource) -> Unit,
+    onBack: () -> Unit,
+    viewModel: SearchViewModel = hiltViewModel()
+) {
+    val query by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
+    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
+
+    MediaCollectionContent(
+        loadResult = searchResult,
+        allAlbumNames = allAlbumNames,
+        onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
+        emptyIcon = Icons.Default.Search,
+        emptyMessage = if (query.isBlank()) stringResource(R.string.search_hint) else stringResource(R.string.no_search_results),
+        topBar = {
+            TopAppBar(
+                title = {
+                    TextField(
+                        value = query,
+                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        placeholder = { Text(stringResource(R.string.search_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                }
+            )
+        },
+        onItemClick = { item ->
+            onNavigateToViewer(item.id, MediaSource.Search(query))
+        }
+    )
+}

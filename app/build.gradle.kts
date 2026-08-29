@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.advancedgallery"
+    namespace = "com.aktarjabed.jagallery"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.advancedgallery"
+        applicationId = "com.aktarjabed.jagallery"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
