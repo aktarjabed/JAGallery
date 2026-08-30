@@ -70,6 +70,15 @@ fun TrashScreen(
                 }
             } else {
                 if (state.processedIds.isNotEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(
+                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                            state.processedIds.size,
+                            state.batch.count
+                        ),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                     viewModel.removeDeletedItems(state.processedIds)
                     viewModel.refreshAll(context)
                 }

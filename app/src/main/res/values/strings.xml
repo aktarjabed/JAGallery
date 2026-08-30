@@ -153,4 +153,7 @@
         <item quantity="one">%1$d duplicate</item>
         <item quantity="other">%1$d duplicates</item>
     </plurals>
+
+    <!-- Batch processing -->
+    <string name="batch_partially_processed">%1$d of %2$d items processed</string>
 </resources>

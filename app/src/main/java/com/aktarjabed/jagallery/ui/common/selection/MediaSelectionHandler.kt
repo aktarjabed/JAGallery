@@ -109,6 +109,15 @@ fun MediaSelectionHandler(
                 }
             } else {
                 if (state.processedIds.isNotEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(
+                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                            state.processedIds.size,
+                            state.batch.count
+                        ),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                     onRemoveDeletedItems(state.processedIds)
                     selectionState.clearSelection()
                 }
@@ -150,6 +159,15 @@ fun MediaSelectionHandler(
                 }
             } else {
                 if (state.processedIds.isNotEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(
+                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                            state.processedIds.size,
+                            state.batch.count
+                        ),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                     val selected = items.filter { state.processedIds.contains(it.id) }
                     if (selected.isNotEmpty()) {
                         onRestoreSelected?.invoke(selected)

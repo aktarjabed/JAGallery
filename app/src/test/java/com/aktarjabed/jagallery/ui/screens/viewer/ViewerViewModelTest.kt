@@ -74,4 +74,14 @@ class ViewerViewModelTest {
         val navEvent = viewModel.navigationEvent.first()
         assertEquals(ViewerNavigationEvent.PopBack, navEvent)
     }
+
+    @Test
+    fun trashSource_callsLoadTrashedMediaWithContext() = runTest {
+        val mockContext = mock(android.content.Context::class.java)
+        val spyRepository = org.mockito.Mockito.spy(repository)
+        val savedStateHandle = SavedStateHandle(mapOf("source" to "TRASH", "mediaId" to "10", "albumName" to "Trash"))
+        val viewModel = ViewerViewModel(mockContext, spyRepository, mediaOperations, savedStateHandle)
+
+        org.mockito.Mockito.verify(spyRepository).loadTrashedMedia(mockContext)
+    }
 }
