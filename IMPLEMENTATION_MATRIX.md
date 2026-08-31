@@ -17,12 +17,12 @@
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Room persistence | ✅ Implemented | Auxiliary state, not a complete MediaStore metadata cache | |
-| Multi-volume MediaStore | ✅ Implemented | Volume-aware querying/observation | |
+| Multi-volume MediaStore | 🐛 Implemented but broken | Multi-volume support missing from Copy/Move URI creation | Fix getVolumeName extraction for destination collections |
 | Copy | ✅ Implemented | MediaStore destination creation + Complete Copy UX | |
-| Move | ✅ Implemented | Copy + source deletion + Complete Move UX | |
-| Batch rollback | ❌ Missing | No transactional rollback | |
-| Trash | ✅ Implemented | MediaStore trash/restore integration + Robust Trash UX | |
-| Restore | ✅ Implemented | MediaStore trashed-item query/restore flow + Robust Restore UX | |
+| Move | ⚠️ Partial | Copy + source deletion | Missing Favorite/Hidden metadata preservation |
+| Batch rollback | ❌ Missing | No transactional rollback or partial-failure state tracking | |
+| Trash | ⚠️ Partial | MediaStore trash/restore integration | Missing exact expiration tracking (DATE_EXPIRES) |
+| Restore | ⚠️ Partial | MediaStore trashed-item query/restore flow | |
 | Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
 | External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
 
@@ -80,8 +80,8 @@
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| SHA-256 duplicates | ⚠️ Partial | Exact duplicate utility exists | |
-| Duplicate review UI | ❌ Missing | No complete user workflow | |
+| SHA-256 duplicates | ✅ Implemented | Duplicate detector implemented | |
+| Duplicate review UI | ✅ Implemented | Dedicated Duplicates screen and viewmodel | |
 | Persistent hash cache | ❌ Missing | Hashes aren't persisted | |
 | Perceptual similarity | ❌ Missing | No pHash/visual similarity | |
 | Cloud-aware albums | ❌ Missing | No cloud/custom-album synchronization | |
@@ -93,7 +93,7 @@
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| R8/release hardening | ✅ Implemented | Configured | Release runtime still needs device validation |
+| R8/release hardening | ⚠️ Partial | minify/shrink false in build.gradle | Configure proguard rules and enable |
 
 ---
 

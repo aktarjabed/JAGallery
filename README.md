@@ -14,13 +14,16 @@ JAGallery is a modern, high-performance Android gallery application built with J
   - **Video Playback**: Embedded Media3 ExoPlayer for videos, automatically pausing when swiped away or off-screen.
   - **Immersive View**: Single tap to toggle top bar and controls overlay.
   - **Favorites Persistence**: One-tap toggling of favorite status backed by Room database.
-  - **Metadata Info Sheet**: Displays file details including file name, MIME type, date added, album name, and Uri.
+  - **Metadata Info Sheet**: Displays file details including file name, MIME type, date added, album name, and EXIF metadata.
   - **Single & Batch Sharing**: Native Android sharing integration for single or multiple selected media files.
 - **Search & Filtering**: Search media files by name in real-time.
-- **Image Editing**: Basic image editor supporting cropping operations.
-- **Trash Management**: View deleted media and empty trash to permanently delete items.
+- **Image Editing**: Image editor supporting aspect ratio cropping (Square/Free/Original), rotation, flip horizontal/vertical, brightness, contrast, and saturation.
+- **Video Editing**: Video trimming pipeline with bottom sheet UI.
+- **Trash Management**: View deleted media and empty trash to permanently delete items. (MediaStore trash/restore integration)
 - **Hidden Media**: Hide sensitive media files and view or unhide them in a dedicated section.
   - *Note: Hidden media is only filtered from this app's view. Files remain in device storage and are visible to other apps and file managers.*
+- **Map View**: OsmDroid-based map view with marker rendering using GPS metadata.
+- **Duplicate Detection**: Find exact duplicate media files.
 - **MediaStore & Deletion Handling**:
   - Uses `MediaStore.createDeleteRequest` for scoped storage on API 30+ / Android 11+.
   - Direct ContentResolver deletion fallback for API < 30.
@@ -29,9 +32,17 @@ JAGallery is a modern, high-performance Android gallery application built with J
 
 - **MVVM Pattern**: ViewModels manage UI state using Kotlin StateFlow.
 - **Dependency Injection**: Powered by Google Hilt (`@HiltViewModel`, `@AndroidEntryPoint`).
-- **Database**: Room Database handles local persistence for favorites (`favorites` table).
+- **Database**: Room Database handles local persistence for favorites and hidden states.
 - **Media Loading**: Coil image loading library with `VideoFrameDecoder` support.
 - **Navigation**: Jetpack Compose Navigation with type-safe route parameter passing.
+
+## Roadmap & Upcoming Features
+
+- **Secure Hidden Vault**: Biometric authentication and private storage encryption for hidden files.
+- **Advanced Editor**: Freeform crop and advanced tools.
+- **Open With & Set Wallpaper**: External app integrations.
+- **Release Hardening**: Properly configure R8 proguard rules for release builds.
+- **Robust Multi-volume Move/Copy**: Preserving Favorite/Hidden metadata and correct target volume support.
 
 ## Project Setup & Testing
 
@@ -42,7 +53,5 @@ JAGallery is a modern, high-performance Android gallery application built with J
 
 ### Running Unit Tests
 ```bash
-./gradlew test
+./gradlew testDebugUnitTest
 ```
-
-The unit test suite covers `MediaRepository`, `AlbumsViewModel`, `GridViewModel`, `ViewerViewModel`, `SearchViewModel`, and `FavoritesViewModel`.
