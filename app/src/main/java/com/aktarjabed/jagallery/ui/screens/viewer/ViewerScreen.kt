@@ -196,6 +196,7 @@ fun ViewerScreen(
     var isTrimming by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
     var deleteState by remember { mutableStateOf<com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState>(com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle) }
 
     val context = LocalContext.current
@@ -268,6 +269,88 @@ fun ViewerScreen(
             sheetState = sheetState,
             mediaItem = currentItem,
             onDismiss = { showInfoDialog = false }
+        )
+    }
+
+    if (showWallpaperDialog && !currentItem.isVideo) {
+        AlertDialog(
+            onDismissRequest = { showWallpaperDialog = false },
+            title = { Text(stringResource(R.string.set_wallpaper)) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch {
+                                try {
+                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
+                                    if (bitmap != null) {
+                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.wallpaper_home_screen))
+                    }
+                    TextButton(
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch {
+                                try {
+                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
+                                    if (bitmap != null) {
+                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.wallpaper_lock_screen))
+                    }
+                    TextButton(
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch {
+                                try {
+                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
+                                    if (bitmap != null) {
+                                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
+                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.wallpaper_both))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showWallpaperDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 
@@ -490,6 +573,33 @@ fun ViewerScreen(
                                     showRenameDialog = true
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.open_with)) },
+                                onClick = {
+                                    showMenu = false
+                                    // Vault is not fully implemented but shareMediaItems encapsulates the share logic which will be adapted later
+                                    // We can reuse the same Share logic or a generic view logic. For ACTION_VIEW specifically:
+                                    val uri = currentItem.uri
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                        setDataAndType(uri, currentItem.mimeType)
+                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    try {
+                                        context.startActivity(android.content.Intent.createChooser(intent, context.getString(R.string.open_with)))
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, context.getString(R.string.no_app_to_handle_share), android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                            if (!currentItem.isVideo) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.set_wallpaper)) },
+                                    onClick = {
+                                        showMenu = false
+                                        showWallpaperDialog = true
+                                    }
+                                )
+                            }
                         }
                         IconButton(onClick = { viewModel.toggleFavorite(currentItem) }) {
                             Icon(

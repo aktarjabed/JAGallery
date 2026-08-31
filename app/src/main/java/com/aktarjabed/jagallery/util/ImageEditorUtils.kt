@@ -29,12 +29,17 @@ data class TransformationPlan(
     val brightness: Float = 0f,
     val contrast: Float = 1f,
     val saturation: Float = 1f,
+    val exposure: Float = 0f,
+    val highlights: Float = 0f,
+    val shadows: Float = 0f,
+    val temperature: Float = 0f,
+    val sharpness: Float = 0f,
     val cropRect: RectF? = null,
     val flipHorizontal: Boolean = false,
     val flipVertical: Boolean = false
 ) {
     fun isIdentity(): Boolean =
-        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && cropRect == null && !flipHorizontal && !flipVertical
+        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && exposure == 0f && highlights == 0f && shadows == 0f && temperature == 0f && sharpness == 0f && cropRect == null && !flipHorizontal && !flipVertical
 }
 
 object ImageEditorUtils {
@@ -191,6 +196,46 @@ object ImageEditorUtils {
             )
             cm.postConcat(contrastMatrix)
 
+            if (plan.exposure != 0f) {
+                val expValue = Math.pow(2.0, plan.exposure.toDouble()).toFloat()
+                val expMatrix = ColorMatrix(
+                    floatArrayOf(
+                        expValue, 0f, 0f, 0f, 0f,
+                        0f, expValue, 0f, 0f, 0f,
+                        0f, 0f, expValue, 0f, 0f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+                cm.postConcat(expMatrix)
+            }
+
+            if (plan.temperature != 0f) {
+                // Approximate temperature change by adjusting red and blue channels.
+                // Range [-1, 1], so we adjust by +/- 25% for extreme values
+                val rScale = 1f + plan.temperature * 0.25f
+                val bScale = 1f - plan.temperature * 0.25f
+                val tempMatrix = ColorMatrix(
+                    floatArrayOf(
+                        rScale, 0f, 0f, 0f, 0f,
+                        0f, 1f, 0f, 0f, 0f,
+                        0f, 0f, bScale, 0f, 0f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+                cm.postConcat(tempMatrix)
+            }
+
+            // Note: Highlights, Shadows, and Sharpness are omitted here as they are complex to implement purely with ColorMatrix.
+            // Ideally, they would require RenderScript or custom pixel shaders.
+            // For now, we will map them roughly to exposure/contrast or skip them to avoid excessive complexity.
+            // Highlights & Shadows approximation (very rough) using exposure offsets on midtones.
+            if (plan.highlights != 0f || plan.shadows != 0f) {
+                // A true highlight/shadow recovery is non-linear.
+                // We'll apply a slight brightness adjustment as a poor-man's fallback if needed,
+                // but ColorMatrix doesn't support piecewise linear transformations easily.
+                // It's safer to skip these complex adjustments in the ColorMatrix layer if we want to avoid corrupting colors.
+            }
+
             coroutineContext.ensureActive()
 
             val result = androidx.core.graphics.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
@@ -329,7 +374,7 @@ object ImageEditorUtils {
     ): Pair<Uri?, String?> = exportEditedImageWithProgressiveFallback(
         context,
         uri,
-        TransformationPlan(rotationDegrees, brightness, contrast, saturation, null, flipHorizontal, flipVertical)
+        TransformationPlan(rotationDegrees, brightness, contrast, saturation, 0f, 0f, 0f, 0f, 0f, null, flipHorizontal, flipVertical)
     )
 
     suspend fun saveEditedImage(
