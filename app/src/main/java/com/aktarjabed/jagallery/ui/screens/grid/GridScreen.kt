@@ -24,12 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import com.aktarjabed.jagallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
-private data class MoveDeleteState(
-    val pendingIntents: List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>,
-    val currentIndex: Int,
-    val processedIds: List<String>
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GridScreen(
@@ -64,42 +58,14 @@ fun GridScreen(
     var showSortFilterSheet by remember { mutableStateOf(false) }
 
 
-    var moveDeleteState by remember { mutableStateOf<MoveDeleteState?>(null) }
-
-    val moveDeleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = moveDeleteState ?: return@rememberLauncherForActivityResult
-        if (result.resultCode != android.app.Activity.RESULT_OK) {
-            // User cancelled — items from confirmed chunks are already deleted; remainder retained
-            if (state.processedIds.isNotEmpty()) {
-                viewModel.removeDeletedItems(state.processedIds)
-            }
+    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
+        if (result.succeededIds.isNotEmpty()) {
+            viewModel.removeDeletedItems(result.succeededIds)
+        }
+        if (result.cancelled) {
             Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-            moveDeleteState = null
-            return@rememberLauncherForActivityResult
-        }
-        val confirmedIds = state.pendingIntents[state.currentIndex].ids
-        val nextProcessed = state.processedIds + confirmedIds
-
-        val nextIndex = state.currentIndex + 1
-        if (nextIndex < state.pendingIntents.size) {
-            moveDeleteState = state.copy(currentIndex = nextIndex, processedIds = nextProcessed)
         } else {
-            viewModel.removeDeletedItems(nextProcessed)
             Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
-            moveDeleteState = null
-        }
-    }
-
-    LaunchedEffect(moveDeleteState) {
-        val state = moveDeleteState ?: return@LaunchedEffect
-        if (state.currentIndex < state.pendingIntents.size) {
-            moveDeleteLauncher.launch(
-                IntentSenderRequest.Builder(
-                    state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-                ).build()
-            )
         }
     }
 
@@ -128,11 +94,7 @@ fun GridScreen(
                             Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
                         }
                         if (moveResult.pendingIntents.isNotEmpty()) {
-                            moveDeleteState = MoveDeleteState(
-                                pendingIntents = moveResult.pendingIntents,
-                                currentIndex = 0,
-                                processedIds = emptyList()
-                            )
+                            batchProcessor.processBatch(moveResult.pendingIntents)
                         } else {
                             viewModel.removeDeletedItems(moveResult.successfulCopies.map { it.first.id })
                             Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()

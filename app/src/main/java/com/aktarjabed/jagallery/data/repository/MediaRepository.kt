@@ -261,10 +261,16 @@ class MediaRepository @Inject constructor(
             }
         }
 
-        val collection = if (sourceItem.isVideo) {
-            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            android.provider.MediaStore.getVolumeName(sourceItem.uri)
         } else {
-            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            android.provider.MediaStore.VOLUME_EXTERNAL
+        }
+
+        val collection = if (sourceItem.isVideo) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Video.Media.getContentUri(volumeName) else android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        } else {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Images.Media.getContentUri(volumeName) else android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
 
         var newUri: android.net.Uri? = null
@@ -282,6 +288,15 @@ class MediaRepository @Inject constructor(
                 try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
                 null
             } else {
+                // Preserve Room metadata for Hidden / Favorite
+                val newUriStr = newUri.toString()
+                if (sourceItem.isFavorite) {
+                    mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, System.currentTimeMillis()))
+                }
+                val hiddenRecord = mediaDao.getHiddenMediaById(sourceItem.uri.toString())
+                if (hiddenRecord != null) {
+                    mediaDao.hideMedia(com.aktarjabed.jagallery.data.local.HiddenMediaEntity(newUriStr, true, System.currentTimeMillis()))
+                }
                 if (!skipRescan) {
                     loadMedia(force = true, context = context)
                 }

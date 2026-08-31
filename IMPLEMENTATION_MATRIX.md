@@ -33,7 +33,7 @@
 | Albums | ✅ Implemented | MediaStore/folder-based albums | |
 | Sort/Filter | ✅ Implemented | Bottom-sheet based | |
 | Create album | ✅ Implemented | Available through MediaStore folder creation | |
-| Rename album | ✅ Implemented | Batch move + delete intent flow | |
+| Rename album | ⚠️ Partial | Batch move + delete intent flow (copy/delete rather than atomic rename) | |
 | Timeline/date grouping | ✅ Implemented | Today/Yesterday/Month grid separators | |
 | Favorites persistence | ✅ Implemented | | |
 
