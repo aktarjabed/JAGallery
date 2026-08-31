@@ -135,6 +135,10 @@
     <string name="rename_failed">Failed to rename media</string>
     <string name="rename_cancelled">Rename cancelled: permission denied</string>
 
+    <!-- ViewerScreen slideshow -->
+    <string name="slideshow_play">Play slideshow</string>
+    <string name="slideshow_pause">Pause slideshow</string>
+
     <!-- ViewerScreen trim -->
     <string name="trim_video_title">Trim Video</string>
     <string name="trim_video_trimming">Trimming video…</string>

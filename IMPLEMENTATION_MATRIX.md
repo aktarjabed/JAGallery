@@ -8,7 +8,7 @@
 | Image/Video Viewer | ✅ Implemented | Image viewer + Media3 video playback | |
 | Multi-selection | ✅ Implemented | Shared selection architecture | |
 | Metadata | ✅ Implemented | Complete EXIF parsing, copyable fields | |
-| Slideshow | ❌ Missing | | |
+| Slideshow | ✅ Implemented | Configurable 3-second delay, ignores videos | |
 | Set wallpaper | ❌ Missing | | |
 | Open With | ❌ Missing | | |
 
@@ -125,7 +125,7 @@ It is not yet:
 1. Secure hidden vault + BiometricPrompt.
 2. Duplicate review/cleanup.
 3. Persistent hash cache.
-4. Slideshow.
+4. ~~Slideshow.~~
 5. Video trimming UI improvements.
 6. Open With.
 7. Set Wallpaper.

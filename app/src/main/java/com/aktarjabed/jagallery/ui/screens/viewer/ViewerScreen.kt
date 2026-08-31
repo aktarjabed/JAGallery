@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -154,6 +156,30 @@ fun ViewerScreen(
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.updateCurrentIndex(pagerState.currentPage)
+    }
+
+    var isSlideshowPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isSlideshowPlaying, mediaItems.size) {
+        if (isSlideshowPlaying && mediaItems.isNotEmpty()) {
+            while (isSlideshowPlaying) {
+                kotlinx.coroutines.delay(3000L)
+                if (!pagerState.isScrollInProgress) {
+                    val startIndex = pagerState.currentPage
+                    var nextIndex = (startIndex + 1) % mediaItems.size
+                    // Find the next image (skip videos)
+                    while (mediaItems[nextIndex].isVideo && nextIndex != startIndex) {
+                        nextIndex = (nextIndex + 1) % mediaItems.size
+                    }
+                    if (!mediaItems[nextIndex].isVideo && nextIndex != startIndex) {
+                        pagerState.animateScrollToPage(nextIndex)
+                    } else if (startIndex == nextIndex) {
+                        // Stop if there are no other images to play
+                        isSlideshowPlaying = false
+                    }
+                }
+            }
+        }
     }
 
     val currentItem = mediaItems.getOrNull(pagerState.currentPage)
@@ -419,6 +445,16 @@ fun ViewerScreen(
                         }
                     },
                     actions = {
+                        val imageCount = remember(mediaItems) { mediaItems.count { !it.isVideo } }
+                        if (imageCount >= 2) {
+                            IconButton(onClick = { isSlideshowPlaying = !isSlideshowPlaying }) {
+                                Icon(
+                                    imageVector = if (isSlideshowPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = stringResource(if (isSlideshowPlaying) R.string.slideshow_pause else R.string.slideshow_play)
+                                )
+                            }
+                        }
+
                         if (!currentItem.isVideo) {
                             IconButton(onClick = { onNavigateToEditor(currentItem.uri.toString()) }) {
                                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))

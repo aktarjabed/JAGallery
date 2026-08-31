@@ -10,6 +10,7 @@ JAGallery is a modern, high-performance Android gallery application built with J
 - **Media Grid**: Responsive 3-column thumbnail grid with multi-selection mode (long press to select, select all, batch delete, batch share).
 - **Fullscreen Media Viewer**:
   - **Image Viewing**: High-definition image viewer with pinch-to-zoom (1x - 5x) and pan gestures.
+  - **Slideshow**: Auto-advance through images every 3 seconds.
   - **Video Playback**: Embedded Media3 ExoPlayer for videos, automatically pausing when swiped away or off-screen.
   - **Immersive View**: Single tap to toggle top bar and controls overlay.
   - **Favorites Persistence**: One-tap toggling of favorite status backed by Room database.
