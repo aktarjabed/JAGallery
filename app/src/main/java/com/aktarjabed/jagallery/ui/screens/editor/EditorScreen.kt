@@ -21,6 +21,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -29,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aktarjabed.jagallery.R
+import com.aktarjabed.jagallery.ui.screens.editor.components.InteractiveCropOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +53,11 @@ fun EditorScreen(
     val brightness by viewModel.brightness.collectAsStateWithLifecycle()
     val contrast by viewModel.contrast.collectAsStateWithLifecycle()
     val saturation by viewModel.saturation.collectAsStateWithLifecycle()
+    val exposure by viewModel.exposure.collectAsStateWithLifecycle()
+    val highlights by viewModel.highlights.collectAsStateWithLifecycle()
+    val shadows by viewModel.shadows.collectAsStateWithLifecycle()
+    val temperature by viewModel.temperature.collectAsStateWithLifecycle()
+    val sharpness by viewModel.sharpness.collectAsStateWithLifecycle()
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
     val flipHorizontal by viewModel.flipHorizontal.collectAsStateWithLifecycle()
     val flipVertical by viewModel.flipVertical.collectAsStateWithLifecycle()
@@ -106,34 +115,46 @@ fun EditorScreen(
                         val imageHeight = previewBitmap?.height?.toFloat() ?: 1f
                         val aspect = imageWidth / imageHeight
 
+                        // Helper to calculate crop rect based on target aspect ratio
+                        fun getAspectCropRect(targetAspect: Float): RectF {
+                            return if (aspect > targetAspect) {
+                                // Image is wider than target aspect
+                                val w = targetAspect / aspect
+                                val left = (1f - w) / 2f
+                                RectF(left, 0f, left + w, 1f)
+                            } else {
+                                // Image is taller than target aspect
+                                val h = aspect / targetAspect
+                                val top = (1f - h) / 2f
+                                RectF(0f, top, 1f, top + h)
+                            }
+                        }
+
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(onClick = { viewModel.setCropRect(null) }) {
                                 Text(stringResource(R.string.crop_original))
                             }
-                            Button(onClick = {
-                                val rect = if (aspect > 1f) {
-                                    // Landscape image: Square crop is limited by height
-                                    val size = 1f
-                                    val w = 1f / aspect
-                                    val left = (1f - w) / 2f
-                                    RectF(left, 0f, left + w, 1f)
-                                } else {
-                                    // Portrait image: Square crop is limited by width
-                                    val size = 1f
-                                    val h = aspect
-                                    val top = (1f - h) / 2f
-                                    RectF(0f, top, 1f, top + h)
-                                }
-                                viewModel.setCropRect(rect)
-                            }) {
+                            Button(onClick = { viewModel.setCropRect(getAspectCropRect(1f)) }) {
                                 Text(stringResource(R.string.crop_square))
                             }
+                            Button(onClick = { viewModel.setCropRect(getAspectCropRect(4f/3f)) }) {
+                                Text(stringResource(R.string.crop_4_3))
+                            }
+                            Button(onClick = { viewModel.setCropRect(getAspectCropRect(3f/4f)) }) {
+                                Text(stringResource(R.string.crop_3_4))
+                            }
+                            Button(onClick = { viewModel.setCropRect(getAspectCropRect(16f/9f)) }) {
+                                Text(stringResource(R.string.crop_16_9))
+                            }
+                            Button(onClick = { viewModel.setCropRect(getAspectCropRect(9f/16f)) }) {
+                                Text(stringResource(R.string.crop_9_16))
+                            }
                             Button(onClick = {
-                                // Free crop mapping to an arbitrary central crop
+                                // Interactive free crop triggers custom logic or resets to a default free crop rect
                                 viewModel.setCropRect(RectF(0.1f, 0.1f, 0.9f, 0.9f))
                             }) {
                                 Text(stringResource(R.string.crop_free))
@@ -159,7 +180,7 @@ fun EditorScreen(
                             }
                         }
                     } else {
-                        Column(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                             Text(stringResource(R.string.brightness), style = MaterialTheme.typography.bodySmall)
                             Slider(
                                 value = brightness,
@@ -177,6 +198,18 @@ fun EditorScreen(
                                 value = saturation,
                                 onValueChange = { viewModel.updateSaturation(it) },
                                 valueRange = 0.0f..2.0f
+                            )
+                            Text(stringResource(R.string.exposure), style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = exposure,
+                                onValueChange = { viewModel.updateExposure(it) },
+                                valueRange = -2.0f..2.0f
+                            )
+                            Text(stringResource(R.string.temperature), style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = temperature,
+                                onValueChange = { viewModel.updateTemperature(it) },
+                                valueRange = -1.0f..1.0f
                             )
                         }
                     }
@@ -218,12 +251,23 @@ fun EditorScreen(
                 CircularProgressIndicator(color = Color.White)
             } else {
                 previewBitmap?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = stringResource(R.string.edit_photo),
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val cropRect by viewModel.cropRect.collectAsStateWithLifecycle()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = stringResource(R.string.edit_photo),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        if (activeTab == 0 && cropRect != null) {
+                            InteractiveCropOverlay(
+                                cropRect = cropRect!!,
+                                onCropChange = { newRect ->
+                                    viewModel.setCropRect(newRect)
+                                }
+                            )
+                        }
+                    }
                 } ?: run {
                     Text(
                         text = stringResource(R.string.unable_to_load_photo),

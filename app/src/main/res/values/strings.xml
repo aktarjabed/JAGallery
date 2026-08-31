@@ -74,8 +74,26 @@
     <string name="move_partial_n_failed">%1$d items failed to move.</string>
     <string name="crop">Crop</string>
     <string name="crop_original">Original</string>
-    <string name="crop_square">Square</string>
+    <string name="crop_square">1:1</string>
+    <string name="crop_4_3">4:3</string>
+    <string name="crop_3_4">3:4</string>
+    <string name="crop_16_9">16:9</string>
+    <string name="crop_9_16">9:16</string>
     <string name="crop_free">Free</string>
+
+    <string name="open_with">Open with</string>
+    <string name="set_wallpaper">Set wallpaper</string>
+    <string name="wallpaper_home_screen">Home screen</string>
+    <string name="wallpaper_lock_screen">Lock screen</string>
+    <string name="wallpaper_both">Both</string>
+    <string name="wallpaper_success">Wallpaper set successfully</string>
+    <string name="wallpaper_failed">Failed to set wallpaper</string>
+
+    <string name="exposure">Exposure</string>
+    <string name="highlights">Highlights</string>
+    <string name="shadows">Shadows</string>
+    <string name="temperature">Temperature</string>
+    <string name="sharpness">Sharpness</string>
 
     <string name="rename_media">Rename Media</string>
     <string name="rename_album">Rename Album</string>
