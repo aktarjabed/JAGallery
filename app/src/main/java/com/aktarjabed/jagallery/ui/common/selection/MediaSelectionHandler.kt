@@ -90,103 +90,67 @@ fun MediaSelectionHandler(
     var showMoveAlbumDialog by remember { mutableStateOf(false) }
     var showCopyAlbumDialog by remember { mutableStateOf(false) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = deleteState
-        if (state is DeleteOperationState.SystemConfirmation) {
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val currentChunkIds = state.pendingIntents[state.currentIndex].ids
-                val updatedProcessedIds = state.processedIds + currentChunkIds
+    var pendingDeleteBatchForMessage by remember { mutableStateOf<PendingDeleteBatch?>(null) }
 
-                if (state.currentIndex + 1 < state.pendingIntents.size) {
-                    val nextIndex = state.currentIndex + 1
-                    deleteState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
-                } else {
-                    onRemoveDeletedItems(updatedProcessedIds)
-                    selectionState.clearSelection()
-                    deleteState = DeleteOperationState.Idle
-                }
-            } else {
-                if (state.processedIds.isNotEmpty()) {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(
-                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                            state.processedIds.size,
-                            state.batch.count
-                        ),
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    onRemoveDeletedItems(state.processedIds)
-                    selectionState.clearSelection()
-                }
-                deleteState = DeleteOperationState.Idle
-            }
-        } else {
-            deleteState = DeleteOperationState.Idle
+    val deleteBatchProcessor = rememberPendingIntentBatchProcessor { result ->
+        if (result.succeededIds.isNotEmpty()) {
+            onRemoveDeletedItems(result.succeededIds)
+            selectionState.clearSelection()
         }
+        if (result.cancelled && result.succeededIds.isNotEmpty()) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(
+                    com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                    result.succeededIds.size,
+                    pendingDeleteBatchForMessage?.count ?: 0
+                ),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+        deleteState = DeleteOperationState.Idle
+        pendingDeleteBatchForMessage = null
     }
 
     LaunchedEffect(deleteState) {
         val state = deleteState
         if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
-            val intentSender = state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-            deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+            pendingDeleteBatchForMessage = state.batch
+            deleteBatchProcessor.processBatch(state.pendingIntents)
         }
     }
 
-    val restoreLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = restoreState
-        if (state is DeleteOperationState.SystemConfirmation) {
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val currentChunkIds = state.pendingIntents[state.currentIndex].ids
-                val updatedProcessedIds = state.processedIds + currentChunkIds
+    var pendingRestoreBatchForMessage by remember { mutableStateOf<PendingDeleteBatch?>(null) }
 
-                if (state.currentIndex + 1 < state.pendingIntents.size) {
-                    val nextIndex = state.currentIndex + 1
-                    restoreState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
-                } else {
-                    val selected = items.filter { updatedProcessedIds.contains(it.id) }
-                    if (selected.isNotEmpty()) {
-                        onRestoreSelected?.invoke(selected)
-                    }
-                    onRemoveDeletedItems(updatedProcessedIds)
-                    selectionState.clearSelection()
-                    restoreState = DeleteOperationState.Idle
-                }
-            } else {
-                if (state.processedIds.isNotEmpty()) {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(
-                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                            state.processedIds.size,
-                            state.batch.count
-                        ),
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    val selected = items.filter { state.processedIds.contains(it.id) }
-                    if (selected.isNotEmpty()) {
-                        onRestoreSelected?.invoke(selected)
-                    }
-                    onRemoveDeletedItems(state.processedIds)
-                    selectionState.clearSelection()
-                }
-                restoreState = DeleteOperationState.Idle
+    val restoreBatchProcessor = rememberPendingIntentBatchProcessor { result ->
+        if (result.succeededIds.isNotEmpty()) {
+            val selected = items.filter { result.succeededIds.contains(it.id) }
+            if (selected.isNotEmpty()) {
+                onRestoreSelected?.invoke(selected)
             }
-        } else {
-            restoreState = DeleteOperationState.Idle
+            onRemoveDeletedItems(result.succeededIds)
+            selectionState.clearSelection()
         }
+        if (result.cancelled && result.succeededIds.isNotEmpty()) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(
+                    com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                    result.succeededIds.size,
+                    pendingRestoreBatchForMessage?.count ?: 0
+                ),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+        restoreState = DeleteOperationState.Idle
+        pendingRestoreBatchForMessage = null
     }
 
     LaunchedEffect(restoreState) {
         val state = restoreState
         if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
-            val intentSender = state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-            restoreLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+            pendingRestoreBatchForMessage = state.batch
+            restoreBatchProcessor.processBatch(state.pendingIntents)
         }
     }
 
@@ -210,8 +174,7 @@ fun MediaSelectionHandler(
                     if (pendingIntents.isNotEmpty()) {
                         deleteState = DeleteOperationState.SystemConfirmation(
                             batch = currentState.batch,
-                            pendingIntents = pendingIntents,
-                            currentIndex = 0
+                            pendingIntents = pendingIntents
                         )
                     } else {
                         val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
@@ -311,8 +274,7 @@ fun MediaSelectionHandler(
                         if (pendingIntents.isNotEmpty()) {
                             restoreState = DeleteOperationState.SystemConfirmation(
                                 batch = batch,
-                                pendingIntents = pendingIntents,
-                                currentIndex = 0
+                                pendingIntents = pendingIntents
                             )
                         } else {
                             val success = FileUtils.untrashMediaItems(context.contentResolver, batch.uris)

@@ -49,52 +49,26 @@ fun TrashScreen(
     val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
 
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
-    var emptyTrashState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = emptyTrashState
-        if (state is DeleteOperationState.SystemConfirmation) {
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val currentChunkIds = state.pendingIntents[state.currentIndex].ids
-                val updatedProcessedIds = state.processedIds + currentChunkIds
+    var pendingEmptyTrashBatch by remember { mutableStateOf<PendingDeleteBatch?>(null) }
 
-                if (state.currentIndex + 1 < state.pendingIntents.size) {
-                    val nextIndex = state.currentIndex + 1
-                    emptyTrashState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
-                } else {
-                    viewModel.removeDeletedItems(updatedProcessedIds)
-                    viewModel.refreshAll(context)
-                    emptyTrashState = DeleteOperationState.Idle
-                }
-            } else {
-                if (state.processedIds.isNotEmpty()) {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(
-                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                            state.processedIds.size,
-                            state.batch.count
-                        ),
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    viewModel.removeDeletedItems(state.processedIds)
-                    viewModel.refreshAll(context)
-                }
-                emptyTrashState = DeleteOperationState.Idle
-            }
-        } else {
-            emptyTrashState = DeleteOperationState.Idle
+    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
+        if (result.succeededIds.isNotEmpty()) {
+            viewModel.removeDeletedItems(result.succeededIds)
+            viewModel.refreshAll(context)
         }
-    }
-
-    LaunchedEffect(emptyTrashState) {
-        val state = emptyTrashState
-        if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
-            val intentSender = state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-            deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+        if (result.cancelled && result.succeededIds.isNotEmpty()) {
+            Toast.makeText(
+                context,
+                context.getString(
+                    R.string.batch_partially_processed,
+                    result.succeededIds.size,
+                    pendingEmptyTrashBatch?.count ?: 0
+                ),
+                Toast.LENGTH_SHORT
+            ).show()
         }
+        pendingEmptyTrashBatch = null
     }
 
     if (showEmptyTrashDialog) {
@@ -113,11 +87,8 @@ fun TrashScreen(
                     )
                     val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
                     if (pendingIntents.isNotEmpty()) {
-                        emptyTrashState = DeleteOperationState.SystemConfirmation(
-                            batch = batch,
-                            pendingIntents = pendingIntents,
-                            currentIndex = 0
-                        )
+                        pendingEmptyTrashBatch = batch
+                        batchProcessor.processBatch(pendingIntents)
                     } else {
                         val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
                         if (success) {

@@ -50,10 +50,9 @@ class MediaOperationsImpl @Inject constructor(
     private val repository: MediaRepository
 ) : MediaOperations {
 
-    override suspend fun toggleFavorite(mediaItem: MediaItem): OperationResult<Unit> {
+    private suspend fun <T> runOperation(block: suspend () -> T): OperationResult<T> {
         return try {
-            repository.toggleFavorite(mediaItem)
-            OperationResult.Success(Unit)
+            OperationResult.Success(block())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -61,59 +60,29 @@ class MediaOperationsImpl @Inject constructor(
         }
     }
 
-    override suspend fun hideMedia(mediaItem: MediaItem): OperationResult<Unit> {
-        return try {
-            repository.hideMedia(mediaItem)
-            OperationResult.Success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
-        }
+    override suspend fun toggleFavorite(mediaItem: MediaItem): OperationResult<Unit> = runOperation {
+        repository.toggleFavorite(mediaItem)
     }
 
-    override suspend fun hideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> {
-        return try {
-            repository.hideMediaBatch(mediaItems)
-            OperationResult.Success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
-        }
+    override suspend fun hideMedia(mediaItem: MediaItem): OperationResult<Unit> = runOperation {
+        repository.hideMedia(mediaItem)
     }
 
-    override suspend fun unhideMedia(mediaItem: MediaItem): OperationResult<Unit> {
-        return try {
-            repository.unhideMedia(mediaItem)
-            OperationResult.Success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
-        }
+    override suspend fun hideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> = runOperation {
+        repository.hideMediaBatch(mediaItems)
     }
 
-    override suspend fun unhideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> {
-        return try {
-            repository.unhideMediaBatch(mediaItems)
-            OperationResult.Success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
-        }
+    override suspend fun unhideMedia(mediaItem: MediaItem): OperationResult<Unit> = runOperation {
+        repository.unhideMedia(mediaItem)
     }
 
-    override suspend fun removeDeletedItems(deletedIds: List<String>): OperationResult<Unit> {
-        if (deletedIds.isEmpty()) return OperationResult.Success(Unit)
-        return try {
+    override suspend fun unhideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> = runOperation {
+        repository.unhideMediaBatch(mediaItems)
+    }
+
+    override suspend fun removeDeletedItems(deletedIds: List<String>): OperationResult<Unit> = runOperation {
+        if (deletedIds.isNotEmpty()) {
             repository.removeDeletedItems(deletedIds)
-            OperationResult.Success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            OperationResult.Error(e, e.message)
         }
     }
 

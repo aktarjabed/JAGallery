@@ -37,6 +37,10 @@ class FakeMediaDao : MediaDao {
 
     override fun getHiddenMedia(): Flow<List<com.aktarjabed.jagallery.data.local.HiddenMediaEntity>> = hiddenFlow
 
+    override suspend fun getHiddenMediaById(uri: String): com.aktarjabed.jagallery.data.local.HiddenMediaEntity? {
+        return hiddenFlow.value.find { it.uri == uri }
+    }
+
     override suspend fun hideMedia(hiddenEntity: com.aktarjabed.jagallery.data.local.HiddenMediaEntity) {
         val current = hiddenFlow.value.toMutableList()
         current.removeAll { it.uri == hiddenEntity.uri }

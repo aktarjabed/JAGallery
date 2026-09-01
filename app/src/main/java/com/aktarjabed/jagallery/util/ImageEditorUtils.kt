@@ -171,7 +171,7 @@ object ImageEditorUtils {
 
         var rotated: Bitmap? = null
         try {
-            rotated = if (plan.rotationDegrees != 0f) {
+            rotated = if (plan.rotationDegrees != 0f || plan.flipHorizontal || plan.flipVertical) {
                 Bitmap.createBitmap(
                     sourceForRotation, 0, 0, sourceForRotation.width, sourceForRotation.height, matrix, true
                 )

@@ -75,33 +75,19 @@ fun DuplicateScreen(
 
     var deleteState by remember { mutableStateOf<DeleteState?>(null) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = deleteState ?: return@rememberLauncherForActivityResult
-        if (result.resultCode != Activity.RESULT_OK) {
+    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
+        if (result.succeededIds.isNotEmpty()) {
+            viewModel.onDeletePermissionResult(true, result.succeededIds)
+        } else if (result.cancelled) {
             viewModel.onDeletePermissionResult(false, emptyList())
-            deleteState = null
-            return@rememberLauncherForActivityResult
         }
-
-        val nextIndex = state.currentIndex + 1
-        if (nextIndex < state.pendingIntents.size) {
-            deleteState = state.copy(currentIndex = nextIndex)
-        } else {
-            viewModel.onDeletePermissionResult(true, state.deletedIds)
-            deleteState = null
-        }
+        deleteState = null
     }
 
     LaunchedEffect(deleteState) {
         val state = deleteState ?: return@LaunchedEffect
-        if (state.currentIndex < state.pendingIntents.size) {
-            deleteLauncher.launch(
-                IntentSenderRequest.Builder(
-                    state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-                ).build()
-            )
+        if (state.currentIndex == 0 && state.pendingIntents.isNotEmpty()) {
+            batchProcessor.processBatch(state.pendingIntents)
         }
     }
 
