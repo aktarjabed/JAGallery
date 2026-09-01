@@ -26,10 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aktarjabed.jagallery.R
+import com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.data.model.PendingDeleteBatch
 import com.aktarjabed.jagallery.ui.common.OperationEvent
@@ -500,9 +502,11 @@ fun ViewerScreen(
                         val pendingIntents = if (isTrashed) {
                             FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                         } else {
-                            var trashReqs = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
+                            val trashReqs = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
                             if (trashReqs.isEmpty()) {
-                                trashReqs = FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                                deleteState = DeleteOperationState.Idle
+                                return@TextButton
                             }
                             trashReqs
                         }

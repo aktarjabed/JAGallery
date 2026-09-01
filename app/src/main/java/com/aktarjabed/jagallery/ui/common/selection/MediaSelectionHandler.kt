@@ -166,9 +166,12 @@ fun MediaSelectionHandler(
                         FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                     } else {
                         val trashRequests = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
-                        trashRequests.ifEmpty {
-                            FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
+                        if (trashRequests.isEmpty()) {
+                            android.widget.Toast.makeText(context, context.getString(com.aktarjabed.jagallery.R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
+                            deleteState = DeleteOperationState.Idle
+                            return@DeleteConfirmationDialog
                         }
+                        trashRequests
                     }
 
                     if (pendingIntents.isNotEmpty()) {

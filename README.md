@@ -16,17 +16,20 @@ JAGallery is a modern, high-performance Android gallery application built with J
   - **Favorites Persistence**: One-tap toggling of favorite status backed by Room database.
   - **Metadata Info Sheet**: Displays file details including file name, MIME type, date added, album name, and EXIF metadata.
   - **Single & Batch Sharing**: Native Android sharing integration for single or multiple selected media files.
+  - **Open With**: Launch media in external applications using secure Content URIs.
+  - **Set Wallpaper**: Quickly set images as the device wallpaper.
 - **Search & Filtering**: Search media files by name in real-time.
-- **Image Editing**: Image editor supporting aspect ratio cropping (Square/Free/Original), rotation, flip horizontal/vertical, brightness, contrast, and saturation.
+- **Image Editing**: Interactive Image Editor supporting freeform crop, rotation, flip horizontal/vertical, brightness, contrast, and saturation.
 - **Video Editing**: Video trimming pipeline with bottom sheet UI.
 - **Trash Management**: View deleted media and empty trash to permanently delete items. (MediaStore trash/restore integration)
 - **Hidden Media**: Hide sensitive media files and view or unhide them in a dedicated section.
   - *Note: Hidden media is only filtered from this app's view. Files remain in device storage and are visible to other apps and file managers.*
-- **Map View**: OsmDroid-based map view with marker rendering using GPS metadata.
-- **Duplicate Detection**: Find exact duplicate media files.
-- **MediaStore & Deletion Handling**:
-  - Uses `MediaStore.createDeleteRequest` for scoped storage on API 30+ / Android 11+.
-  - Direct ContentResolver deletion fallback for API < 30.
+- **Map View**: OsmDroid-based map view with marker rendering using EXIF GPS metadata.
+- **Duplicate Detection**: Find exact duplicate media files via SHA-256 hashing.
+- **MediaStore & Handling**:
+  - Full support for Scoped Storage (API 30+) using `MediaStore.createDeleteRequest` and `createTrashRequest`.
+  - Batch operation handling with `PendingIntent` chunks.
+  - Copy and Move operations preserving Room metadata.
 
 ## Architecture
 
@@ -39,10 +42,10 @@ JAGallery is a modern, high-performance Android gallery application built with J
 ## Roadmap & Upcoming Features
 
 - **Secure Hidden Vault**: Biometric authentication and private storage encryption for hidden files.
-- **Advanced Editor**: Freeform crop and advanced tools.
-- **Open With & Set Wallpaper**: External app integrations.
-- **Release Hardening**: Properly configure R8 proguard rules for release builds.
-- **Robust Multi-volume Move/Copy**: Preserving Favorite/Hidden metadata and correct target volume support.
+- **Duplicate Cleanup**: Streamlined UI for deleting duplicates and managing storage.
+- **Persistent Hash Cache**: Speed up duplicate scans with a persistent hash store.
+- **Advanced Editor Controls**: Highlights, shadows, and sharpness.
+- **Robust Multi-volume Management**: Advanced destination picking for copy/move operations, and proper metadata handling.
 
 ## Project Setup & Testing
 
@@ -55,3 +58,9 @@ JAGallery is a modern, high-performance Android gallery application built with J
 ```bash
 ./gradlew testDebugUnitTest
 ```
+
+## Releases
+
+JAGallery is distributed exclusively via GitHub Releases. The application is designed to be a personal, high-performance gallery app without Google Play Services bloat or analytics.
+
+You can download the latest APK from the [Releases page](https://github.com/aktarjabed/jagallery/releases).
