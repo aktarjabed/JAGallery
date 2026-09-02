@@ -31,11 +31,12 @@ fun HiddenScreen(
     }
 
     val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
-    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
+    val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
 
     MediaCollectionContent(
         loadResult = loadResult,
-        allAlbumNames = allAlbumNames,
+        allAlbums = allAlbums,
+        batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onUnhideSelected = { selected ->
             viewModel.unhideMediaBatch(selected)

@@ -52,9 +52,10 @@ class ViewerViewModel @Inject constructor(
     private val sourceStr: String? = savedStateHandle.get<String>("source")
     private val volumeName: String? = savedStateHandle.get<String>("volumeName")?.let { android.net.Uri.decode(it) }
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
+    private val relativePath: String? = savedStateHandle.get<String>("relativePath")?.let { android.net.Uri.decode(it) }
     private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")?.let { android.net.Uri.decode(it) }
 
-    val initialSource: MediaSource? = parseMediaSource(sourceStr, volumeName, bucketId, searchQuery)
+    val initialSource: MediaSource? = parseMediaSource(sourceStr, volumeName, bucketId, relativePath, searchQuery)
 
     private val _source = MutableStateFlow<MediaSource?>(initialSource)
     val source: StateFlow<MediaSource?> = _source

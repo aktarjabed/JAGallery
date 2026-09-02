@@ -253,17 +253,24 @@ fun ViewerScreen(
     }
 
 
-    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
-        if (result.succeededIds.isNotEmpty()) {
-            viewModel.removeDeletedItem(result.succeededIds.first())
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "VIEWER_DELETE" && result.succeededIds.isNotEmpty()) {
+                viewModel.removeDeletedItem(result.succeededIds.first())
+            }
+            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+            viewModel.batchManager.clearState()
         }
-        deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
-    }
+    )
 
     LaunchedEffect(deleteState) {
         val currentState = deleteState
-        if (currentState is com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation && currentState.pendingIntents.isNotEmpty()) {
-            batchProcessor.processBatch(currentState.pendingIntents)
+        if (currentState is com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation) {
+            viewModel.batchManager.startBatch(currentState.pendingIntents, "VIEWER_DELETE")
         }
     }
 
@@ -499,31 +506,36 @@ fun ViewerScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         val isTrashed = currentItem?.isTrashed == true
-                        val pendingIntents = if (isTrashed) {
+                        val requestResult = if (isTrashed) {
                             FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                         } else {
-                            val trashReqs = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
-                            if (trashReqs.isEmpty()) {
-                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
-                                deleteState = DeleteOperationState.Idle
-                                return@TextButton
-                            }
-                            trashReqs
+                            FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
                         }
 
-                        if (pendingIntents.isNotEmpty()) {
-                            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation(
-                                batch = currentState.batch,
-                                pendingIntents = pendingIntents
-                            )
-                        } else {
-                            val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
-                            if (success) {
-                                viewModel.removeDeletedItem(currentState.batch.ids.first())
-                                deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
-                            } else {
-                                android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
-                                deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
+                        when (requestResult) {
+                            is FileUtils.RequestCreationResult.Success -> {
+                                if (requestResult.chunks.isNotEmpty()) {
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation(
+                                        batch = currentState.batch,
+                                        pendingIntents = requestResult.chunks
+                                    )
+                                } else {
+                                    deleteState = DeleteOperationState.Idle
+                                }
+                            }
+                            is FileUtils.RequestCreationResult.Unsupported -> {
+                                val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
+                                if (success) {
+                                    viewModel.removeDeletedItem(currentState.batch.ids.first())
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+                                } else {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
+                                }
+                            }
+                            is FileUtils.RequestCreationResult.Error -> {
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                                deleteState = DeleteOperationState.Idle
                             }
                         }
                     }) {

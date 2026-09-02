@@ -15,11 +15,13 @@ import com.aktarjabed.jagallery.data.model.MediaItem
 import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.ui.common.selection.MediaSelectionHandler
 import com.aktarjabed.jagallery.ui.common.selection.rememberSelectionState
+import com.aktarjabed.jagallery.ui.common.selection.BatchOperationManager
 
 @Composable
 fun MediaCollectionContent(
     loadResult: MediaLoadResult,
-    allAlbumNames: List<String>,
+    allAlbums: List<com.aktarjabed.jagallery.data.model.Album>,
+    batchManager: BatchOperationManager,
     onRemoveDeletedItems: (List<String>) -> Unit,
     emptyIcon: ImageVector,
     emptyMessage: String,
@@ -28,8 +30,8 @@ fun MediaCollectionContent(
     onHideSelected: ((List<MediaItem>) -> Unit)? = null,
     onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
-    onMoveSelected: ((List<MediaItem>, String) -> Unit)? = null,
-    onCopySelected: ((List<MediaItem>, String) -> Unit)? = null,
+    onMoveSelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
+    onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val selectionState = rememberSelectionState()
@@ -39,8 +41,9 @@ fun MediaCollectionContent(
         topBar = {
             MediaSelectionHandler(
                 items = items,
-                allAlbumNames = allAlbumNames,
+                albums = allAlbums,
                 selectionState = selectionState,
+                batchManager = batchManager,
                 onRemoveDeletedItems = onRemoveDeletedItems,
                 onHideSelected = onHideSelected,
                 onUnhideSelected = onUnhideSelected,

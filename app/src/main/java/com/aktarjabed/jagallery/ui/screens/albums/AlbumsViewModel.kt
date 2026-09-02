@@ -73,9 +73,9 @@ class AlbumsViewModel @Inject constructor(
         }
     }
 
-    fun renameAlbum(context: android.content.Context, items: List<com.aktarjabed.jagallery.data.model.MediaItem>, newAlbumName: String) {
+    fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newAlbumName: String, items: List<com.aktarjabed.jagallery.data.model.MediaItem>) {
         viewModelScope.launch {
-            when (val result = mediaOperations.renameAlbum(context, items, newAlbumName)) {
+            when (val result = mediaOperations.renameAlbum(context, sourceAlbum, newAlbumName, items)) {
                 is com.aktarjabed.jagallery.domain.MoveOperationResult.RequestSourceDelete -> {
                     if (result.pendingIntents.isNotEmpty()) {
                         _albumRenameDeleteEvent.emit(
