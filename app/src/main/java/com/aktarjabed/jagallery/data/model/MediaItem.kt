@@ -10,6 +10,7 @@ data class MediaItem(
     val mimeType: String,
     val bucketId: Long,
     val bucketName: String,
+    val relativePath: String = "",
     val isVideo: Boolean,
     val isFavorite: Boolean = false,
     val volumeName: String = "",
@@ -21,5 +22,5 @@ data class MediaItem(
         get() = uri.toString()
 
     val albumKey: AlbumKey
-        get() = AlbumKey(volumeName = volumeName, bucketId = bucketId)
+        get() = AlbumKey(volumeName = volumeName, bucketId = bucketId, relativePath = relativePath)
 }

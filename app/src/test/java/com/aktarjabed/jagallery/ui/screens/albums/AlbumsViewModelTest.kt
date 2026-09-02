@@ -68,7 +68,7 @@ class AlbumsViewModelTest {
         val albumsList = items.groupBy { it.albumKey }
 
         assertEquals(2, albumsList.size)
-        assertTrue(albumsList.containsKey(AlbumKey("external_primary", 100L)))
-        assertTrue(albumsList.containsKey(AlbumKey("1234-5678", 100L)))
+        assertTrue(albumsList.containsKey(AlbumKey("external_primary", 100L, "")))
+        assertTrue(albumsList.containsKey(AlbumKey("1234-5678", 100L, "")))
     }
 }

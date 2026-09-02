@@ -8,7 +8,7 @@ import com.aktarjabed.jagallery.data.local.MediaDatabase
 import com.aktarjabed.jagallery.data.model.MediaItem
 import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.data.repository.MediaRepository
-import com.aktarjabed.jagallery.fixtures.MediaTestData
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -40,7 +40,7 @@ class HiddenMediaInstrumentationTest {
 
     @Test
     fun hideMedia_persistsInRoom_andExcludesFromMainLoadResult_atRepositoryBoundary() = runBlocking {
-        val testItem = MediaTestData.image(id = 100L, uriString = "content://media/external/images/media/100")
+        val testItem = com.aktarjabed.jagallery.data.model.MediaItem(uri = android.net.Uri.parse("content://media/external/images/media/100"), mediaStoreId = 100L, name = "image", dateAdded = 0L, mimeType = "image/jpeg", bucketId = 1L, bucketName = "Camera", relativePath = "", isVideo = false)
 
         // 1. Hide item
         repository.hideMedia(testItem)
@@ -86,7 +86,7 @@ class HiddenMediaInstrumentationTest {
     @Test
     fun hiddenAndTrashed_areIndependentStates() = runBlocking {
         val testUri = "content://media/external/images/media/300"
-        val item = MediaTestData.image(id = 300L, uriString = testUri)
+        val item = com.aktarjabed.jagallery.data.model.MediaItem(uri = android.net.Uri.parse(testUri), mediaStoreId = 300L, name = "image", dateAdded = 0L, mimeType = "image/jpeg", bucketId = 1L, bucketName = "Camera", relativePath = "", isVideo = false)
 
         // Hide item
         repository.hideMedia(item)

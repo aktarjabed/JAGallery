@@ -69,21 +69,30 @@ fun AlbumsScreen(
         }
     }
 
-    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
-        if (result.succeededIds.isNotEmpty()) {
-            viewModel.removeDeletedItems(result.succeededIds)
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "ALBUMS_RENAME_DELETE") {
+                if (result.succeededIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(result.succeededIds)
+                }
+                if (result.cancelled) {
+                    Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
+                }
+            }
+            viewModel.batchManager.clearState()
         }
-        if (result.cancelled) {
-            Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(context, context.getString(R.string.album_renamed), Toast.LENGTH_SHORT).show()
-        }
-    }
+    )
 
     LaunchedEffect(viewModel.albumRenameDeleteEvent) {
         viewModel.albumRenameDeleteEvent.collect { (_, pendingIntents) ->
             if (pendingIntents.isNotEmpty()) {
-                batchProcessor.processBatch(pendingIntents)
+                viewModel.batchManager.startBatch(pendingIntents, "ALBUMS_RENAME_DELETE")
             }
         }
     }
@@ -218,7 +227,7 @@ fun AlbumsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == album.key } ?: emptyList()
-                    viewModel.renameAlbum(context, items, newName)
+                    viewModel.renameAlbum(context, album, newName, items)
                     albumToRename = null
                 }) {
                     Text(stringResource(R.string.ok))

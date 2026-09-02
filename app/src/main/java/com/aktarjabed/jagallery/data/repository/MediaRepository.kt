@@ -93,16 +93,14 @@ class MediaRepository @Inject constructor(
         val hiddenUris = hiddenMedia.map { it.uri }.toSet()
         when (result) {
             is MediaLoadResult.Success -> {
-                val liveUris = result.items.map { it.id }.toSet()
-                val staleHiddenUris = hiddenMedia
-                    .filter { !liveUris.contains(it.uri) }
-                    .map { it.uri }
-                if (staleHiddenUris.isNotEmpty()) {
-                    mediaDao.unhideMediaBatch(staleHiddenUris)
-                }
+                // WARNING: Do NOT automatically purge hidden records here.
+                // Under Android 14+ Selected Photos Access, or if items are Trashed,
+                // the MediaStore snapshot might be incomplete.
+                // Purging here would permanently lose the hidden state for items that still exist
+                // but are simply invisible to the current permission scope or are in the Trash.
 
                 val hiddenItems = result.items
-                    .filter { hiddenUris.contains(it.id) && !staleHiddenUris.contains(it.id) }
+                    .filter { hiddenUris.contains(it.id) }
                     .map { item -> item.copy(isFavorite = favoriteUris.contains(item.id)) }
                 if (hiddenItems.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(hiddenItems)
             }
@@ -242,12 +240,21 @@ class MediaRepository @Inject constructor(
     suspend fun copyMediaToAlbum(
         context: Context,
         sourceItem: MediaItem,
-        targetAlbumName: String,
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination,
         skipRescan: Boolean = false
     ): android.net.Uri? = withContext(ioDispatcher) {
         val resolver = context.contentResolver
         val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            if (sourceItem.isVideo) "Movies/$targetAlbumName/" else "Pictures/$targetAlbumName/"
+            when (destination) {
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                    if (destination.relativePath.isNotEmpty()) {
+                        destination.relativePath
+                    } else {
+                        if (sourceItem.isVideo) "Movies/${destination.name}/" else "Pictures/${destination.name}/"
+                    }
+                }
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.key.relativePath
+            }
         } else {
             ""
         }
@@ -262,7 +269,12 @@ class MediaRepository @Inject constructor(
         }
 
         val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            android.provider.MediaStore.getVolumeName(sourceItem.uri)
+            when (destination) {
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                    if (destination.volumeName.isNotEmpty()) destination.volumeName else android.provider.MediaStore.getVolumeName(sourceItem.uri)
+                }
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
+            }
         } else {
             android.provider.MediaStore.VOLUME_EXTERNAL
         }
@@ -291,11 +303,16 @@ class MediaRepository @Inject constructor(
                 // Preserve Room metadata for Hidden / Favorite
                 val newUriStr = newUri.toString()
                 if (sourceItem.isFavorite) {
-                    mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, System.currentTimeMillis()))
+                    val oldEntity = mediaDao.getFavoriteById(sourceItem.uri.toString())
+                    if (oldEntity != null) {
+                        mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, oldEntity.dateAdded))
+                    } else {
+                        mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, System.currentTimeMillis()))
+                    }
                 }
                 val hiddenRecord = mediaDao.getHiddenMediaById(sourceItem.uri.toString())
                 if (hiddenRecord != null) {
-                    mediaDao.hideMedia(com.aktarjabed.jagallery.data.local.HiddenMediaEntity(newUriStr, true, System.currentTimeMillis()))
+                    mediaDao.hideMedia(com.aktarjabed.jagallery.data.local.HiddenMediaEntity(newUriStr, true, hiddenRecord.dateHidden))
                 }
                 if (!skipRescan) {
                     loadMedia(force = true, context = context)
@@ -318,12 +335,12 @@ class MediaRepository @Inject constructor(
     suspend fun copyMediaBatchToAlbum(
         context: Context,
         sourceItems: List<MediaItem>,
-        targetAlbumName: String
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): Pair<List<Pair<MediaItem, android.net.Uri>>, List<MediaItem>> = withContext(ioDispatcher) {
         val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
         val failedItems = mutableListOf<MediaItem>()
         for (item in sourceItems) {
-            val newUri = copyMediaToAlbum(context, item, targetAlbumName, skipRescan = true)
+            val newUri = copyMediaToAlbum(context, item, destination, skipRescan = true)
             if (newUri != null) {
                 successfulCopies.add(Pair(item, newUri))
             } else {

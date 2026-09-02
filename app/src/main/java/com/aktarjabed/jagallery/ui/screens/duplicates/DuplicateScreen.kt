@@ -75,19 +75,28 @@ fun DuplicateScreen(
 
     var deleteState by remember { mutableStateOf<DeleteState?>(null) }
 
-    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
-        if (result.succeededIds.isNotEmpty()) {
-            viewModel.onDeletePermissionResult(true, result.succeededIds)
-        } else if (result.cancelled) {
-            viewModel.onDeletePermissionResult(false, emptyList())
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "DUPLICATE_DELETE") {
+                if (result.succeededIds.isNotEmpty()) {
+                    viewModel.onDeletePermissionResult(true, result.succeededIds)
+                } else if (result.cancelled) {
+                    viewModel.onDeletePermissionResult(false, emptyList())
+                }
+                deleteState = null
+            }
+            viewModel.batchManager.clearState()
         }
-        deleteState = null
-    }
+    )
 
     LaunchedEffect(deleteState) {
         val state = deleteState ?: return@LaunchedEffect
         if (state.currentIndex == 0 && state.pendingIntents.isNotEmpty()) {
-            batchProcessor.processBatch(state.pendingIntents)
+            viewModel.batchManager.startBatch(state.pendingIntents, "DUPLICATE_DELETE")
         }
     }
 

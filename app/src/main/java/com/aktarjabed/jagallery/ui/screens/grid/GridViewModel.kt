@@ -29,9 +29,10 @@ class GridViewModel @Inject constructor(
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
     private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val sourceName: String? = savedStateHandle.get<String>("source")
+    private val relativePath: String = savedStateHandle.get<String>("relativePath") ?: ""
 
     private val initialSource: MediaSource = if (sourceName == "ALBUM" && !volumeName.isNullOrBlank() && bucketId != null) {
-        MediaSource.Album(volumeName, bucketId)
+        MediaSource.Album(volumeName, bucketId, relativePath)
     } else {
         MediaSource.All
     }
@@ -99,12 +100,4 @@ class GridViewModel @Inject constructor(
         _source.value = source
     }
 
-    suspend fun copyMediaBatch(
-        context: android.content.Context,
-        items: List<com.aktarjabed.jagallery.data.model.MediaItem>,
-        targetAlbum: String
-    ): List<android.net.Uri?> {
-        val (successfulCopies, _) = repository.copyMediaBatchToAlbum(context, items, targetAlbum)
-        return successfulCopies.map { it.first.uri }
-    }
 }

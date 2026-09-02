@@ -88,7 +88,7 @@ class BatchMoveInstrumentationTest {
             isVideo = false
         )
 
-        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), "MovedAlbum")
+        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum("MovedAlbum", "external", "Pictures/MovedAlbum/"))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             assertTrue("Move operation must return RequestSourceDelete on API 30+", result is MoveOperationResult.RequestSourceDelete)
@@ -96,7 +96,7 @@ class BatchMoveInstrumentationTest {
             assertEquals(1, req.successfulCopies.size)
             val destinationUri = req.successfulCopies.first().second
             createdUris.add(destinationUri)
-            assertNotNull("PendingIntent for source delete must not be null", req.pendingIntent)
+            assertTrue("PendingIntent chunks must not be empty", req.pendingIntents.isNotEmpty())
 
             // Verify destination content is written and openable
             resolver.openInputStream(destinationUri)?.use { input ->
@@ -119,7 +119,7 @@ class BatchMoveInstrumentationTest {
             isVideo = false
         )
 
-        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), "CanceledMoveAlbum")
+        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum("CanceledMoveAlbum", "external", "Pictures/CanceledMoveAlbum/"))
         if (result is MoveOperationResult.RequestSourceDelete) {
             val destinationUri = result.successfulCopies.first().second
             createdUris.add(destinationUri)
@@ -150,7 +150,7 @@ class BatchMoveInstrumentationTest {
             isVideo = false
         )
 
-        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), "ConfirmedMoveAlbum")
+        val result = mediaOperations.moveMediaBatch(context, listOf(sourceItem), com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum("ConfirmedMoveAlbum", "external", "Pictures/ConfirmedMoveAlbum/"))
         if (result is MoveOperationResult.RequestSourceDelete) {
             val destinationUri = result.successfulCopies.first().second
             createdUris.add(destinationUri)
@@ -178,7 +178,7 @@ class BatchMoveInstrumentationTest {
             isVideo = false
         )
 
-        val result = mediaOperations.moveMediaBatch(context, listOf(invalidItem), "FailedMoveAlbum")
+        val result = mediaOperations.moveMediaBatch(context, listOf(invalidItem), com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum("FailedMoveAlbum", "external", "Pictures/FailedMoveAlbum/"))
         assertTrue("Move on non-existent source must yield Error result", result is MoveOperationResult.Error)
     }
 }
