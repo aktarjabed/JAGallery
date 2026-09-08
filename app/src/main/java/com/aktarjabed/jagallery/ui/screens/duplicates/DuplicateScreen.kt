@@ -203,7 +203,6 @@ fun DuplicateScreen(
                     ) {
                         itemsIndexed(state.groups) { index, group ->
                             DuplicateGroupCard(
-                                groupIndex = index,
                                 group = group,
                                 selectedIds = selections[index] ?: emptySet(),
                                 onToggle = { itemId -> viewModel.toggleSelection(index, itemId) },
@@ -222,7 +221,6 @@ fun DuplicateScreen(
 
 @Composable
 private fun DuplicateGroupCard(
-    groupIndex: Int,
     group: DuplicateGroup,
     selectedIds: Set<String>,
     onToggle: (String) -> Unit,

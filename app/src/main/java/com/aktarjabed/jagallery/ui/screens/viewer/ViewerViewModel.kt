@@ -170,7 +170,7 @@ class ViewerViewModel @Inject constructor(
             val currentItems = mediaItems.value
             val currentIndex = currentItems.indexOfFirst { it.id == deletedId }
 
-            when (val result = mediaOperations.removeDeletedItems(listOf(deletedId))) {
+            when (mediaOperations.removeDeletedItems(listOf(deletedId))) {
                 is OperationResult.Error -> {
                     removeDeletedItems(listOf(deletedId))
                 }
