@@ -102,7 +102,7 @@ object VideoTrimmer {
 
             val startUs = startMs * 1000L
             val endUs = endMs * 1000L
-            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
 
             val buffer = ByteBuffer.allocate(maxBufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
@@ -129,7 +129,7 @@ object VideoTrimmer {
             }
 
             // Pass 2: Mux using baseTimeUs
-            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
             while (true) {
                 bufferInfo.offset = 0
                 bufferInfo.size = extractor.readSampleData(buffer, 0)
@@ -152,13 +152,10 @@ object VideoTrimmer {
             muxer.stop()
             isMuxerStarted = false
 
-            val finalContentValues = android.content.ContentValues().apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Video.Media.IS_PENDING, 0)
-                }
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                resolver.update(newUri, finalContentValues, null, null)
+            val published = FileUtils.publishPendingEntry(resolver, newUri, android.content.ContentValues())
+            if (!published) {
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
             }
 
         } catch (e: CancellationException) {

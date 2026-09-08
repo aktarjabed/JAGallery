@@ -49,6 +49,21 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private val _saturation = MutableStateFlow(1f)
     val saturation: StateFlow<Float> = _saturation.asStateFlow()
 
+    private val _exposure = MutableStateFlow(0f)
+    val exposure: StateFlow<Float> = _exposure.asStateFlow()
+
+    private val _highlights = MutableStateFlow(0f)
+    val highlights: StateFlow<Float> = _highlights.asStateFlow()
+
+    private val _shadows = MutableStateFlow(0f)
+    val shadows: StateFlow<Float> = _shadows.asStateFlow()
+
+    private val _temperature = MutableStateFlow(0f)
+    val temperature: StateFlow<Float> = _temperature.asStateFlow()
+
+    private val _sharpness = MutableStateFlow(0f)
+    val sharpness: StateFlow<Float> = _sharpness.asStateFlow()
+
     private val _cropRect = MutableStateFlow<RectF?>(null)
     val cropRect: StateFlow<RectF?> = _cropRect.asStateFlow()
     private val _flipHorizontal = MutableStateFlow(false)
@@ -112,6 +127,31 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         updatePreview()
     }
 
+    fun updateExposure(value: Float) {
+        _exposure.value = value
+        updatePreview()
+    }
+
+    fun updateHighlights(value: Float) {
+        _highlights.value = value
+        updatePreview()
+    }
+
+    fun updateShadows(value: Float) {
+        _shadows.value = value
+        updatePreview()
+    }
+
+    fun updateTemperature(value: Float) {
+        _temperature.value = value
+        updatePreview()
+    }
+
+    fun updateSharpness(value: Float) {
+        _sharpness.value = value
+        updatePreview()
+    }
+
     fun setCropRect(rect: RectF?) {
         _cropRect.value = rect
         updatePreview()
@@ -124,6 +164,11 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _brightness.value = 0f
         _contrast.value = 1f
         _saturation.value = 1f
+        _exposure.value = 0f
+        _highlights.value = 0f
+        _shadows.value = 0f
+        _temperature.value = 0f
+        _sharpness.value = 0f
         _cropRect.value = null
         _flipHorizontal.value = false
         _flipVertical.value = false
@@ -147,6 +192,11 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 brightness = _brightness.value,
                 contrast = _contrast.value,
                 saturation = _saturation.value,
+                exposure = _exposure.value,
+                highlights = _highlights.value,
+                shadows = _shadows.value,
+                temperature = _temperature.value,
+                sharpness = _sharpness.value,
                 cropRect = _cropRect.value,
                 flipHorizontal = _flipHorizontal.value,
                 flipVertical = _flipVertical.value
@@ -181,6 +231,11 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             brightness = _brightness.value,
             contrast = _contrast.value,
             saturation = _saturation.value,
+            exposure = _exposure.value,
+            highlights = _highlights.value,
+            shadows = _shadows.value,
+            temperature = _temperature.value,
+            sharpness = _sharpness.value,
             cropRect = _cropRect.value,
             flipHorizontal = _flipHorizontal.value,
             flipVertical = _flipVertical.value

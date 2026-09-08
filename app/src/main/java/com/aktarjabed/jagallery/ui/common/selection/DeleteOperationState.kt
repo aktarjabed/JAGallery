@@ -9,9 +9,7 @@ sealed interface DeleteOperationState {
     data class Confirming(val batch: PendingDeleteBatch) : DeleteOperationState
     data class SystemConfirmation(
         val batch: PendingDeleteBatch,
-        val pendingIntents: List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk> = emptyList(),
-        val currentIndex: Int = 0,
-        val processedIds: List<String> = emptyList()
+        val pendingIntents: List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk> = emptyList()
     ) : DeleteOperationState
     data class Failed(val batch: PendingDeleteBatch, val message: String? = null) : DeleteOperationState
 }

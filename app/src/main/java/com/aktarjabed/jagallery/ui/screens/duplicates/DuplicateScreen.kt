@@ -75,33 +75,28 @@ fun DuplicateScreen(
 
     var deleteState by remember { mutableStateOf<DeleteState?>(null) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = deleteState ?: return@rememberLauncherForActivityResult
-        if (result.resultCode != Activity.RESULT_OK) {
-            viewModel.onDeletePermissionResult(false, emptyList())
-            deleteState = null
-            return@rememberLauncherForActivityResult
-        }
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
-        val nextIndex = state.currentIndex + 1
-        if (nextIndex < state.pendingIntents.size) {
-            deleteState = state.copy(currentIndex = nextIndex)
-        } else {
-            viewModel.onDeletePermissionResult(true, state.deletedIds)
-            deleteState = null
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "DUPLICATE_DELETE") {
+                if (result.succeededIds.isNotEmpty()) {
+                    viewModel.onDeletePermissionResult(true, result.succeededIds)
+                } else if (result.cancelled) {
+                    viewModel.onDeletePermissionResult(false, emptyList())
+                }
+                deleteState = null
+            }
+            viewModel.batchManager.clearState()
         }
-    }
+    )
 
     LaunchedEffect(deleteState) {
         val state = deleteState ?: return@LaunchedEffect
-        if (state.currentIndex < state.pendingIntents.size) {
-            deleteLauncher.launch(
-                IntentSenderRequest.Builder(
-                    state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-                ).build()
-            )
+        if (state.currentIndex == 0 && state.pendingIntents.isNotEmpty()) {
+            viewModel.batchManager.startBatch(state.pendingIntents, "DUPLICATE_DELETE")
         }
     }
 
@@ -208,7 +203,6 @@ fun DuplicateScreen(
                     ) {
                         itemsIndexed(state.groups) { index, group ->
                             DuplicateGroupCard(
-                                groupIndex = index,
                                 group = group,
                                 selectedIds = selections[index] ?: emptySet(),
                                 onToggle = { itemId -> viewModel.toggleSelection(index, itemId) },
@@ -227,7 +221,6 @@ fun DuplicateScreen(
 
 @Composable
 private fun DuplicateGroupCard(
-    groupIndex: Int,
     group: DuplicateGroup,
     selectedIds: Set<String>,
     onToggle: (String) -> Unit,

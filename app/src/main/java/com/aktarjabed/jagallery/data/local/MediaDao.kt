@@ -26,6 +26,9 @@ interface MediaDao {
     @Query("SELECT * FROM hidden_media WHERE isHidden = 1")
     fun getHiddenMedia(): Flow<List<HiddenMediaEntity>>
 
+    @Query("SELECT * FROM hidden_media WHERE uri = :uri")
+    suspend fun getHiddenMediaById(uri: String): HiddenMediaEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun hideMedia(hiddenEntity: HiddenMediaEntity)
 

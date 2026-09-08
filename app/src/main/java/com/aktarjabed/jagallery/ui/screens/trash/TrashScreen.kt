@@ -16,6 +16,7 @@ import com.aktarjabed.jagallery.ui.common.components.DeleteConfirmationDialog
 import com.aktarjabed.jagallery.data.model.PendingDeleteBatch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,56 +47,39 @@ fun TrashScreen(
     }
 
     val loadResult by viewModel.trashedMediaLoadResult.collectAsStateWithLifecycle()
-    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
+    val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
 
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
-    var emptyTrashState by remember { mutableStateOf<DeleteOperationState>(DeleteOperationState.Idle) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val state = emptyTrashState
-        if (state is DeleteOperationState.SystemConfirmation) {
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val currentChunkIds = state.pendingIntents[state.currentIndex].ids
-                val updatedProcessedIds = state.processedIds + currentChunkIds
+    var pendingEmptyTrashBatch by remember { mutableStateOf<PendingDeleteBatch?>(null) }
 
-                if (state.currentIndex + 1 < state.pendingIntents.size) {
-                    val nextIndex = state.currentIndex + 1
-                    emptyTrashState = state.copy(currentIndex = nextIndex, processedIds = updatedProcessedIds)
-                } else {
-                    viewModel.removeDeletedItems(updatedProcessedIds)
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "EMPTY_TRASH") {
+                if (result.succeededIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(result.succeededIds)
                     viewModel.refreshAll(context)
-                    emptyTrashState = DeleteOperationState.Idle
                 }
-            } else {
-                if (state.processedIds.isNotEmpty()) {
-                    android.widget.Toast.makeText(
+                if (result.cancelled && result.succeededIds.isNotEmpty()) {
+                    Toast.makeText(
                         context,
                         context.getString(
-                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                            state.processedIds.size,
-                            state.batch.count
+                            R.string.batch_partially_processed,
+                            result.succeededIds.size,
+                            pendingEmptyTrashBatch?.count ?: 0
                         ),
-                        android.widget.Toast.LENGTH_SHORT
+                        Toast.LENGTH_SHORT
                     ).show()
-                    viewModel.removeDeletedItems(state.processedIds)
-                    viewModel.refreshAll(context)
                 }
-                emptyTrashState = DeleteOperationState.Idle
+                pendingEmptyTrashBatch = null
             }
-        } else {
-            emptyTrashState = DeleteOperationState.Idle
+            viewModel.batchManager.clearState()
         }
-    }
-
-    LaunchedEffect(emptyTrashState) {
-        val state = emptyTrashState
-        if (state is DeleteOperationState.SystemConfirmation && state.pendingIntents.isNotEmpty()) {
-            val intentSender = state.pendingIntents[state.currentIndex].pendingIntent.intentSender
-            deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
-        }
-    }
+    )
 
     if (showEmptyTrashDialog) {
         val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
@@ -111,18 +95,22 @@ fun TrashScreen(
                         ids = items.map { it.id },
                         uris = items.map { it.uri }
                     )
-                    val pendingIntents = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)
-                    if (pendingIntents.isNotEmpty()) {
-                        emptyTrashState = DeleteOperationState.SystemConfirmation(
-                            batch = batch,
-                            pendingIntents = pendingIntents,
-                            currentIndex = 0
-                        )
-                    } else {
-                        val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
-                        if (success) {
-                            viewModel.removeDeletedItems(batch.ids)
-                        } else {
+                    when (val requestResult = FileUtils.createDeleteRequests(context.contentResolver, batch.uris)) {
+                        is FileUtils.RequestCreationResult.Success -> {
+                            if (requestResult.chunks.isNotEmpty()) {
+                                pendingEmptyTrashBatch = batch
+                                viewModel.batchManager.startBatch(requestResult.chunks, "EMPTY_TRASH")
+                            }
+                        }
+                        is FileUtils.RequestCreationResult.Unsupported -> {
+                            val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
+                            if (success) {
+                                viewModel.removeDeletedItems(batch.ids)
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        is FileUtils.RequestCreationResult.Error -> {
                             Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -136,13 +124,13 @@ fun TrashScreen(
 
     MediaCollectionContent(
         loadResult = loadResult,
-        allAlbumNames = allAlbumNames,
+        allAlbums = allAlbums,
+        batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { deletedIds ->
             viewModel.removeDeletedItems(deletedIds)
             // No refreshAll here -- observer handles post-delete rescan
         },
         onRestoreSelected = { restoredItems ->
-            viewModel.removeDeletedItems(restoredItems.map { it.id })
             viewModel.refreshAll(context) // refresh needed on restore path
         },
         emptyIcon = Icons.Default.Delete,

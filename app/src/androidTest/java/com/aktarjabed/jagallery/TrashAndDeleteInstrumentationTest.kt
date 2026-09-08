@@ -69,15 +69,15 @@ class TrashAndDeleteInstrumentationTest {
     @Test
     fun createTrashRequest_and_createDeleteRequest_generateValidPendingIntents() {
         val testUris = listOf(Uri.parse("content://media/external/images/media/999999"))
-        val pendingTrashIntent = FileUtils.createTrashRequest(resolver, testUris, true)
-        val pendingDeleteIntent = FileUtils.createDeleteRequest(resolver, testUris)
+        val trashChunks = FileUtils.createTrashRequests(resolver, testUris, true)
+        val deleteChunks = FileUtils.createDeleteRequests(resolver, testUris)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            assertNotNull("createTrashRequest must return non-null PendingIntent on API 30+", pendingTrashIntent)
-            assertNotNull("createDeleteRequest must return non-null PendingIntent on API 30+", pendingDeleteIntent)
+            assertTrue("createTrashRequests must return Success", trashChunks is FileUtils.RequestCreationResult.Success)
+            assertTrue("createDeleteRequests must return Success", deleteChunks is FileUtils.RequestCreationResult.Success)
         } else {
-            assertNull(pendingTrashIntent)
-            assertNull(pendingDeleteIntent)
+            assertTrue("createTrashRequests must return Unsupported", trashChunks is FileUtils.RequestCreationResult.Unsupported)
+            assertTrue("createDeleteRequests must return Unsupported", deleteChunks is FileUtils.RequestCreationResult.Unsupported)
         }
     }
 
@@ -95,21 +95,21 @@ class TrashAndDeleteInstrumentationTest {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Verify createTrashRequest generates valid PendingIntent for true and false
-            val trashIntent = FileUtils.createTrashRequest(resolver, listOf(testUri), true)
-            assertNotNull("Trash intent must be non-null for real URI on API 30+", trashIntent)
+            val trashChunks = FileUtils.createTrashRequests(resolver, listOf(testUri), true)
+            assertTrue("Trash intent must be non-empty for real URI on API 30+", trashChunks is FileUtils.RequestCreationResult.Success)
 
             // Simulate trashed state in MediaStore or verify query with IS_TRASHED flag if supported
             val trashResult = MediaStoreHelper.getMediaItemsResult(resolver, Dispatchers.IO, context, includeTrashed = true)
             assertTrue("Trash query must return a valid MediaLoadResult", trashResult is MediaLoadResult.Success || trashResult is MediaLoadResult.Empty)
 
-            val restoreIntent = FileUtils.createTrashRequest(resolver, listOf(testUri), false)
-            assertNotNull("Restore intent must be non-null for real URI on API 30+", restoreIntent)
+            val restoreChunks = FileUtils.createTrashRequests(resolver, listOf(testUri), false)
+            assertTrue("Restore intent must be non-empty for real URI on API 30+", restoreChunks is FileUtils.RequestCreationResult.Success)
         }
 
         // 2. Permanent deletion
-        val deleteIntent = FileUtils.createDeleteRequest(resolver, listOf(testUri))
+        val deleteChunks = FileUtils.createDeleteRequests(resolver, listOf(testUri))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            assertNotNull("Delete intent must be non-null on API 30+", deleteIntent)
+            assertTrue("Delete intent must be non-empty on API 30+", deleteChunks is FileUtils.RequestCreationResult.Success)
         }
 
         // Direct delete cleanup
