@@ -187,20 +187,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         val renderId = ++currentRenderId
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            val plan = TransformationPlan(
-                rotationDegrees = _rotationDegrees.value,
-                brightness = _brightness.value,
-                contrast = _contrast.value,
-                saturation = _saturation.value,
-                exposure = _exposure.value,
-                highlights = _highlights.value,
-                shadows = _shadows.value,
-                temperature = _temperature.value,
-                sharpness = _sharpness.value,
-                cropRect = _cropRect.value,
-                flipHorizontal = _flipHorizontal.value,
-                flipVertical = _flipVertical.value
-            )
+            val plan = currentTransformationPlan()
 
             val updated = ImageEditorUtils.applyTransformationPlan(
                 sourceBitmap = base,
@@ -226,20 +213,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
 
     fun save(context: Context) {
         val uri = sourceUri ?: return
-        val plan = TransformationPlan(
-            rotationDegrees = _rotationDegrees.value,
-            brightness = _brightness.value,
-            contrast = _contrast.value,
-            saturation = _saturation.value,
-            exposure = _exposure.value,
-            highlights = _highlights.value,
-            shadows = _shadows.value,
-            temperature = _temperature.value,
-            sharpness = _sharpness.value,
-            cropRect = _cropRect.value,
-            flipHorizontal = _flipHorizontal.value,
-            flipVertical = _flipVertical.value
-        )
+        val plan = currentTransformationPlan()
 
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
@@ -255,6 +229,24 @@ class EditorViewModel @Inject constructor() : ViewModel() {
                 _saveState.value = SaveState.Error(R.string.failed_to_save_image)
             }
         }
+    }
+
+
+    private fun currentTransformationPlan(): TransformationPlan {
+        return TransformationPlan(
+            rotationDegrees = _rotationDegrees.value,
+            brightness = _brightness.value,
+            contrast = _contrast.value,
+            saturation = _saturation.value,
+            exposure = _exposure.value,
+            highlights = _highlights.value,
+            shadows = _shadows.value,
+            temperature = _temperature.value,
+            sharpness = _sharpness.value,
+            cropRect = _cropRect.value,
+            flipHorizontal = _flipHorizontal.value,
+            flipVertical = _flipVertical.value
+        )
     }
 
     override fun onCleared() {

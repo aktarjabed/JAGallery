@@ -219,7 +219,7 @@ class MediaRepository @Inject constructor(
     suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
         mediaDao.removeFavorites(deletedIds)
         mediaDao.unhideMediaBatch(deletedIds)
-        _mediaLoadResult.update { current ->
+        val updateResult: (MediaLoadResult) -> MediaLoadResult = { current ->
             if (current is MediaLoadResult.Success) {
                 val filtered = current.items.filterNot { deletedIds.contains(it.id) }
                 if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
@@ -227,14 +227,8 @@ class MediaRepository @Inject constructor(
                 current
             }
         }
-        _trashedMediaLoadResult.update { current ->
-            if (current is MediaLoadResult.Success) {
-                val filtered = current.items.filterNot { deletedIds.contains(it.id) }
-                if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
-            } else {
-                current
-            }
-        }
+        _mediaLoadResult.update(updateResult)
+        _trashedMediaLoadResult.update(updateResult)
     }
 
     suspend fun copyMediaToAlbum(
