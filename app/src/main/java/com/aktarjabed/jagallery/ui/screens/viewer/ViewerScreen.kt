@@ -205,9 +205,9 @@ fun ViewerScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showVideoTrimSheet by remember { mutableStateOf(false) }
-    var trimStartMs by remember { mutableStateOf(0f) }
-    var trimEndMs by remember { mutableStateOf(10000f) }
-    var videoDurationMs by remember { mutableStateOf(0f) }
+    var trimStartMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var trimEndMs by remember { androidx.compose.runtime.mutableFloatStateOf(10000f) }
+    var videoDurationMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var trimJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
@@ -217,7 +217,7 @@ fun ViewerScreen(
                 retriever.setDataSource(context, currentItem.uri)
                 val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
                 val duration = time?.toLongOrNull() ?: 0L
-                if (duration != null) {
+                if (duration > 0L) {
                     videoDurationMs = duration.toFloat()
                     trimStartMs = 0f
                     trimEndMs = duration.toFloat()
@@ -284,90 +284,54 @@ fun ViewerScreen(
     }
 
     if (showWallpaperDialog && !currentItem.isVideo) {
+        val setWallpaperAction = { flag: Int? ->
+            showWallpaperDialog = false
+            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
+                    if (bitmap != null) {
+                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                        if (flag == null) {
+                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
+                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
+                        } else {
+                            wallpaperManager.setBitmap(bitmap, null, true, flag)
+                        }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { showWallpaperDialog = false },
             title = { Text(stringResource(R.string.set_wallpaper)) },
             text = {
                 Column {
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(android.app.WallpaperManager.FLAG_SYSTEM) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_home_screen))
                     }
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(android.app.WallpaperManager.FLAG_LOCK) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_lock_screen))
                     }
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
-                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
-                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(null) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_both))
