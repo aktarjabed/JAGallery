@@ -219,6 +219,10 @@ fun ViewerScreen(
             try {
                 retriever.setDataSource(context, currentItem.uri)
                 val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val duration = time?.toLongOrNull() ?: 0L
+                videoDurationMs = duration.toFloat()
+                trimStartMs = 0f
+                trimEndMs = duration.toFloat()
                 val duration = time?.toLongOrNull()
                 if (duration != null) {
                 val duration = time?.toLongOrNull() ?: 0L

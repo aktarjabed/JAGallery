@@ -63,7 +63,7 @@ class TrashAndDeleteInstrumentationTest {
                 resolver.update(it, pubValues, null, null)
             }
         }
-        return uri!!
+        return uri ?: throw IllegalStateException("Failed to insert test image")
     }
 
     @Test
@@ -91,7 +91,7 @@ class TrashAndDeleteInstrumentationTest {
         val normalItems1 = (normalResult1 as MediaLoadResult.Success).items
         val item1 = normalItems1.find { it.uri.toString() == testUri.toString() }
         assertNotNull("Inserted image must be visible in normal query", item1)
-        assertFalse("Item in normal query must not be marked trashed", item1!!.isTrashed)
+        assertFalse("Item in normal query must not be marked trashed", item1?.isTrashed == true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Verify createTrashRequest generates valid PendingIntent for true and false

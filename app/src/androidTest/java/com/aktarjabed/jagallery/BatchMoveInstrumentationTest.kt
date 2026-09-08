@@ -71,7 +71,7 @@ class BatchMoveInstrumentationTest {
                 resolver.update(it, pubValues, null, null)
             }
         }
-        return sourceUri!!
+        return sourceUri ?: throw IllegalStateException("Failed to create test image")
     }
 
     @Test

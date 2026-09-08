@@ -189,7 +189,7 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
 
         val job1 = launch { testRepo.loadMedia(force = false) }
         val job2 = launch { testRepo.loadMedia(force = false) }
@@ -209,7 +209,7 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
 
         val job1 = launch { testRepo.loadMedia(force = false) }
         val job2 = launch { testRepo.loadMedia(force = true) }
@@ -229,7 +229,7 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
 
         val job1 = launch { testRepo.loadMedia(force = true) }
         val job2 = launch { testRepo.loadMedia(force = true) }
@@ -249,7 +249,7 @@ class MediaRepositoryTest {
             createEmptyCursor()
         })
 
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!)
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
 
         val job1 = launch { testRepo.loadMedia(force = false) }
         val job2 = launch { testRepo.loadMedia(force = true) }
