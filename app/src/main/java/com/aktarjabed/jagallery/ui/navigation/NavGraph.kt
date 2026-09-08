@@ -24,13 +24,14 @@ fun parseMediaSource(
     sourceStr: String?,
     volumeName: String?,
     bucketId: Long?,
+    relativePath: String?,
     searchQuery: String?
 ): MediaSource? {
     return when (sourceStr?.uppercase()) {
         "FAVORITES" -> MediaSource.Favorites
         "ALBUM" -> {
             if (!volumeName.isNullOrBlank() && bucketId != null) {
-                MediaSource.Album(AlbumKey(volumeName, bucketId))
+                MediaSource.Album(AlbumKey(volumeName, bucketId, relativePath ?: ""))
             } else {
                 null
             }
@@ -123,14 +124,19 @@ fun NavGraph() {
                 navArgument("bucketId") {
                     type = NavType.StringType
                     nullable = true
+                },
+                navArgument("relativePath") {
+                    type = NavType.StringType
+                    nullable = true
                 }
             )
         ) { backStackEntry ->
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
-            val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, null)
+            val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, null)
 
             if (source == null) {
                 LaunchedEffect(Unit) {
@@ -185,9 +191,10 @@ fun NavGraph() {
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
             val searchQuery = backStackEntry.arguments?.getString("searchQuery")
-            val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, searchQuery)
+            val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, searchQuery)
 
             if (source == null) {
                 LaunchedEffect(Unit) {

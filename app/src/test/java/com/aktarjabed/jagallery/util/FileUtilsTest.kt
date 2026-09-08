@@ -78,12 +78,12 @@ class FileUtilsTest {
     @Test
     fun createTrashRequests_returnsEmptyList_onEmptyUris() {
         val result = FileUtils.createTrashRequests(contentResolver, emptyList(), true)
-        assertTrue(result.isEmpty())
+        assertTrue((result as FileUtils.RequestCreationResult.Success).chunks.isEmpty())
     }
 
     @Test
     fun createDeleteRequests_returnsEmptyList_onEmptyUris() {
         val result = FileUtils.createDeleteRequests(contentResolver, emptyList())
-        assertTrue(result.isEmpty())
+        assertTrue((result as FileUtils.RequestCreationResult.Success).chunks.isEmpty())
     }
 }

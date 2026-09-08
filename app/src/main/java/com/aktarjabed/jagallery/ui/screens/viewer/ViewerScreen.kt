@@ -205,9 +205,12 @@ fun ViewerScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showVideoTrimSheet by remember { mutableStateOf(false) }
-    var trimStartMs by remember { mutableStateOf(0f) }
-    var trimEndMs by remember { mutableStateOf(10000f) }
-    var videoDurationMs by remember { mutableStateOf(0f) }
+    var trimStartMs by remember { mutableFloatStateOf(0f) }
+    var trimEndMs by remember { mutableFloatStateOf(10000f) }
+    var videoDurationMs by remember { mutableFloatStateOf(0f) }
+    var trimStartMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var trimEndMs by remember { androidx.compose.runtime.mutableFloatStateOf(10000f) }
+    var videoDurationMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var trimJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
@@ -217,7 +220,13 @@ fun ViewerScreen(
                 retriever.setDataSource(context, currentItem.uri)
                 val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
                 val duration = time?.toLongOrNull() ?: 0L
+                videoDurationMs = duration.toFloat()
+                trimStartMs = 0f
+                trimEndMs = duration.toFloat()
+                val duration = time?.toLongOrNull()
                 if (duration != null) {
+                val duration = time?.toLongOrNull() ?: 0L
+                if (duration > 0L) {
                     videoDurationMs = duration.toFloat()
                     trimStartMs = 0f
                     trimEndMs = duration.toFloat()
@@ -253,17 +262,24 @@ fun ViewerScreen(
     }
 
 
-    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
-        if (result.succeededIds.isNotEmpty()) {
-            viewModel.removeDeletedItem(result.succeededIds.first())
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "VIEWER_DELETE" && result.succeededIds.isNotEmpty()) {
+                viewModel.removeDeletedItem(result.succeededIds.first())
+            }
+            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+            viewModel.batchManager.clearState()
         }
-        deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
-    }
+    )
 
     LaunchedEffect(deleteState) {
         val currentState = deleteState
-        if (currentState is com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation && currentState.pendingIntents.isNotEmpty()) {
-            batchProcessor.processBatch(currentState.pendingIntents)
+        if (currentState is com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation) {
+            viewModel.batchManager.startBatch(currentState.pendingIntents, "VIEWER_DELETE")
         }
     }
 
@@ -277,90 +293,54 @@ fun ViewerScreen(
     }
 
     if (showWallpaperDialog && !currentItem.isVideo) {
+        val setWallpaperAction = { flag: Int? ->
+            showWallpaperDialog = false
+            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
+                    if (bitmap != null) {
+                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                        if (flag == null) {
+                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
+                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
+                        } else {
+                            wallpaperManager.setBitmap(bitmap, null, true, flag)
+                        }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { showWallpaperDialog = false },
             title = { Text(stringResource(R.string.set_wallpaper)) },
             text = {
                 Column {
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(android.app.WallpaperManager.FLAG_SYSTEM) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_home_screen))
                     }
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        android.app.WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(android.app.WallpaperManager.FLAG_LOCK) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_lock_screen))
                     }
                     TextButton(
-                        onClick = {
-                            showWallpaperDialog = false
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                                    if (bitmap != null) {
-                                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
-                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
-                                        wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { setWallpaperAction(null) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.wallpaper_both))
@@ -499,31 +479,36 @@ fun ViewerScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         val isTrashed = currentItem?.isTrashed == true
-                        val pendingIntents = if (isTrashed) {
+                        val requestResult = if (isTrashed) {
                             FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                         } else {
-                            val trashReqs = FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
-                            if (trashReqs.isEmpty()) {
-                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
-                                deleteState = DeleteOperationState.Idle
-                                return@TextButton
-                            }
-                            trashReqs
+                            FileUtils.createTrashRequests(context.contentResolver, currentState.batch.uris, true)
                         }
 
-                        if (pendingIntents.isNotEmpty()) {
-                            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation(
-                                batch = currentState.batch,
-                                pendingIntents = pendingIntents
-                            )
-                        } else {
-                            val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
-                            if (success) {
-                                viewModel.removeDeletedItem(currentState.batch.ids.first())
-                                deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
-                            } else {
-                                android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
-                                deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
+                        when (requestResult) {
+                            is FileUtils.RequestCreationResult.Success -> {
+                                if (requestResult.chunks.isNotEmpty()) {
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.SystemConfirmation(
+                                        batch = currentState.batch,
+                                        pendingIntents = requestResult.chunks
+                                    )
+                                } else {
+                                    deleteState = DeleteOperationState.Idle
+                                }
+                            }
+                            is FileUtils.RequestCreationResult.Unsupported -> {
+                                val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
+                                if (success) {
+                                    viewModel.removeDeletedItem(currentState.batch.ids.first())
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+                                } else {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.failed_to_delete_media), android.widget.Toast.LENGTH_SHORT).show()
+                                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Failed(currentState.batch)
+                                }
+                            }
+                            is FileUtils.RequestCreationResult.Error -> {
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                                deleteState = DeleteOperationState.Idle
                             }
                         }
                     }) {

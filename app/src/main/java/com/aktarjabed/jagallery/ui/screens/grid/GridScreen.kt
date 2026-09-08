@@ -11,6 +11,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,7 +51,7 @@ fun GridScreen(
 
 
     val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
-    val allAlbumNames by viewModel.allAlbumNames.collectAsStateWithLifecycle()
+    val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val mediaFilter by viewModel.mediaFilter.collectAsStateWithLifecycle()
@@ -58,16 +59,25 @@ fun GridScreen(
     var showSortFilterSheet by remember { mutableStateOf(false) }
 
 
-    val batchProcessor = com.aktarjabed.jagallery.ui.common.selection.rememberPendingIntentBatchProcessor { result ->
-        if (result.succeededIds.isNotEmpty()) {
-            viewModel.removeDeletedItems(result.succeededIds)
+    val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
+
+    com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
+        batchState = batchState,
+        onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
+        onComplete = { result ->
+            if (result.tag == "GRID_MOVE_DELETE") {
+                if (result.succeededIds.isNotEmpty()) {
+                    viewModel.removeDeletedItems(result.succeededIds)
+                }
+                if (result.cancelled) {
+                    Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                }
+            }
+            viewModel.batchManager.clearState()
         }
-        if (result.cancelled) {
-            Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
-        }
-    }
+    )
 
     val albumTitle = stringResource(R.string.album_default_title)
     val titleText = remember(source, loadResult, albumTitle) {
@@ -82,7 +92,8 @@ fun GridScreen(
 
     MediaCollectionContent(
         loadResult = loadResult,
-        allAlbumNames = allAlbumNames,
+        allAlbums = allAlbums,
+        batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onHideSelected = { items -> viewModel.hideMediaBatch(items) },
         onMoveSelected = { items, targetAlbum ->
@@ -94,7 +105,7 @@ fun GridScreen(
                             Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
                         }
                         if (moveResult.pendingIntents.isNotEmpty()) {
-                            batchProcessor.processBatch(moveResult.pendingIntents)
+                            viewModel.batchManager.startBatch(moveResult.pendingIntents, "GRID_MOVE_DELETE")
                         } else {
                             viewModel.removeDeletedItems(moveResult.successfulCopies.map { it.first.id })
                             Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
@@ -114,16 +125,15 @@ fun GridScreen(
         },
         onCopySelected = { items, targetAlbum ->
             coroutineScope.launch {
-                val results = viewModel.copyMediaBatch(context, items, targetAlbum)
-                val failed = results.count { it == null }
-                if (failed == 0) {
-                    Toast.makeText(context,
-                        context.getString(R.string.copy_completed), Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context,
-                        context.getString(R.string.copy_partial_n_failed, failed), Toast.LENGTH_LONG).show()
+                when (val result = viewModel.copyMediaBatch(context, items, targetAlbum)) {
+                    is MoveOperationResult.CopiedSourceRetained -> {
+                        Toast.makeText(context, context.getString(R.string.copy_completed), Toast.LENGTH_SHORT).show()
+                    }
+                    is MoveOperationResult.Error -> {
+                        Toast.makeText(context, context.getString(R.string.copy_partial_n_failed, items.size), Toast.LENGTH_LONG).show()
+                    }
+                    else -> {}
                 }
-                // Removed viewModel.loadMedia(context) - BaseMediaViewModel does not expose it natively, use repository.loadMedia if needed.
             }
         },
         emptyIcon = Icons.Default.PhotoLibrary,

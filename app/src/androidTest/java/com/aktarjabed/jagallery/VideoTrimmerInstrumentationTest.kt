@@ -147,7 +147,7 @@ class VideoTrimmerInstrumentationTest {
         }
 
         // Verify output exists in MediaStore and IS_PENDING == 0
-        pfdVerification(trimmedUri!!)
+        trimmedUri?.let { pfdVerification(it) } ?: throw IllegalStateException("Trimmed URI is null")
     }
 
     private fun pfdVerification(trimmedUri: Uri) {

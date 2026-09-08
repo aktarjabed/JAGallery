@@ -40,9 +40,10 @@ interface MediaOperations {
     suspend fun unhideMedia(mediaItem: MediaItem): OperationResult<Unit>
     suspend fun unhideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit>
     suspend fun removeDeletedItems(deletedIds: List<String>): OperationResult<Unit>
-    suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, targetAlbumName: String): MoveOperationResult
+    suspend fun copyMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
+    suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
     suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): RenameOperationResult
-    suspend fun renameAlbum(context: android.content.Context, items: List<MediaItem>, newAlbumName: String): MoveOperationResult
+    suspend fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newName: String, items: List<MediaItem>): MoveOperationResult
 }
 
 @Singleton
@@ -86,24 +87,68 @@ class MediaOperationsImpl @Inject constructor(
         }
     }
 
+    override suspend fun copyMediaBatch(
+        context: android.content.Context,
+        sourceItems: List<MediaItem>,
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
+    ): MoveOperationResult {
+        return try {
+            val (successfulCopies, failedItems) = repository.copyMediaBatchToAlbum(context, sourceItems, destination)
+            if (failedItems.isNotEmpty()) {
+                MoveOperationResult.Error("Copy partially failed (${failedItems.size} items)")
+            } else {
+                MoveOperationResult.CopiedSourceRetained(successfulCopies)
+            }
+        } catch (e: Exception) {
+            MoveOperationResult.Error(e.message ?: "Copy operation failed", e)
+        }
+    }
+
     override suspend fun moveMediaBatch(
         context: android.content.Context,
         sourceItems: List<MediaItem>,
-        targetAlbumName: String
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): MoveOperationResult {
         return try {
-            val (successfulCopies, failedItems) = repository.copyMediaBatchToAlbum(context, sourceItems, targetAlbumName)
+            val (successfulCopies, failedItems) = repository.copyMediaBatchToAlbum(context, sourceItems, destination)
             if (successfulCopies.isEmpty()) {
                 return MoveOperationResult.Error("All items failed to copy")
             }
 
             val sourceUris = successfulCopies.map { it.first.uri }
-            val pendingIntents = com.aktarjabed.jagallery.util.FileUtils.createDeleteRequests(context.contentResolver, sourceUris)
+            when (val creationResult = com.aktarjabed.jagallery.util.FileUtils.createDeleteRequests(context.contentResolver, sourceUris)) {
+                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Success -> {
+                    if (creationResult.chunks.isNotEmpty()) {
+                        MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, creationResult.chunks)
+                    } else {
+                        MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                    }
+                }
+                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Unsupported -> {
+                    // Try to direct delete each file, keep track of which succeed so we only pass those back to the UI
+                    val effectivelyDeletedUris = mutableListOf<android.net.Uri>()
+                    val successfullyMovedItems = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+                    var deletionFailed = false
 
-            if (pendingIntents.isNotEmpty()) {
-                MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, pendingIntents)
-            } else {
-                MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                    for ((item, newUri) in successfulCopies) {
+                        val success = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(item.uri))
+                        if (success) {
+                            effectivelyDeletedUris.add(item.uri)
+                            successfullyMovedItems.add(Pair(item, newUri))
+                        } else {
+                            deletionFailed = true
+                        }
+                    }
+
+                    if (successfullyMovedItems.isNotEmpty()) {
+                        MoveOperationResult.RequestSourceDelete(successfullyMovedItems, failedItems, emptyList())
+                    } else {
+                        MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                    }
+                }
+                else -> {
+                    MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -139,7 +184,35 @@ class MediaOperationsImpl @Inject constructor(
         }
     }
 
-    override suspend fun renameAlbum(context: android.content.Context, items: List<MediaItem>, newAlbumName: String): MoveOperationResult {
-        return moveMediaBatch(context, items, newAlbumName)
+    override suspend fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newName: String, items: List<MediaItem>): MoveOperationResult {
+        if (sourceAlbum.name == newName) {
+            return MoveOperationResult.Error("New name must be different from current name")
+        }
+
+        // The actual renaming of the directory is not fully supported by standard MediaStore
+        // APIs without SAF (Storage Access Framework) DocumentFile operations.
+        // We will maintain the Move operation (Copy + Delete), but ensure the paths are respected in repository.
+
+        // Derive the new path from the source album's relative path
+        val sourcePath = sourceAlbum.key.relativePath
+        val parentPath = if (sourcePath.endsWith("/")) {
+            val parts = sourcePath.trimEnd('/').split("/")
+            if (parts.size > 1) {
+                parts.dropLast(1).joinToString("/") + "/"
+            } else {
+                "" // root level
+            }
+        } else {
+            val parts = sourcePath.split("/")
+            if (parts.size > 1) {
+                parts.dropLast(1).joinToString("/") + "/"
+            } else {
+                "" // root level
+            }
+        }
+        val newRelativePath = "$parentPath$newName/"
+
+        val destination = com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum(newName, sourceAlbum.volumeName, newRelativePath)
+        return moveMediaBatch(context, items, destination)
     }
 }

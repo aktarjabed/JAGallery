@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import com.aktarjabed.jagallery.ui.common.selection.BatchOperationManager
 
 sealed interface OperationEvent {
     data class Error(val message: String) : OperationEvent
@@ -26,13 +27,21 @@ abstract class BaseMediaViewModel(
     protected val repository: MediaRepository
 ) : ViewModel() {
 
-    val allAlbumNames: StateFlow<List<String>> = repository.mediaLoadResult
+    val batchManager = BatchOperationManager()
+
+    val allAlbums: StateFlow<List<com.aktarjabed.jagallery.data.model.Album>> = repository.mediaLoadResult
         .map { result ->
             when (result) {
-                is MediaLoadResult.Success -> result.items
-                    .mapNotNull { it.bucketName.takeIf { name -> name.isNotBlank() } }
-                    .distinct()
-                    .sorted()
+                is MediaLoadResult.Success -> {
+                    result.items
+                        .groupBy { it.albumKey }
+                        .mapNotNull { (key, itemsInAlbum) ->
+                            val firstItem = itemsInAlbum.firstOrNull() ?: return@mapNotNull null
+                            val name = firstItem.bucketName.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                            com.aktarjabed.jagallery.data.model.Album(key, name, itemsInAlbum.size, firstItem.uri)
+                        }
+                        .sortedBy { it.name }
+                }
                 else -> emptyList()
             }
         }
@@ -115,11 +124,19 @@ abstract class BaseMediaViewModel(
         }
     }
 
+    suspend fun copyMediaBatch(
+        context: android.content.Context,
+        mediaItems: List<MediaItem>,
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
+    ): com.aktarjabed.jagallery.domain.MoveOperationResult {
+        return mediaOperations.copyMediaBatch(context, mediaItems, destination)
+    }
+
     suspend fun moveMediaBatch(
         context: android.content.Context,
         mediaItems: List<MediaItem>,
-        targetAlbumName: String
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): com.aktarjabed.jagallery.domain.MoveOperationResult {
-        return mediaOperations.moveMediaBatch(context, mediaItems, targetAlbumName)
+        return mediaOperations.moveMediaBatch(context, mediaItems, destination)
     }
 }

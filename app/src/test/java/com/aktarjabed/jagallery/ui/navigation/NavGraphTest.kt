@@ -14,9 +14,10 @@ class NavGraphTest {
             sourceStr = "ALBUM",
             volumeName = "external_primary",
             bucketId = 123L,
+            relativePath = "Pictures/",
             searchQuery = null
         )
-        assertEquals(MediaSource.Album(AlbumKey("external_primary", 123L)), source)
+        assertEquals(MediaSource.Album(AlbumKey("external_primary", 123L, "Pictures/")), source)
     }
 
     @Test
@@ -25,6 +26,7 @@ class NavGraphTest {
             sourceStr = "ALBUM",
             volumeName = null,
             bucketId = 123L,
+            relativePath = null,
             searchQuery = null
         )
         assertNull(missingVolume)
@@ -33,6 +35,7 @@ class NavGraphTest {
             sourceStr = "ALBUM",
             volumeName = "external_primary",
             bucketId = null,
+            relativePath = null,
             searchQuery = null
         )
         assertNull(missingBucket)
@@ -44,6 +47,7 @@ class NavGraphTest {
             sourceStr = "SEARCH",
             volumeName = null,
             bucketId = null,
+            relativePath = null,
             searchQuery = ""
         )
         assertNull(blankSearch)
@@ -55,6 +59,7 @@ class NavGraphTest {
             sourceStr = "SEARCH",
             volumeName = null,
             bucketId = null,
+            relativePath = null,
             searchQuery = "vacation"
         )
         assertEquals(MediaSource.Search("vacation"), search)

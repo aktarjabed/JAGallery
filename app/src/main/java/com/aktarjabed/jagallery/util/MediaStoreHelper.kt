@@ -197,8 +197,13 @@ object MediaStoreHelper {
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.BUCKET_ID,
             MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.MediaColumns.RELATIVE_PATH,
             MediaStore.MediaColumns.SIZE
         )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            projectionList.add(MediaStore.MediaColumns.RELATIVE_PATH)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
@@ -244,6 +249,7 @@ object MediaStoreHelper {
             val mimeTypeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
             val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
             val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+            val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) else -1
             val sizeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
             val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED) else -1
             val dateTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex("date_trashed") else -1
@@ -257,6 +263,7 @@ object MediaStoreHelper {
                 val mimeType = if (mimeTypeColumn != -1) cursor.getString(mimeTypeColumn) ?: "" else ""
                 val bucketId = if (bucketIdColumn != -1) cursor.getLong(bucketIdColumn) else 0L
                 val bucketName = if (bucketNameColumn != -1) cursor.getString(bucketNameColumn) ?: "" else ""
+                val relativePath = if (relativePathColumn != -1) cursor.getString(relativePathColumn) ?: "" else ""
                 val size = if (sizeColumn != -1) cursor.getLong(sizeColumn) else 0L
                 val isTrashed = if (isTrashedColumn != -1) cursor.getInt(isTrashedColumn) == 1 else false
                 val dateTrashed = if (dateTrashedColumn != -1) cursor.getLong(dateTrashedColumn) else 0L
@@ -276,6 +283,7 @@ object MediaStoreHelper {
                         mimeType = mimeType,
                         bucketId = bucketId,
                         bucketName = bucketName,
+                        relativePath = relativePath,
                         isVideo = isVideo,
                         volumeName = volumeName,
                         size = size,

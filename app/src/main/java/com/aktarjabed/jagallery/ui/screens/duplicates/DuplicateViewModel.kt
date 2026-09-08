@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.aktarjabed.jagallery.ui.common.selection.BatchOperationManager
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -36,6 +37,8 @@ class DuplicateViewModel @Inject constructor(
         data class Success(val groups: List<DuplicateGroup>) : UiState
         data class Error(val message: String) : UiState
     }
+
+    val batchManager = BatchOperationManager()
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -131,17 +134,35 @@ class DuplicateViewModel @Inject constructor(
             }
 
             // Use FileUtils for batching delete requests
-            val pendingIntents = withContext(Dispatchers.IO) {
+            val requestResult = withContext(Dispatchers.IO) {
                 com.aktarjabed.jagallery.util.FileUtils.createDeleteRequests(
                     context.contentResolver,
                     itemsToDelete.map { it.uri }
                 )
             }
 
-            if (pendingIntents.isNotEmpty()) {
-                onRequestDeletePermission(pendingIntents, allIds)
-            } else {
-                _operationEvent.emit(OperationEvent.Error("Unable to request deletion. Please try again."))
+            when (requestResult) {
+                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Success -> {
+                    if (requestResult.chunks.isNotEmpty()) {
+                        onRequestDeletePermission(requestResult.chunks, allIds)
+                    } else {
+                        _operationEvent.emit(OperationEvent.Error("No deletion chunks created."))
+                    }
+                }
+                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Unsupported -> {
+                    val success = withContext(Dispatchers.IO) {
+                        com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, itemsToDelete.map { it.uri })
+                    }
+                    if (success) {
+                        mediaRepository.removeDeletedItems(itemsToDelete.map { it.id })
+                        loadDuplicates()
+                    } else {
+                        _operationEvent.emit(OperationEvent.Error("Failed to delete items directly"))
+                    }
+                }
+                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Error -> {
+                    _operationEvent.emit(OperationEvent.Error("Failed to create delete requests"))
+                }
             }
         }
     }

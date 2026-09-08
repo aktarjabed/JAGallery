@@ -87,7 +87,7 @@ object MediaTestData {
         volumeName: String = "external_primary"
     ): Album {
         return Album(
-            key = AlbumKey(volumeName = volumeName, bucketId = bucketId),
+            key = AlbumKey(volumeName = volumeName, bucketId = bucketId, relativePath = ""),
             name = bucketName,
             mediaCount = mediaCount,
             coverUri = coverUri
