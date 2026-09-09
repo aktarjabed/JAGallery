@@ -84,7 +84,6 @@ fun BatchOperationObserver(
     val currentOnChunkResult by rememberUpdatedState(onChunkResult)
 
     var lastLaunchedIndex by remember { mutableIntStateOf(-1) }
-    var lastLaunchedIndex by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()

@@ -11,12 +11,6 @@ object FileUtils {
     private const val TAG = "FileUtils"
     private const val MAX_BATCH_SIZE = com.aktarjabed.jagallery.util.Constants.MAX_BATCH_SIZE
 
-    private fun buildRequests(
-        uris: List<Uri>,
-        createIntent: (List<Uri>) -> android.app.PendingIntent
-    ): List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk> {
-        if (uris.isEmpty()) return emptyList()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
     sealed class RequestCreationResult {
         data class Success(val chunks: List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>) : RequestCreationResult()
         object Unsupported : RequestCreationResult()
@@ -30,10 +24,8 @@ object FileUtils {
         val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
         for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
             val intent = try {
-                createIntent(chunk)
+                MediaStore.createTrashRequest(contentResolver, chunk, value)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create request for chunk", e)
-                return emptyList()
                 Log.e(TAG, "Failed to create trash request for chunk", e)
                 return RequestCreationResult.Error(e)
             }
@@ -48,16 +40,6 @@ object FileUtils {
         return RequestCreationResult.Success(results)
     }
 
-    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk> {
-        return buildRequests(uris) { chunk ->
-            MediaStore.createTrashRequest(contentResolver, chunk, value)
-        }
-    }
-
-    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk> {
-        return buildRequests(uris) { chunk ->
-            MediaStore.createDeleteRequest(contentResolver, chunk)
-        }
     fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
         if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
