@@ -207,7 +207,7 @@ object MediaStoreHelper {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
-            projectionList.add("date_trashed")
+            projectionList.add(MediaStore.MediaColumns.DATE_EXPIRES)
         }
 
         val projection = projectionList.toTypedArray()
@@ -252,7 +252,7 @@ object MediaStoreHelper {
             val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) else -1
             val sizeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
             val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED) else -1
-            val dateTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex("date_trashed") else -1
+            val dateTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES) else -1
 
             if (idColumn == -1) return QueryResult.Success(items)
 

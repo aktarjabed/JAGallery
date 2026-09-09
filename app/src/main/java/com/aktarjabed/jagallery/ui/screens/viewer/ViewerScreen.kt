@@ -208,9 +208,6 @@ fun ViewerScreen(
     var trimStartMs by remember { mutableFloatStateOf(0f) }
     var trimEndMs by remember { mutableFloatStateOf(10000f) }
     var videoDurationMs by remember { mutableFloatStateOf(0f) }
-    var trimStartMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    var trimEndMs by remember { androidx.compose.runtime.mutableFloatStateOf(10000f) }
-    var videoDurationMs by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var trimJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
@@ -219,12 +216,6 @@ fun ViewerScreen(
             try {
                 retriever.setDataSource(context, currentItem.uri)
                 val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                val duration = time?.toLongOrNull() ?: 0L
-                videoDurationMs = duration.toFloat()
-                trimStartMs = 0f
-                trimEndMs = duration.toFloat()
-                val duration = time?.toLongOrNull()
-                if (duration != null) {
                 val duration = time?.toLongOrNull() ?: 0L
                 if (duration > 0L) {
                     videoDurationMs = duration.toFloat()
