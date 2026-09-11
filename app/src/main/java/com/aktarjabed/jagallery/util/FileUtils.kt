@@ -17,16 +17,20 @@ object FileUtils {
         data class Error(val cause: Exception) : RequestCreationResult()
     }
 
-    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
+    private fun createRequestsHelper(
+        uris: List<Uri>,
+        operationName: String,
+        createIntent: (List<Uri>) -> PendingIntent
+    ): RequestCreationResult {
         if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
 
         val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
         for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
             val intent = try {
-                MediaStore.createTrashRequest(contentResolver, chunk, value)
+                createIntent(chunk)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create trash request for chunk", e)
+                Log.e(TAG, "Failed to create $operationName request for chunk", e)
                 return RequestCreationResult.Error(e)
             }
             results.add(
@@ -40,27 +44,16 @@ object FileUtils {
         return RequestCreationResult.Success(results)
     }
 
-    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
-        if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
-
-        val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
-        for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
-            val intent = try {
-                MediaStore.createDeleteRequest(contentResolver, chunk)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create delete request for chunk", e)
-                return RequestCreationResult.Error(e)
-            }
-            results.add(
-                com.aktarjabed.jagallery.data.model.DeleteRequestChunk(
-                    ids = chunk.map { it.toString() },
-                    uris = chunk,
-                    pendingIntent = intent
-                )
-            )
+    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
+        return createRequestsHelper(uris, "trash") { chunk ->
+            MediaStore.createTrashRequest(contentResolver, chunk, value)
         }
-        return RequestCreationResult.Success(results)
+    }
+
+    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
+        return createRequestsHelper(uris, "delete") { chunk ->
+            MediaStore.createDeleteRequest(contentResolver, chunk)
+        }
     }
 
     fun deleteMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
