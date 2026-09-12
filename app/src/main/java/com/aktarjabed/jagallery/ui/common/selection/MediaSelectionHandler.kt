@@ -103,47 +103,60 @@ fun MediaSelectionHandler(
         batchState = batchState,
         onChunkResult = { resultCode -> batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
+            fun handleBatchResult(
+                succeededIds: List<String>,
+                cancelled: Boolean,
+                pendingCount: Int?,
+                onSuccess: () -> Unit,
+                onComplete: () -> Unit
+            ) {
+                if (succeededIds.isNotEmpty()) {
+                    onSuccess()
+                    selectionState.clearSelection()
+                }
+                if (cancelled && succeededIds.isNotEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(
+                            com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                            succeededIds.size,
+                            pendingCount ?: 0
+                        ),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+                onComplete()
+            }
+
             when (result.tag) {
                 "SELECTION_DELETE" -> {
-                    if (result.succeededIds.isNotEmpty()) {
-                        onRemoveDeletedItems(result.succeededIds)
-                        selectionState.clearSelection()
-                    }
-                    if (result.cancelled && result.succeededIds.isNotEmpty()) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(
-                                com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                                result.succeededIds.size,
-                                pendingDeleteBatchForMessage?.count ?: 0
-                            ),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    deleteState = DeleteOperationState.Idle
-                    pendingDeleteBatchForMessage = null
+                    handleBatchResult(
+                        result.succeededIds,
+                        result.cancelled,
+                        pendingDeleteBatchForMessage?.count,
+                        { onRemoveDeletedItems(result.succeededIds) },
+                        {
+                            deleteState = DeleteOperationState.Idle
+                            pendingDeleteBatchForMessage = null
+                        }
+                    )
                 }
                 "SELECTION_RESTORE" -> {
-                    if (result.succeededIds.isNotEmpty()) {
-                        val selected = items.filter { result.succeededIds.contains(it.id) }
-                        if (selected.isNotEmpty()) {
-                            onRestoreSelected?.invoke(selected)
+                    handleBatchResult(
+                        result.succeededIds,
+                        result.cancelled,
+                        pendingRestoreBatchForMessage?.count,
+                        {
+                            val selected = items.filter { result.succeededIds.contains(it.id) }
+                            if (selected.isNotEmpty()) {
+                                onRestoreSelected?.invoke(selected)
+                            }
+                        },
+                        {
+                            restoreState = DeleteOperationState.Idle
+                            pendingRestoreBatchForMessage = null
                         }
-                        selectionState.clearSelection()
-                    }
-                    if (result.cancelled && result.succeededIds.isNotEmpty()) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(
-                                com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                                result.succeededIds.size,
-                                pendingRestoreBatchForMessage?.count ?: 0
-                            ),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    restoreState = DeleteOperationState.Idle
-                    pendingRestoreBatchForMessage = null
+                    )
                 }
             }
             batchManager.clearState()
