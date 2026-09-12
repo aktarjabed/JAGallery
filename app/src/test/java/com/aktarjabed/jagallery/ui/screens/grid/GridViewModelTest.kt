@@ -6,36 +6,17 @@ import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.data.repository.MediaRepository
 import com.aktarjabed.jagallery.domain.MediaOperationsImpl
-import com.aktarjabed.jagallery.fakes.FakeMediaDao
 import com.aktarjabed.jagallery.fixtures.MediaTestData
-import com.aktarjabed.jagallery.rules.MainDispatcherRule
+import com.aktarjabed.jagallery.ui.common.BaseMediaViewModelTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class GridViewModelTest {
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
-
-    private lateinit var fakeDao: FakeMediaDao
-    private lateinit var repository: MediaRepository
-    private lateinit var mediaOperations: MediaOperationsImpl
-    private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
-
-    @Before
-    fun setUp() {
-        fakeDao = FakeMediaDao()
-        repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
-        mediaOperations = MediaOperationsImpl(repository)
-    }
+class GridViewModelTest : BaseMediaViewModelTest() {
 
     @Test
     fun setSource_filtersBySourceCorrectly() = runTest {

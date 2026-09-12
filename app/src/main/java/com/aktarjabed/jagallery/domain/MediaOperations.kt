@@ -65,17 +65,13 @@ class MediaOperationsImpl @Inject constructor(
         repository.toggleFavorite(mediaItem)
     }
 
-    override suspend fun hideMedia(mediaItem: MediaItem): OperationResult<Unit> = runOperation {
-        repository.hideMedia(mediaItem)
-    }
+    override suspend fun hideMedia(mediaItem: MediaItem): OperationResult<Unit> = hideMediaBatch(listOf(mediaItem))
 
     override suspend fun hideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> = runOperation {
         repository.hideMediaBatch(mediaItems)
     }
 
-    override suspend fun unhideMedia(mediaItem: MediaItem): OperationResult<Unit> = runOperation {
-        repository.unhideMedia(mediaItem)
-    }
+    override suspend fun unhideMedia(mediaItem: MediaItem): OperationResult<Unit> = unhideMediaBatch(listOf(mediaItem))
 
     override suspend fun unhideMediaBatch(mediaItems: List<MediaItem>): OperationResult<Unit> = runOperation {
         repository.unhideMediaBatch(mediaItems)

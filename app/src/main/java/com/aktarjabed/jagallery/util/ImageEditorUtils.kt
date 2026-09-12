@@ -46,23 +46,15 @@ object ImageEditorUtils {
 
     private const val TAG = "ImageEditorUtils"
 
-    suspend fun decodeSampledBitmapFromUri(
+    private suspend fun decodeBitmapFromUri(
         context: Context,
         uri: Uri,
-        reqWidth: Int = 2048,
-        reqHeight: Int = 2048
+        optionsConfig: (BitmapFactory.Options) -> Unit
     ): Bitmap? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         try {
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            } ?: return@withContext null
-
-            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
-            options.inJustDecodeBounds = false
+            val options = BitmapFactory.Options()
+            optionsConfig(options)
 
             val bitmap = resolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
@@ -71,18 +63,42 @@ object ImageEditorUtils {
             rotateBitmapIfNeeded(context, uri, bitmap)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "OOM decoding bitmap with sample size ${BitmapFactory.Options().inSampleSize}")
+            null
         } catch (e: IOException) {
-            Log.e(TAG, "Failed to decode sampled bitmap", e)
+            Log.e(TAG, "IOException decoding bitmap", e)
             null
         } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException decoding sampled bitmap", e)
+            Log.e(TAG, "SecurityException decoding bitmap", e)
             null
         } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "IllegalArgumentException decoding sampled bitmap", e)
+            Log.e(TAG, "IllegalArgumentException decoding bitmap", e)
             null
-        } catch (e: OutOfMemoryError) {
-            Log.e(TAG, "OutOfMemoryError decoding sampled bitmap", e)
-            null
+        }
+    }
+
+    suspend fun decodeSampledBitmapFromUri(
+        context: Context,
+        uri: Uri,
+        reqWidth: Int = 2048,
+        reqHeight: Int = 2048
+    ): Bitmap? {
+        var optionsWithBounds = BitmapFactory.Options()
+        withContext(Dispatchers.IO) {
+            try {
+                optionsWithBounds.inJustDecodeBounds = true
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, optionsWithBounds)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error decoding bounds", e)
+            }
+        }
+
+        return decodeBitmapFromUri(context, uri) { options ->
+            options.inSampleSize = calculateInSampleSize(optionsWithBounds, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
         }
     }
 
@@ -90,31 +106,9 @@ object ImageEditorUtils {
         context: Context,
         uri: Uri,
         inSampleSize: Int = 1
-    ): Bitmap? = withContext(Dispatchers.IO) {
-        val resolver = context.contentResolver
-        try {
-            val options = BitmapFactory.Options().apply {
-                this.inSampleSize = inSampleSize
-            }
-            val bitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            } ?: return@withContext null
-
-            rotateBitmapIfNeeded(context, uri, bitmap)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: OutOfMemoryError) {
-            Log.w(TAG, "OOM decoding full resolution bitmap with sample size $inSampleSize")
-            null
-        } catch (e: IOException) {
-            Log.e(TAG, "IOException decoding full resolution bitmap", e)
-            null
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException decoding full resolution bitmap", e)
-            null
-        } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "IllegalArgumentException decoding full resolution bitmap", e)
-            null
+    ): Bitmap? {
+        return decodeBitmapFromUri(context, uri) { options ->
+            options.inSampleSize = inSampleSize
         }
     }
 
