@@ -43,7 +43,8 @@ object DuplicateDetector {
     private fun computeSha256(context: Context, item: MediaItem): String? {
         return try {
             val digest = MessageDigest.getInstance("SHA-256")
-            context.contentResolver.openInputStream(item.uri)?.use { input ->
+            val inputStream = context.contentResolver.openInputStream(item.uri) ?: return null
+            inputStream.use { input ->
                 val buffer = ByteArray(8192)
                 var bytesRead: Int
                 while (input.read(buffer).also { bytesRead = it } != -1) {
