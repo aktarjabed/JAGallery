@@ -14,7 +14,10 @@ import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
 import java.io.ByteArrayInputStream
 import java.io.InputStream
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class DuplicateDetectorTest {
 
     @Mock
