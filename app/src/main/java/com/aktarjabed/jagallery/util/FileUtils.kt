@@ -18,38 +18,31 @@ object FileUtils {
     }
 
     fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
-        if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
-
-        val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
-        for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
-            val intent = try {
-                MediaStore.createTrashRequest(contentResolver, chunk, value)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create trash request for chunk", e)
-                return RequestCreationResult.Error(e)
-            }
-            results.add(
-                com.aktarjabed.jagallery.data.model.DeleteRequestChunk(
-                    ids = chunk.map { it.toString() },
-                    uris = chunk,
-                    pendingIntent = intent
-                )
-            )
+        return createRequests(contentResolver, uris) { chunk ->
+            MediaStore.createTrashRequest(contentResolver, chunk, value)
         }
-        return RequestCreationResult.Success(results)
     }
 
     fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
+        return createRequests(contentResolver, uris) { chunk ->
+            MediaStore.createDeleteRequest(contentResolver, chunk)
+        }
+    }
+
+    private fun createRequests(
+        contentResolver: ContentResolver,
+        uris: List<Uri>,
+        createIntent: (List<Uri>) -> PendingIntent
+    ): RequestCreationResult {
         if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
 
         val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
         for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
             val intent = try {
-                MediaStore.createDeleteRequest(contentResolver, chunk)
+                createIntent(chunk)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create delete request for chunk", e)
+                Log.e(TAG, "Failed to create request for chunk", e)
                 return RequestCreationResult.Error(e)
             }
             results.add(
