@@ -41,14 +41,22 @@ fun VideoPlayer(
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
-    var isAppInForeground = remember { androidx.compose.runtime.mutableStateOf(true) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
-                isAppInForeground.value = false
-            } else if (event == Lifecycle.Event.ON_RESUME) {
-                isAppInForeground.value = true
+            when (event) {
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    exoPlayer.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (isPageVisible) {
+                        if (exoPlayer.playbackState == androidx.media3.common.Player.STATE_IDLE) {
+                            exoPlayer.prepare()
+                        }
+                        exoPlayer.play()
+                    }
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -57,8 +65,8 @@ fun VideoPlayer(
         }
     }
 
-    LaunchedEffect(isPageVisible, isAppInForeground.value) {
-        if (isPageVisible && isAppInForeground.value) {
+    LaunchedEffect(isPageVisible) {
+        if (isPageVisible && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             if (exoPlayer.playbackState == androidx.media3.common.Player.STATE_IDLE) {
                 exoPlayer.prepare()
             }

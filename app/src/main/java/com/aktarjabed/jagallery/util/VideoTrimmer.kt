@@ -30,6 +30,11 @@ object VideoTrimmer {
         val resolver = context.contentResolver
         var newUri: Uri? = null
 
+        if (startMs < 0 || endMs <= startMs) {
+            Log.e(TAG, "Invalid range: startMs=\$startMs, endMs=\$endMs")
+            return@withContext null
+        }
+
         var extractor: MediaExtractor? = null
         var sourcePfd: ParcelFileDescriptor? = null
         var destPfd: ParcelFileDescriptor? = null
@@ -43,11 +48,7 @@ object VideoTrimmer {
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             }
 
-            val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            }
+            val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
 
             newUri = FileUtils.insertPendingMediaEntry(resolver, collection, contentValues)
             if (newUri == null) {
@@ -68,11 +69,7 @@ object VideoTrimmer {
                 return@withContext null
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                muxer = MediaMuxer(destPfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            } else {
-                throw UnsupportedOperationException("MediaMuxer requires API 26+ for FileDescriptor")
-            }
+            muxer = MediaMuxer(destPfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val trackCount = extractor.trackCount
             val trackMap = HashMap<Int, Int>()
             var maxBufferSize = DEFAULT_BUFFER_SIZE
@@ -94,6 +91,7 @@ object VideoTrimmer {
             }
 
             if (trackMap.isEmpty()) {
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
                 return@withContext null
             }
 

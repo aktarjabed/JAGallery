@@ -134,7 +134,7 @@ fun NavGraph() {
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
-            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, null)
 
@@ -191,7 +191,7 @@ fun NavGraph() {
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
-            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
             val searchQuery = backStackEntry.arguments?.getString("searchQuery")
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, searchQuery)

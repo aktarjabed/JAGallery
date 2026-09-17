@@ -20,6 +20,8 @@ import kotlin.math.min
 fun InteractiveCropOverlay(
     cropRect: RectF,
     onCropChange: (RectF) -> Unit,
+    imageWidth: Float,
+    imageHeight: Float,
     modifier: Modifier = Modifier
 ) {
     val handleRadius = 40f
@@ -34,10 +36,20 @@ fun InteractiveCropOverlay(
                     val width = size.width
                     val height = size.height
 
-                    val left = cropRect.left * width
-                    val top = cropRect.top * height
-                    val right = cropRect.right * width
-                    val bottom = cropRect.bottom * height
+                    val scaleX = width / imageWidth
+                    val scaleY = height / imageHeight
+                    val scale = min(scaleX, scaleY)
+
+                    val scaledImageWidth = imageWidth * scale
+                    val scaledImageHeight = imageHeight * scale
+
+                    val xOffset = (width - scaledImageWidth) / 2f
+                    val yOffset = (height - scaledImageHeight) / 2f
+
+                    val left = xOffset + cropRect.left * scaledImageWidth
+                    val top = yOffset + cropRect.top * scaledImageHeight
+                    val right = xOffset + cropRect.right * scaledImageWidth
+                    val bottom = yOffset + cropRect.bottom * scaledImageHeight
 
                     // Simple heuristic: which corner is closest
                     val distTL = Offset(left, top).getDistanceSquared(offset)
@@ -61,13 +73,20 @@ fun InteractiveCropOverlay(
                         val width = size.width
                         val height = size.height
 
+                        val scaleX = width / imageWidth
+                        val scaleY = height / imageHeight
+                        val scale = min(scaleX, scaleY)
+
+                        val scaledImageWidth = imageWidth * scale
+                        val scaledImageHeight = imageHeight * scale
+
                         var newLeft = cropRect.left
                         var newTop = cropRect.top
                         var newRight = cropRect.right
                         var newBottom = cropRect.bottom
 
-                        val dx = dragAmount.x / width
-                        val dy = dragAmount.y / height
+                        val dx = dragAmount.x / scaledImageWidth
+                        val dy = dragAmount.y / scaledImageHeight
 
                         when (draggedHandle) {
                             Handle.TopLeft -> {
@@ -104,10 +123,20 @@ fun InteractiveCropOverlay(
         val width = size.width
         val height = size.height
 
-        val left = cropRect.left * width
-        val top = cropRect.top * height
-        val right = cropRect.right * width
-        val bottom = cropRect.bottom * height
+        val scaleX = width / imageWidth
+        val scaleY = height / imageHeight
+        val scale = min(scaleX, scaleY)
+
+        val scaledImageWidth = imageWidth * scale
+        val scaledImageHeight = imageHeight * scale
+
+        val xOffset = (width - scaledImageWidth) / 2f
+        val yOffset = (height - scaledImageHeight) / 2f
+
+        val left = xOffset + cropRect.left * scaledImageWidth
+        val top = yOffset + cropRect.top * scaledImageHeight
+        val right = xOffset + cropRect.right * scaledImageWidth
+        val bottom = yOffset + cropRect.bottom * scaledImageHeight
 
         // Draw dimmed background
         drawRect(Color.Black.copy(alpha = 0.5f), size = Size(width, top)) // Top

@@ -5,10 +5,10 @@ import com.aktarjabed.jagallery.data.model.MediaSource
 
 sealed class Screen(val route: String) {
     object Albums : Screen("albums")
-    object Grid : Screen("grid?source={source}&volumeName={volumeName}&bucketId={bucketId}") {
+    object Grid : Screen("grid?source={source}&volumeName={volumeName}&bucketId={bucketId}&relativePath={relativePath}") {
         fun createRoute(source: MediaSource = MediaSource.All): String {
             return when (source) {
-                is MediaSource.Album -> "grid?source=ALBUM&volumeName=${Uri.encode(source.albumKey.volumeName)}&bucketId=${source.albumKey.bucketId}"
+                is MediaSource.Album -> "grid?source=ALBUM&volumeName=${Uri.encode(source.albumKey.volumeName)}&bucketId=${source.albumKey.bucketId}&relativePath=${Uri.encode(source.albumKey.relativePath)}"
                 is MediaSource.Search -> "grid?source=SEARCH"
                 is MediaSource.Favorites -> "grid?source=FAVORITES"
                 else -> "grid?source=ALL"

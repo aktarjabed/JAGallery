@@ -212,22 +212,26 @@ fun ViewerScreen(
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
         if (showVideoTrimSheet && currentItem.isVideo) {
-            val retriever = android.media.MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(context, currentItem.uri)
-                val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                val duration = time?.toLongOrNull() ?: 0L
-                if (duration > 0L) {
-                    videoDurationMs = duration.toFloat()
-                    trimStartMs = 0f
-                    trimEndMs = duration.toFloat()
-                } else {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val retriever = android.media.MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(context, currentItem.uri)
+                    val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    val duration = time?.toLongOrNull() ?: 0L
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (duration > 0L) {
+                            videoDurationMs = duration.toFloat()
+                            trimStartMs = 0f
+                            trimEndMs = duration.toFloat()
+                        } else {
+                            videoDurationMs = 0f
+                        }
+                    }
+                } catch (e: Exception) {
                     videoDurationMs = 0f
+                } finally {
+                    retriever.release()
                 }
-            } catch (e: Exception) {
-                videoDurationMs = 0f
-            } finally {
-                retriever.release()
             }
         }
     }
@@ -376,7 +380,7 @@ fun ViewerScreen(
                 }
             },
             confirmButton = {
-                if (!isTrimming && videoDurationMs > 0f) {
+                if (!isTrimming && videoDurationMs > 0f && trimEndMs > trimStartMs) {
                     TextButton(onClick = {
                         isTrimming = true
                         trimJob = coroutineScope.launch {
@@ -489,7 +493,7 @@ fun ViewerScreen(
                             }
                             is FileUtils.RequestCreationResult.Unsupported -> {
                                 val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
-                                if (success) {
+                                if (success.isFullySuccessful) {
                                     viewModel.removeDeletedItem(currentState.batch.ids.first())
                                     deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
                                 } else {

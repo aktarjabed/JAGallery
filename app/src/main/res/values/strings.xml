@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">J.A Gallery</string>
     <string name="tab_all_media">All Media</string>
-    <string name="tab_albums">Albums</string>
     <string name="tab_favorites">Favorites</string>
     <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
@@ -20,12 +19,6 @@
     <string name="edit_photo">Edit Photo</string>
     <string name="image_saved">Image saved successfully</string>
     <string name="failed_to_save_image">Failed to save image</string>
-    <string name="media_info_title">Media Info</string>
-    <string name="media_info_name">Name:</string>
-    <string name="media_info_mime_type">MIME Type:</string>
-    <string name="media_info_date_added">Date Added:</string>
-    <string name="media_info_album">Album:</string>
-    <string name="media_info_uri">URI:</string>
     <string name="internal_storage">Internal Storage</string>
     <string name="album_default_title">Album</string>
     <string name="no_media_found">No media items found</string>
@@ -35,15 +28,10 @@
     <string name="no_search_results">No media items matching your search</string>
     <string name="grant_permission">Grant Permission</string>
     <string name="open_settings">Open Settings</string>
-    <string name="manage_selection">Manage Selection</string>
-    <string name="showing_selected_photos">Showing selected photos only.</string>
-    <string name="media_access_required">Media access is required to display your gallery.</string>
     <string name="no_app_to_handle_share">No app found to handle sharing</string>
     <string name="share_failed">Failed to share media</string>
     <string name="selected">Selected</string>
     <string name="select_all">Select All</string>
-    <string name="ccw_90">90° CCW</string>
-    <string name="cw_90">90° CW</string>
     <string name="brightness">Brightness</string>
     <string name="contrast">Contrast</string>
     <string name="saturation">Saturation</string>
@@ -54,8 +42,6 @@
     <string name="tab_trash">Trash</string>
     <string name="hide">Hide</string>
     <string name="unhide">Unhide</string>
-    <string name="hide_confirm_title">Hide Media</string>
-    <string name="hide_confirm_message">Are you sure you want to hide %1$d selected items?</string>
     <string name="no_hidden_found">No hidden media</string>
     <string name="no_trash_found">Trash is empty</string>
     <string name="restore">Restore</string>
@@ -64,7 +50,6 @@
     <string name="move_to_album">Move to Album</string>
     <string name="copy_to_album">Copy to Album</string>
     <string name="manage_access">Manage Access</string>
-    <string name="permission_full_access">Full media access granted.</string>
     <string name="permission_selected_access">Access granted to selected photos and videos only.</string>
     <string name="permission_images_only">Access granted to images only.</string>
     <string name="permission_videos_only">Access granted to videos only.</string>
@@ -90,16 +75,11 @@
     <string name="wallpaper_failed">Failed to set wallpaper</string>
 
     <string name="exposure">Exposure</string>
-    <string name="highlights">Highlights</string>
-    <string name="shadows">Shadows</string>
-    <string name="temperature">Temperature</string>
-    <string name="sharpness">Sharpness</string>
 
     <string name="rename_media">Rename Media</string>
     <string name="rename_album">Rename Album</string>
     <string name="new_name">New Name</string>
     <string name="album_renamed">Album renamed</string>
-    <string name="media_renamed">Media renamed</string>
 
     <!-- AlbumSelectionDialog -->
     <string name="create_new_album">+ Create New Album</string>
@@ -125,13 +105,11 @@
     <string name="metadata_field_dimensions">Dimensions</string>
     <string name="metadata_field_type">Type</string>
     <string name="metadata_field_path">URI / Path</string>
-    <string name="metadata_copy_uri">Copy URI / Path</string>
     <string name="metadata_uri_copied">Copied URI to clipboard</string>
     <string name="metadata_close">Close</string>
 
     <!-- Map View -->
     <string name="map_view_title">Photo Map</string>
-    <string name="map_permission_denied">Location permission is required for the map view.</string>
     <string name="no_gps_photos">No photos with location data found.</string>
 
     <!-- Duplicates -->

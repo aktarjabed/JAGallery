@@ -147,36 +147,41 @@ class MediaRepository @Inject constructor(
         var forceForCurrentPass = initialForce
         var contextForCurrentPass = initialContext
 
-        while (true) {
-            if (forceForCurrentPass) {
-                lastRescanTimeMs = System.currentTimeMillis()
-            }
-            val current = _mediaLoadResult.value
-            val skip = !forceForCurrentPass && contextForCurrentPass != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(contextForCurrentPass)
-            if (!skip) {
-                val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, contextForCurrentPass)
-                _mediaLoadResult.value = result
-            }
+        try {
+            while (true) {
+                if (forceForCurrentPass) {
+                    lastRescanTimeMs = System.currentTimeMillis()
+                }
+                val current = _mediaLoadResult.value
+                val skip = !forceForCurrentPass && contextForCurrentPass != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(contextForCurrentPass)
+                if (!skip) {
+                    val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, contextForCurrentPass)
+                    _mediaLoadResult.value = result
+                }
 
-            val shouldContinue = loadMutex.withLock {
-                if (pendingForcedScan) {
-                    forceForCurrentPass = true
-                    isCurrentScanForced = true
-                    contextForCurrentPass = pendingContext
-                    pendingForcedScan = false
-                    pendingContext = null
-                    true
-                } else {
-                    if (thisJob == null || activeScanJob === thisJob) {
-                        activeScanJob = null
-                        isCurrentScanForced = false
+                val shouldContinue = loadMutex.withLock {
+                    if (pendingForcedScan) {
+                        forceForCurrentPass = true
+                        isCurrentScanForced = true
+                        contextForCurrentPass = pendingContext
+                        pendingForcedScan = false
+                        pendingContext = null
+                        true
+                    } else {
+                        false
                     }
-                    false
+                }
+
+                if (!shouldContinue) {
+                    break
                 }
             }
-
-            if (!shouldContinue) {
-                break
+        } finally {
+            loadMutex.withLock {
+                if (thisJob == null || activeScanJob === thisJob) {
+                    activeScanJob = null
+                    isCurrentScanForced = false
+                }
             }
         }
     }

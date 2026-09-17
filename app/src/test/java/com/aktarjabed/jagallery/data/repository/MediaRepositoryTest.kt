@@ -24,6 +24,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.stubbing.Answer
@@ -261,5 +263,33 @@ class MediaRepositoryTest {
 
         // Exactly 2 scan passes = 4 queries total (1 normal + 1 follow-up forced scan)
         assertEquals(4, scanCount.get())
+    }
+
+    @Test
+    fun scanException_doesNotPoisonRepository() = runTest {
+        var callCount = 0
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+            callCount++
+            if (callCount <= 1) { // Fail first pass
+                throw RuntimeException("Fake MediaStore error")
+            }
+            createEmptyCursor()
+        })
+
+        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
+
+        // First load fails
+        try {
+            testRepo.loadMedia(force = true)
+        } catch (e: Exception) {
+            // Expected
+        }
+
+        // Second load succeeds
+        testRepo.loadMedia(force = true)
+        // Wait briefly for flow to update in test
+        delay(100)
+        val result = testRepo.mediaLoadResult.first()
+        assertTrue(result is MediaLoadResult.Success || result is MediaLoadResult.Empty)
     }
 }
