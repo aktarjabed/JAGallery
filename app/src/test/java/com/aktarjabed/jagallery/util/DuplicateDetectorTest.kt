@@ -40,12 +40,6 @@ class DuplicateDetectorTest {
         val uri = mock(Uri::class.java)
         `when`(uri.toString()).thenReturn(id)
 
-        // Ensure uri equality checks work (if needed) but our code groups by size and loops, comparing references usually or just data class fields.
-        // Wait, MediaItem is a data class and `uri` is a member. We should mock the Uri nicely or use a simple Uri if possible.
-        // Wait, android.net.Uri is final? No, Uri is a class, we can mock it.
-        // Actually, since this is a pure unit test, mocking Uri might be tricky if MediaItem relies on it for equality/hashcode.
-        // Let's create a dummy Uri. Wait, if we use Mockito to mock it, equality is by reference.
-
         return MediaItem(
             uri = uri,
             mediaStoreId = id.hashCode().toLong(),
@@ -129,14 +123,13 @@ class DuplicateDetectorTest {
         verify(mockContentResolver, never()).openInputStream(any())
     }
 
-    @Test
-    fun `findDuplicates - SecurityException handled gracefully`() = runTest {
+    private suspend fun testExceptionHandling(exception: Exception) {
         val size = 100L
         val item1 = createMockMediaItem("1", size)
         val item2 = createMockMediaItem("2", size)
         val item3 = createMockMediaItem("3", size)
 
-        mockInputStreamErrorForUri(item1.uri, SecurityException("Partial Android 14 perms"))
+        mockInputStreamErrorForUri(item1.uri, exception)
         mockInputStreamForUri(item2.uri, "content")
         mockInputStreamForUri(item3.uri, "content")
 
@@ -150,23 +143,13 @@ class DuplicateDetectorTest {
     }
 
     @Test
+    fun `findDuplicates - SecurityException handled gracefully`() = runTest {
+        testExceptionHandling(SecurityException("Partial Android 14 perms"))
+    }
+
+    @Test
     fun `findDuplicates - generic Exception handled gracefully`() = runTest {
-        val size = 100L
-        val item1 = createMockMediaItem("1", size)
-        val item2 = createMockMediaItem("2", size)
-        val item3 = createMockMediaItem("3", size)
-
-        mockInputStreamErrorForUri(item1.uri, RuntimeException("Some generic read error"))
-        mockInputStreamForUri(item2.uri, "content")
-        mockInputStreamForUri(item3.uri, "content")
-
-        val result = DuplicateDetector.findDuplicates(mockContext, listOf(item1, item2, item3))
-
-        // item1 fails and is skipped. item2 and item3 are duplicates
-        assertEquals(1, result.size)
-        assertEquals(2, result[0].items.size)
-        assertTrue(result[0].items.contains(item2))
-        assertTrue(result[0].items.contains(item3))
+        testExceptionHandling(RuntimeException("Some generic read error"))
     }
 
     @Test
