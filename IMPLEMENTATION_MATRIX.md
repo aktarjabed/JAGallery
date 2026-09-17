@@ -42,7 +42,7 @@
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Basic image editing | ✅ Implemented | Rotate/brightness/contrast/saturation/flip | |
-| Advanced photo editor | ⚠️ Partial | Interactive Free Crop works, preserves EXIF | Highlights/Shadows/Sharpness absent |
+| Advanced photo editor | ⚠️ Partial | Interactive Free Crop maps correctly, preserves EXIF | Highlights/Shadows/Sharpness absent |
 | Crop | ✅ Implemented | Interactive Crop overlay / Aspect ratio crop (Square/Free/Original) | |
 | Flip horizontal/vertical | ✅ Implemented | Matrix postScale flip operations | |
 | GIF-specific editing | ❌ Missing | | |
@@ -52,7 +52,7 @@
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| Video trimming | ✅ Implemented | Dedicated trimming/export pipeline | Validation of boundaries missing, writes to primary storage |
+| Video trimming | ✅ Implemented | Dedicated trimming/export pipeline, boundary validation | Writes to primary storage |
 | Video trim UI | ✅ Implemented | Full trim workflow with bottom sheet | |
 | Video mute | ❌ Missing | | |
 | Video frame extraction | ❌ Missing | | |
@@ -80,7 +80,7 @@
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| SHA-256 duplicates | ✅ Implemented | Duplicate detector implemented | Lacks proper cancellation and error handling on null streams |
+| SHA-256 duplicates | ✅ Implemented | Duplicate detector with cancellation and safe stream handling | |
 | Duplicate review UI | ✅ Implemented | Dedicated Duplicates screen and viewmodel | |
 | Persistent hash cache | ❌ Missing | Hashes aren't persisted | |
 | Perceptual similarity | ❌ Missing | No pHash/visual similarity | |

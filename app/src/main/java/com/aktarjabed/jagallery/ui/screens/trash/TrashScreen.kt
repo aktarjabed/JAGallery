@@ -103,11 +103,15 @@ fun TrashScreen(
                             }
                         }
                         is FileUtils.RequestCreationResult.Unsupported -> {
-                            val success = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
-                            if (success) {
-                                viewModel.removeDeletedItems(batch.ids)
+                            val result = FileUtils.deleteMediaItems(context.contentResolver, batch.uris)
+                            val succeededIds = batch.ids.filterIndexed { index, _ -> result.successfulUris.contains(batch.uris[index]) }
+                            if (succeededIds.isNotEmpty()) {
+                                viewModel.removeDeletedItems(succeededIds)
+                            }
+                            if (result.isFullySuccessful) {
+                                showEmptyTrashDialog = false
                             } else {
-                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.failed_to_delete_media) + " (${result.failedUris.size} failed)", Toast.LENGTH_SHORT).show()
                             }
                         }
                         is FileUtils.RequestCreationResult.Error -> {

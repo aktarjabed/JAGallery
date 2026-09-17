@@ -150,14 +150,16 @@ class DuplicateViewModel @Inject constructor(
                     }
                 }
                 is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Unsupported -> {
-                    val success = withContext(Dispatchers.IO) {
+                    val result = withContext(Dispatchers.IO) {
                         com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, itemsToDelete.map { it.uri })
                     }
-                    if (success) {
-                        mediaRepository.removeDeletedItems(itemsToDelete.map { it.id })
+                    val succeededIds = itemsToDelete.filter { result.successfulUris.contains(it.uri) }.map { it.id }
+                    if (succeededIds.isNotEmpty()) {
+                        mediaRepository.removeDeletedItems(succeededIds)
                         loadDuplicates()
-                    } else {
-                        _operationEvent.emit(OperationEvent.Error("Failed to delete items directly"))
+                    }
+                    if (!result.isFullySuccessful) {
+                        _operationEvent.emit(OperationEvent.Error("Partial failure: ${result.failedUris.size} failed to delete"))
                     }
                 }
                 is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Error -> {

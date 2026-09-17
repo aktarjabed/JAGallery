@@ -128,15 +128,12 @@ class MediaOperationsImpl @Inject constructor(
                     // Try to direct delete each file, keep track of which succeed so we only pass those back to the UI
                     val effectivelyDeletedUris = mutableListOf<android.net.Uri>()
                     val successfullyMovedItems = mutableListOf<Pair<MediaItem, android.net.Uri>>()
-                    var deletionFailed = false
 
                     for ((item, newUri) in successfulCopies) {
-                        val success = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(item.uri))
-                        if (success) {
+                        val result = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(item.uri))
+                        if (result.isFullySuccessful) {
                             effectivelyDeletedUris.add(item.uri)
                             successfullyMovedItems.add(Pair(item, newUri))
-                        } else {
-                            deletionFailed = true
                         }
                     }
 

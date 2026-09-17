@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.aktarjabed.jagallery.data.model.MediaItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.security.MessageDigest
@@ -21,6 +22,7 @@ object DuplicateDetector {
         val duplicateGroups = mutableListOf<DuplicateGroup>()
 
         for ((size, candidateItems) in sizeGroups) {
+            ensureActive()
             val hashGroups = mutableMapOf<String, MutableList<MediaItem>>()
             for (item in candidateItems) {
                 val hash = computeSha256(context, item)
@@ -40,19 +42,22 @@ object DuplicateDetector {
         duplicateGroups
     }
 
-    private fun computeSha256(context: Context, item: MediaItem): String? {
-        return try {
+    private suspend fun computeSha256(context: Context, item: MediaItem): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
             val digest = MessageDigest.getInstance("SHA-256")
-            val inputStream = context.contentResolver.openInputStream(item.uri) ?: return null
+            val inputStream = context.contentResolver.openInputStream(item.uri) ?: return@withContext null
             inputStream.use { input ->
                 val buffer = ByteArray(8192)
                 var bytesRead: Int
                 while (input.read(buffer).also { bytesRead = it } != -1) {
+                    ensureActive()
                     digest.update(buffer, 0, bytesRead)
                 }
             }
             val hashBytes = digest.digest()
             hashBytes.joinToString("") { "%02x".format(it) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: SecurityException) {
             Log.w(TAG, "SecurityException reading ${item.uri} (possibly due to partial Android 14 permissions)", e)
             null

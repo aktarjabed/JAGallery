@@ -174,7 +174,7 @@ fun MediaSelectionHandler(
                         }
                         is FileUtils.RequestCreationResult.Unsupported -> {
                             val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
-                            if (success) {
+                            if (success.isFullySuccessful) {
                                 onRemoveDeletedItems(currentState.batch.ids)
                                 selectionState.clearSelection()
                                 deleteState = DeleteOperationState.Idle
