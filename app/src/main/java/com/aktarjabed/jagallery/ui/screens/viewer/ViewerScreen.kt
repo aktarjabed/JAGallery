@@ -292,19 +292,17 @@ fun ViewerScreen(
             showWallpaperDialog = false
             coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    val bitmap = com.aktarjabed.jagallery.util.ImageEditorUtils.decodeSampledBitmapFromUri(context, currentItem.uri)
-                    if (bitmap != null) {
+                    context.contentResolver.openInputStream(currentItem.uri)?.use { stream ->
                         val wallpaperManager = android.app.WallpaperManager.getInstance(context)
                         if (flag == null) {
-                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM)
-                            wallpaperManager.setBitmap(bitmap, null, true, android.app.WallpaperManager.FLAG_LOCK)
+                            wallpaperManager.setStream(stream, null, true, android.app.WallpaperManager.FLAG_SYSTEM or android.app.WallpaperManager.FLAG_LOCK)
                         } else {
-                            wallpaperManager.setBitmap(bitmap, null, true, flag)
+                            wallpaperManager.setStream(stream, null, true, flag)
                         }
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
                         }
-                    } else {
+                    } ?: run {
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
                         }

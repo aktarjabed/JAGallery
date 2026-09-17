@@ -9,7 +9,7 @@
 | Multi-selection | ✅ Implemented | Shared selection architecture | |
 | Metadata | ✅ Implemented | Complete EXIF parsing, copyable fields | |
 | Slideshow | ✅ Implemented | Configurable 3-second delay, ignores videos | |
-| Set wallpaper | 🐛 Implemented but broken | Implemented and permission present, but behavior may be inconsistent across OEMs | |
+| Set wallpaper | ✅ Implemented | Implemented and behavior improved using setStream to avoid memory issues | |
 | Open With | ✅ Implemented | Intent-based sharing via secure content URI | |
 
 ## Storage/MediaStore
