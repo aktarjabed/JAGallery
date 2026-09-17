@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.ContentResolver
 import android.net.Uri
 import android.os.Build
+import android.content.ContentUris
 import android.provider.MediaStore
 import android.util.Log
 
@@ -17,9 +18,38 @@ object FileUtils {
         data class Error(val cause: Exception) : RequestCreationResult()
     }
 
+    data class DeleteMediaResult(
+        val successfulUris: List<Uri>,
+        val failedUris: List<Uri>
+    ) {
+        val isFullySuccessful: Boolean
+            get() = failedUris.isEmpty()
+    }
+
     fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
         return createRequests(contentResolver, uris) { chunk ->
             MediaStore.createTrashRequest(contentResolver, chunk, value)
+    private fun createBatchRequests(
+        uris: List<Uri>,
+        intentCreator: (List<Uri>) -> PendingIntent
+    ): RequestCreationResult {
+        if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
+
+        val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
+        for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
+            val intent = try {
+                intentCreator(chunk)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create request for chunk", e)
+                return RequestCreationResult.Error(e)
+            }
+            results.add(
+                com.aktarjabed.jagallery.data.model.DeleteRequestChunk(
+                    ids = chunk.map { it.toString() },
+                    uris = chunk,
+                    pendingIntent = intent
+                )
+            )
         }
     }
 
@@ -35,7 +65,15 @@ object FileUtils {
         createIntent: (List<Uri>) -> PendingIntent
     ): RequestCreationResult {
         if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return RequestCreationResult.Unsupported
+    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
+        return createBatchRequests(uris) { chunk ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                MediaStore.createTrashRequest(contentResolver, chunk, value)
+            } else {
+                throw UnsupportedOperationException("Trash request not supported below Android R")
+            }
+        }
+    }
 
         val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
         for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
@@ -44,37 +82,71 @@ object FileUtils {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create request for chunk", e)
                 return RequestCreationResult.Error(e)
+    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
+        return createBatchRequests(uris) { chunk ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                MediaStore.createDeleteRequest(contentResolver, chunk)
+            } else {
+                throw UnsupportedOperationException("Delete request not supported below Android R")
             }
-            results.add(
-                com.aktarjabed.jagallery.data.model.DeleteRequestChunk(
-                    ids = chunk.map { it.toString() },
-                    uris = chunk,
-                    pendingIntent = intent
-                )
-            )
         }
-        return RequestCreationResult.Success(results)
     }
 
-    fun deleteMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
-        var success = true
+    fun deleteMediaItems(contentResolver: ContentResolver, uris: List<Uri>): DeleteMediaResult {
+        val successfulUris = mutableListOf<Uri>()
+        val failedUris = mutableListOf<Uri>()
+
+        if (uris.isEmpty()) return DeleteMediaResult(successfulUris, failedUris)
+
+        // Group by collection URI to perform bulk deletes efficiently
+        val groupedUris = mutableMapOf<Uri, MutableList<Uri>>()
         for (uri in uris) {
             try {
-                val rows = contentResolver.delete(uri, null, null)
-                if (rows <= 0) {
-                    Log.w(TAG, "No rows deleted for URI $uri")
-                    success = false
-                }
+                val id = ContentUris.parseId(uri)
+                val collectionUri = ContentUris.removeId(uri)
+                groupedUris.getOrPut(collectionUri) { mutableListOf() }.add(uri)
             } catch (e: Exception) {
-                Log.e(TAG, "Exception deleting URI $uri", e)
-                success = false
+                Log.w(TAG, "Failed to parse URI: $uri", e)
+                failedUris.add(uri)
             }
         }
-        return success
+
+        for ((collectionUri, group) in groupedUris) {
+            for (chunk in group.chunked(MAX_BATCH_SIZE)) {
+                try {
+                    val ids = chunk.map { ContentUris.parseId(it).toString() }.toTypedArray()
+                    val selection = "${MediaStore.MediaColumns._ID} IN (${ids.joinToString(",") { "?" }})"
+                    val rows = contentResolver.delete(collectionUri, selection, ids)
+                    if (rows == chunk.size) {
+                        successfulUris.addAll(chunk)
+                    } else {
+                        // Partial failure, verify survivors
+                        val projection = arrayOf(MediaStore.MediaColumns._ID)
+                        val survivors = mutableSetOf<Long>()
+                        contentResolver.query(collectionUri, projection, selection, ids, null)?.use { cursor ->
+                            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                            while (cursor.moveToNext()) {
+                                survivors.add(cursor.getLong(idColumn))
+                            }
+                        }
+                        for (uri in chunk) {
+                            if (survivors.contains(ContentUris.parseId(uri))) {
+                                failedUris.add(uri)
+                            } else {
+                                successfulUris.add(uri)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception deleting chunk for $collectionUri", e)
+                    failedUris.addAll(chunk)
+                }
+            }
+        }
+        return DeleteMediaResult(successfulUris, failedUris)
     }
 
     fun untrashMediaItems(contentResolver: ContentResolver, uris: List<Uri>): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return true
         var success = true
         for (uri in uris) {
             try {
@@ -119,9 +191,7 @@ object FileUtils {
         collection: Uri,
         contentValues: android.content.ContentValues
     ): Uri? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 1)
-        }
+        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 1)
         return try {
             contentResolver.insert(collection, contentValues)
         } catch (e: Exception) {
@@ -135,18 +205,15 @@ object FileUtils {
         uri: Uri,
         contentValues: android.content.ContentValues
     ): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            return try {
-                val updated = contentResolver.update(uri, contentValues, null, null)
-                updated == 1
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to publish pending entry", e)
-                false
-            }
+        contentValues.clear()
+        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        return try {
+            val updated = contentResolver.update(uri, contentValues, null, null)
+            updated == 1
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish pending entry", e)
+            false
         }
-        return true // No IS_PENDING before API 29
     }
 
     fun formatFileSize(bytes: Long): String {

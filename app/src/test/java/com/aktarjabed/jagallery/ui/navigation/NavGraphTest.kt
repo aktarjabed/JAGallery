@@ -5,7 +5,10 @@ import com.aktarjabed.jagallery.data.model.MediaSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class NavGraphTest {
 
     @Test
@@ -63,5 +66,45 @@ class NavGraphTest {
             searchQuery = "vacation"
         )
         assertEquals(MediaSource.Search("vacation"), search)
+    }
+
+    @Test
+    fun roundTrip_albumWithSpecialCharacters_isDecodedCorrectly() {
+        val rawRelativePath = "Pictures/My Vacation 100% #1?/Nested/"
+        val rawVolumeName = "volume name with spaces"
+        val bucketId = 555L
+
+        val originalSource = MediaSource.Album(AlbumKey(rawVolumeName, bucketId, rawRelativePath))
+
+        // 1. Create Route
+        val route = Screen.Grid.createRoute(originalSource)
+
+        // The route is something like "grid?source=ALBUM&volumeName=volume%20name%20with%20spaces&bucketId=555&relativePath=Pictures%2FMy%20Vacation%20100%25%20%231%3F%2FNested%2F"
+        // We manually extract arguments to simulate NavGraph backStackEntry behavior
+        val params = route.substringAfter("?").split("&").associate {
+            val parts = it.split("=")
+            parts[0] to (if (parts.size > 1) parts[1] else "")
+        }
+
+        val sourceStr = params["source"]
+        val volumeNameStr = params["volumeName"]
+        val bucketIdStr = params["bucketId"]
+        val relativePathStr = params["relativePath"]
+
+        // 2. Decode as done in NavGraph/ViewModels. Note: Compose Navigation uses Uri.decode internally.
+        // We use java.net.URLDecoder.decode here as an approximation for the test.
+        val decodedVolumeName = volumeNameStr?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+        val decodedBucketId = bucketIdStr?.toLongOrNull()
+        val decodedRelativePath = relativePathStr?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+        // 3. Parse Source
+        val parsedSource = parseMediaSource(
+            sourceStr = sourceStr,
+            volumeName = decodedVolumeName,
+            bucketId = decodedBucketId,
+            relativePath = decodedRelativePath,
+            searchQuery = null
+        )
+        assertEquals(originalSource, parsedSource)
     }
 }

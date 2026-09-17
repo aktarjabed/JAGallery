@@ -54,10 +54,6 @@ fun EditorScreen(
     val contrast by viewModel.contrast.collectAsStateWithLifecycle()
     val saturation by viewModel.saturation.collectAsStateWithLifecycle()
     val exposure by viewModel.exposure.collectAsStateWithLifecycle()
-    val highlights by viewModel.highlights.collectAsStateWithLifecycle()
-    val shadows by viewModel.shadows.collectAsStateWithLifecycle()
-    val temperature by viewModel.temperature.collectAsStateWithLifecycle()
-    val sharpness by viewModel.sharpness.collectAsStateWithLifecycle()
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
     val flipHorizontal by viewModel.flipHorizontal.collectAsStateWithLifecycle()
     val flipVertical by viewModel.flipVertical.collectAsStateWithLifecycle()
@@ -205,12 +201,6 @@ fun EditorScreen(
                                 onValueChange = { viewModel.updateExposure(it) },
                                 valueRange = -2.0f..2.0f
                             )
-                            Text(stringResource(R.string.temperature), style = MaterialTheme.typography.bodySmall)
-                            Slider(
-                                value = temperature,
-                                onValueChange = { viewModel.updateTemperature(it) },
-                                valueRange = -1.0f..1.0f
-                            )
                         }
                     }
 
@@ -261,10 +251,12 @@ fun EditorScreen(
                         )
                         if (activeTab == 0 && cropRect != null) {
                             InteractiveCropOverlay(
-                                cropRect = cropRect!!,
+                                cropRect = cropRect ?: RectF(0f, 0f, 1f, 1f),
                                 onCropChange = { newRect ->
                                     viewModel.setCropRect(newRect)
-                                }
+                                },
+                                imageWidth = bitmap.width.toFloat(),
+                                imageHeight = bitmap.height.toFloat()
                             )
                         }
                     }

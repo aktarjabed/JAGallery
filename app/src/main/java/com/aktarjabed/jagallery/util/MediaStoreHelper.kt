@@ -126,12 +126,10 @@ object MediaStoreHelper {
                 if (persistedVersion == null || persistedVersion != currentVersion) {
                     return false
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val currentGeneration = MediaStore.getGeneration(context, volumeName)
-                    val persistedGeneration = getPersistedVolumeGeneration(context, volumeName)
-                    if (persistedGeneration == -1L || persistedGeneration != currentGeneration) {
-                        return false
-                    }
+                val currentGeneration = MediaStore.getGeneration(context, volumeName)
+                val persistedGeneration = getPersistedVolumeGeneration(context, volumeName)
+                if (persistedGeneration == -1L || persistedGeneration != currentGeneration) {
+                    return false
                 }
             }
             true
@@ -173,7 +171,7 @@ object MediaStoreHelper {
             CollectionTarget(
                 imageUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 videoUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                volumeName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL_PRIMARY else null
+                volumeName = MediaStore.VOLUME_EXTERNAL_PRIMARY
             )
         )
     }
@@ -197,7 +195,6 @@ object MediaStoreHelper {
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.BUCKET_ID,
             MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
-            MediaStore.MediaColumns.RELATIVE_PATH,
             MediaStore.MediaColumns.SIZE
         )
 
@@ -205,10 +202,8 @@ object MediaStoreHelper {
             projectionList.add(MediaStore.MediaColumns.RELATIVE_PATH)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
-            projectionList.add(MediaStore.MediaColumns.DATE_EXPIRES)
-        }
+        projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
+        projectionList.add(MediaStore.MediaColumns.DATE_EXPIRES)
 
         val projection = projectionList.toTypedArray()
         val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
@@ -249,12 +244,12 @@ object MediaStoreHelper {
             val mimeTypeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
             val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
             val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
-            val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) else -1
+            val relativePathColumn = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
             val sizeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-            val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED) else -1
-            val dateTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES) else -1
+            val isTrashedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
+            val dateTrashedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
 
-            if (idColumn == -1) return QueryResult.Success(items)
+            if (idColumn == -1) return QueryResult.Error(IllegalArgumentException("Missing _ID column in MediaStore result"))
 
             while (cursor.moveToNext()) {
                 val mediaStoreId = cursor.getLong(idColumn)

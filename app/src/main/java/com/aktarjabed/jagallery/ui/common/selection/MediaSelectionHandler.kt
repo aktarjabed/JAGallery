@@ -99,6 +99,20 @@ fun MediaSelectionHandler(
 
     val batchState by batchManager.batchState.collectAsStateWithLifecycle()
 
+    val showPartialBatchToast = { succeededCount: Int, totalCount: Int ->
+        if (succeededCount > 0) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(
+                    com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                    succeededCount,
+                    totalCount
+                ),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     BatchOperationObserver(
         batchState = batchState,
         onChunkResult = { resultCode -> batchManager.onBatchChunkResult(resultCode) },
@@ -109,16 +123,8 @@ fun MediaSelectionHandler(
                         onRemoveDeletedItems(result.succeededIds)
                         selectionState.clearSelection()
                     }
-                    if (result.cancelled && result.succeededIds.isNotEmpty()) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(
-                                com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                                result.succeededIds.size,
-                                pendingDeleteBatchForMessage?.count ?: 0
-                            ),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                    if (result.cancelled) {
+                        showPartialBatchToast(result.succeededIds.size, pendingDeleteBatchForMessage?.count ?: 0)
                     }
                     deleteState = DeleteOperationState.Idle
                     pendingDeleteBatchForMessage = null
@@ -131,16 +137,8 @@ fun MediaSelectionHandler(
                         }
                         selectionState.clearSelection()
                     }
-                    if (result.cancelled && result.succeededIds.isNotEmpty()) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(
-                                com.aktarjabed.jagallery.R.string.batch_partially_processed,
-                                result.succeededIds.size,
-                                pendingRestoreBatchForMessage?.count ?: 0
-                            ),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                    if (result.cancelled) {
+                        showPartialBatchToast(result.succeededIds.size, pendingRestoreBatchForMessage?.count ?: 0)
                     }
                     restoreState = DeleteOperationState.Idle
                     pendingRestoreBatchForMessage = null
@@ -176,7 +174,7 @@ fun MediaSelectionHandler(
                         }
                         is FileUtils.RequestCreationResult.Unsupported -> {
                             val success = FileUtils.deleteMediaItems(context.contentResolver, currentState.batch.uris)
-                            if (success) {
+                            if (success.isFullySuccessful) {
                                 onRemoveDeletedItems(currentState.batch.ids)
                                 selectionState.clearSelection()
                                 deleteState = DeleteOperationState.Idle

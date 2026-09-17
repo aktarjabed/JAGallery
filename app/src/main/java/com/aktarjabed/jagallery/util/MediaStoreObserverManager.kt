@@ -40,18 +40,16 @@ class MediaStoreObserverManager(
 
         val targetUris = mutableListOf<android.net.Uri>()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                val volumes = MediaStore.getExternalVolumeNames(context)
-                for (volume in volumes) {
-                    targetUris.add(MediaStore.Images.Media.getContentUri(volume))
-                    targetUris.add(MediaStore.Video.Media.getContentUri(volume))
-                }
-            } catch (e: SecurityException) {
-                Log.w("MediaStoreObserver", "SecurityException getting volume names", e)
-            } catch (e: IllegalArgumentException) {
-                Log.w("MediaStoreObserver", "IllegalArgumentException getting volume names", e)
+        try {
+            val volumes = MediaStore.getExternalVolumeNames(context)
+            for (volume in volumes) {
+                targetUris.add(MediaStore.Images.Media.getContentUri(volume))
+                targetUris.add(MediaStore.Video.Media.getContentUri(volume))
             }
+        } catch (e: SecurityException) {
+            Log.w("MediaStoreObserver", "SecurityException getting volume names", e)
+        } catch (e: IllegalArgumentException) {
+            Log.w("MediaStoreObserver", "IllegalArgumentException getting volume names", e)
         }
 
         if (targetUris.isEmpty()) {
