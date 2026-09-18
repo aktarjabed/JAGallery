@@ -181,6 +181,10 @@ fun NavGraph() {
                     type = NavType.StringType
                     nullable = true
                 },
+                navArgument("relativePath") {
+                    type = NavType.StringType
+                    nullable = true
+                },
                 navArgument("searchQuery") {
                     type = NavType.StringType
                     nullable = true

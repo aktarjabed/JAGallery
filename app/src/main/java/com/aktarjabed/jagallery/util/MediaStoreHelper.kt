@@ -116,7 +116,6 @@ object MediaStoreHelper {
     }
 
     fun isMediaStoreVersionCurrent(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
             val volumeNames = MediaStore.getExternalVolumeNames(context)
             if (volumeNames.isEmpty()) return false
@@ -149,7 +148,7 @@ object MediaStoreHelper {
     )
 
     private fun getCollectionUris(context: Context?): List<CollectionTarget> {
-        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (context != null) {
             try {
                 val volumes = MediaStore.getExternalVolumeNames(context)
                 if (volumes.isNotEmpty()) {
@@ -165,6 +164,9 @@ object MediaStoreHelper {
                 Log.w(TAG, "SecurityException getting volume names", e)
             } catch (e: IllegalArgumentException) {
                 Log.w(TAG, "IllegalArgumentException getting volume names", e)
+            } catch (e: NoSuchMethodError) {
+                // Ignore in Robolectric for older SDK versions
+                Log.w(TAG, "NoSuchMethodError getting volume names", e)
             }
         }
         return listOf(
@@ -209,7 +211,7 @@ object MediaStoreHelper {
         val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
 
         val query: Cursor? = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
                 val bundle = android.os.Bundle().apply {
                     putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
                     if (includeTrashed) {
@@ -219,7 +221,8 @@ object MediaStoreHelper {
                     }
                 }
                 contentResolver.query(contentUri, projection, bundle, null)
-            } else {
+            } catch (e: NoSuchMethodError) {
+                // Fallback for older Robolectric environments
                 contentResolver.query(contentUri, projection, null, null, sortOrder)
             }
         } catch (e: SecurityException) {

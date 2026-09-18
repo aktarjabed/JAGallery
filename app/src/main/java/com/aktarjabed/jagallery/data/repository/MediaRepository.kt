@@ -37,7 +37,6 @@ class MediaRepository @Inject constructor(
     private val favoriteMutex = Mutex()
 
     private var activeScanJob: Deferred<Unit>? = null
-    private var isCurrentScanForced = false
     private var pendingForcedScan = false
     private var pendingContext: Context? = null
 
@@ -121,7 +120,6 @@ class MediaRepository @Inject constructor(
             } else {
                 if (force && (currentTime - lastRescanTimeMs < RESCAN_THROTTLE_MS)) {
                     // Throttle fast sequential jobs by firing a delayed job to catch up
-                    isCurrentScanForced = force
                     lateinit var delayedJob: Deferred<Unit>
                     delayedJob = repositoryScope.async {
                         kotlinx.coroutines.delay(RESCAN_THROTTLE_MS - (currentTime - lastRescanTimeMs))
@@ -130,7 +128,6 @@ class MediaRepository @Inject constructor(
                     activeScanJob = delayedJob
                     delayedJob
                 } else {
-                    isCurrentScanForced = force
                     lateinit var newJob: Deferred<Unit>
                     newJob = repositoryScope.async {
                         executeScanLoop(newJob, initialForce = force, initialContext = context)
@@ -162,7 +159,6 @@ class MediaRepository @Inject constructor(
                 val shouldContinue = loadMutex.withLock {
                     if (pendingForcedScan) {
                         forceForCurrentPass = true
-                        isCurrentScanForced = true
                         contextForCurrentPass = pendingContext
                         pendingForcedScan = false
                         pendingContext = null
@@ -180,7 +176,6 @@ class MediaRepository @Inject constructor(
             loadMutex.withLock {
                 if (thisJob == null || activeScanJob === thisJob) {
                     activeScanJob = null
-                    isCurrentScanForced = false
                 }
             }
         }

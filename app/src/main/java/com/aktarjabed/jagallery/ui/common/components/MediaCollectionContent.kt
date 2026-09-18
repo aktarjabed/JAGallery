@@ -57,15 +57,14 @@ fun MediaCollectionContent(
     ) { padding ->
         when (loadResult) {
             is MediaLoadResult.Loading -> {
-                FullScreenLoading(
-                    modifier = Modifier.padding(padding)
-                )
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
             is MediaLoadResult.Error -> {
-                FullScreenError(
-                    message = loadResult.cause.localizedMessage ?: "Error loading media",
-                    modifier = Modifier.padding(padding)
-                )
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(text = loadResult.cause.localizedMessage ?: "Error loading media", color = MaterialTheme.colorScheme.error)
+                }
             }
             is MediaLoadResult.Empty -> {
                 MediaGrid(

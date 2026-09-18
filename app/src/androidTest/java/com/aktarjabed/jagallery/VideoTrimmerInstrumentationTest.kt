@@ -135,7 +135,7 @@ class VideoTrimmerInstrumentationTest {
 
     @Test
     fun trimVideo_realMedia_succeeds_and_createsValidOutput() = runBlocking {
-        val sourceUri = createSyntheticTestVideo() ?: return@runBlocking
+        val sourceUri = createSyntheticTestVideo() ?: throw java.lang.IllegalStateException("Failed to create test video")
 
         val trimmedUri = VideoTrimmer.trimVideo(context, sourceUri, 0L, 1500L)
         assertNotNull("Trimmed video URI must be non-null for valid source video", trimmedUri)

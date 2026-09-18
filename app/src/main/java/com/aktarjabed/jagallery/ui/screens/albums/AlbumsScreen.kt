@@ -156,29 +156,28 @@ fun AlbumsScreen(
     ) { padding ->
         when (val state = uiState) {
             is AlbumsUiState.Loading -> {
-                com.aktarjabed.jagallery.ui.common.components.FullScreenLoading(
-                    modifier = Modifier.padding(padding)
-                )
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
             is AlbumsUiState.Error -> {
-                com.aktarjabed.jagallery.ui.common.components.FullScreenError(
-                    message = state.cause.localizedMessage ?: "Failed to load media",
-                    modifier = Modifier.padding(padding)
-                )
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(text = state.cause.localizedMessage ?: "Failed to load media", color = MaterialTheme.colorScheme.error)
+                }
             }
             is AlbumsUiState.Empty -> {
-                com.aktarjabed.jagallery.ui.common.components.FullScreenEmpty(
-                    message = stringResource(R.string.no_media_found),
-                    modifier = Modifier.padding(padding),
-                    icon = {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.PhotoLibrary,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(text = stringResource(R.string.no_media_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                )
+                }
             }
             is AlbumsUiState.Success -> {
                 LazyVerticalGrid(

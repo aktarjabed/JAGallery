@@ -42,6 +42,36 @@ object VideoTrimmer {
         var isMuxerStarted = false
 
         try {
+            extractor = MediaExtractor()
+            sourcePfd = resolver.openFileDescriptor(sourceUri, "r")
+            if (sourcePfd == null) {
+                return@withContext null
+            }
+            extractor.setDataSource(sourcePfd.fileDescriptor)
+
+            // Validate duration if possible
+            var actualDurationUs = 0L
+            val trackCountInit = extractor.trackCount
+            for (i in 0 until trackCountInit) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("video/") || mime.startsWith("audio/")) {
+                    if (format.containsKey(MediaFormat.KEY_DURATION)) {
+                        val duration = format.getLong(MediaFormat.KEY_DURATION)
+                        if (duration > actualDurationUs) {
+                            actualDurationUs = duration
+                        }
+                    }
+                }
+            }
+
+            if (actualDurationUs > 0) {
+                if (startMs * 1000L >= actualDurationUs) {
+                     Log.e(TAG, "Start time is beyond actual duration")
+                     return@withContext null
+                }
+            }
+
             // Insert into MediaStore first
             val contentValues = android.content.ContentValues().apply {
                 put(MediaStore.Video.Media.DISPLAY_NAME, "TRIM_${System.currentTimeMillis()}.mp4")
@@ -54,14 +84,6 @@ object VideoTrimmer {
             if (newUri == null) {
                 return@withContext null
             }
-
-            extractor = MediaExtractor()
-            sourcePfd = resolver.openFileDescriptor(sourceUri, "r")
-            if (sourcePfd == null) {
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                return@withContext null
-            }
-            extractor.setDataSource(sourcePfd.fileDescriptor)
 
             destPfd = resolver.openFileDescriptor(newUri, "rw")
             if (destPfd == null) {

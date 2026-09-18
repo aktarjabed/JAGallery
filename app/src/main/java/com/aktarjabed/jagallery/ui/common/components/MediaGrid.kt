@@ -25,6 +25,8 @@ import java.util.Calendar
 import java.util.Date
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
+import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaItem
 
 @Composable
@@ -61,10 +63,15 @@ fun MediaGrid(
             }
         }
     } else {
-        val currentDayKey = remember {
+        // Observe current date to recalculate if day changes while app is open
+        val currentDayKey = remember(System.currentTimeMillis() / 86400000) {
             val now = Calendar.getInstance()
             "${now.get(Calendar.YEAR)}-${now.get(Calendar.DAY_OF_YEAR)}"
         }
+
+        val todayStr = stringResource(R.string.timeline_today)
+        val yesterdayStr = stringResource(R.string.timeline_yesterday)
+        val earlierStr = stringResource(R.string.timeline_earlier)
 
         // Group items by timeline
         val groupedItems = remember(items, currentDayKey) {
@@ -75,12 +82,12 @@ fun MediaGrid(
                 val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
 
                 if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
-                    "Today"
+                    todayStr
                 } else if (cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)) {
-                    "Yesterday"
+                    yesterdayStr
                 } else if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
                     val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale.getDefault())
-                    month ?: "Earlier"
+                    month ?: earlierStr
                 } else {
                     cal.get(Calendar.YEAR).toString()
                 }
