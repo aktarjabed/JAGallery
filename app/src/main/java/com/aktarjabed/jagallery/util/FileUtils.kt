@@ -26,9 +26,6 @@ object FileUtils {
             get() = failedUris.isEmpty()
     }
 
-    fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
-        return createRequests(contentResolver, uris) { chunk ->
-            MediaStore.createTrashRequest(contentResolver, chunk, value)
     private fun createBatchRequests(
         uris: List<Uri>,
         intentCreator: (List<Uri>) -> PendingIntent
@@ -45,50 +42,24 @@ object FileUtils {
             }
             results.add(
                 com.aktarjabed.jagallery.data.model.DeleteRequestChunk(
-                    ids = chunk.map { it.toString() },
+                    ids = chunk.map { ContentUris.parseId(it).toString() },
                     uris = chunk,
                     pendingIntent = intent
                 )
             )
         }
+        return RequestCreationResult.Success(results)
     }
 
-    fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
-        return createRequests(contentResolver, uris) { chunk ->
-            MediaStore.createDeleteRequest(contentResolver, chunk)
-        }
-    }
-
-    private fun createRequests(
-        contentResolver: ContentResolver,
-        uris: List<Uri>,
-        createIntent: (List<Uri>) -> PendingIntent
-    ): RequestCreationResult {
-        if (uris.isEmpty()) return RequestCreationResult.Success(emptyList())
     fun createTrashRequests(contentResolver: ContentResolver, uris: List<Uri>, value: Boolean): RequestCreationResult {
         return createBatchRequests(uris) { chunk ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                MediaStore.createTrashRequest(contentResolver, chunk, value)
-            } else {
-                throw UnsupportedOperationException("Trash request not supported below Android R")
-            }
+            MediaStore.createTrashRequest(contentResolver, chunk, value)
         }
     }
 
-        val results = mutableListOf<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>()
-        for (chunk in uris.chunked(MAX_BATCH_SIZE)) {
-            val intent = try {
-                createIntent(chunk)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create request for chunk", e)
-                return RequestCreationResult.Error(e)
     fun createDeleteRequests(contentResolver: ContentResolver, uris: List<Uri>): RequestCreationResult {
         return createBatchRequests(uris) { chunk ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                MediaStore.createDeleteRequest(contentResolver, chunk)
-            } else {
-                throw UnsupportedOperationException("Delete request not supported below Android R")
-            }
+            MediaStore.createDeleteRequest(contentResolver, chunk)
         }
     }
 
@@ -123,17 +94,34 @@ object FileUtils {
                         // Partial failure, verify survivors
                         val projection = arrayOf(MediaStore.MediaColumns._ID)
                         val survivors = mutableSetOf<Long>()
-                        contentResolver.query(collectionUri, projection, selection, ids, null)?.use { cursor ->
-                            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                            while (cursor.moveToNext()) {
-                                survivors.add(cursor.getLong(idColumn))
-                            }
-                        }
-                        for (uri in chunk) {
-                            if (survivors.contains(ContentUris.parseId(uri))) {
-                                failedUris.add(uri)
+                        var queryFailed = false
+                        try {
+                            val cursor = contentResolver.query(collectionUri, projection, selection, ids, null)
+                            if (cursor != null) {
+                                cursor.use { c ->
+                                    val idColumn = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                                    while (c.moveToNext()) {
+                                        survivors.add(c.getLong(idColumn))
+                                    }
+                                }
                             } else {
-                                successfulUris.add(uri)
+                                queryFailed = true
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Exception verifying survivors for chunk", e)
+                            queryFailed = true
+                        }
+
+                        if (queryFailed) {
+                            // If we can't verify, we must assume failure to be safe
+                            failedUris.addAll(chunk)
+                        } else {
+                            for (uri in chunk) {
+                                if (survivors.contains(ContentUris.parseId(uri))) {
+                                    failedUris.add(uri)
+                                } else {
+                                    successfulUris.add(uri)
+                                }
                             }
                         }
                     }
@@ -172,9 +160,13 @@ object FileUtils {
                 contentResolver.openOutputStream(destUri)?.use { output ->
                     // Use a 64KB buffer for faster copying of large media files
                     val buffer = ByteArray(64 * 1024)
-                    var bytesRead: Int = 0
-                    while (input.read(buffer).also { bytesRead = it } >= 0) {
-                        output.write(buffer, 0, bytesRead)
+                    var bytesRead: Int
+                    while (true) {
+                        bytesRead = input.read(buffer)
+                        if (bytesRead < 0) break
+                        if (bytesRead > 0) {
+                            output.write(buffer, 0, bytesRead)
+                        }
                     }
                     output.flush()
                     true

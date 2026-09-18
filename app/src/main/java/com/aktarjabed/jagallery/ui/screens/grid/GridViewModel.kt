@@ -27,9 +27,9 @@ class GridViewModel @Inject constructor(
 ) : BaseMediaViewModel(mediaOperations, repository) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
-    private val volumeName: String? = savedStateHandle.get<String>("volumeName")
+    private val volumeName: String? = savedStateHandle.get<String>("volumeName")?.let { android.net.Uri.decode(it) }
     private val sourceName: String? = savedStateHandle.get<String>("source")
-    private val relativePath: String = savedStateHandle.get<String>("relativePath") ?: ""
+    private val relativePath: String = savedStateHandle.get<String>("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
 
     private val initialSource: MediaSource = if (sourceName == "ALBUM" && !volumeName.isNullOrBlank() && bucketId != null) {
         MediaSource.Album(volumeName, bucketId, relativePath)

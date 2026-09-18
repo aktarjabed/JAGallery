@@ -21,7 +21,7 @@ sealed class Screen(val route: String) {
     object Trash : Screen("trash")
     object Map : Screen("map")
     object Duplicates : Screen("duplicates")
-    object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&searchQuery={searchQuery}") {
+    object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&relativePath={relativePath}&searchQuery={searchQuery}") {
         fun createRoute(
             mediaId: String,
             source: MediaSource
@@ -40,6 +40,7 @@ sealed class Screen(val route: String) {
                 is MediaSource.Album -> {
                     builder.append("&volumeName=${Uri.encode(source.albumKey.volumeName)}")
                     builder.append("&bucketId=${source.albumKey.bucketId}")
+                    builder.append("&relativePath=${Uri.encode(source.albumKey.relativePath)}")
                 }
                 is MediaSource.Search -> {
                     if (source.query.isNotBlank()) {

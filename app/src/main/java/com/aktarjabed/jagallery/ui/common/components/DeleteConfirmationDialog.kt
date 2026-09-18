@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import com.aktarjabed.jagallery.R
 
 @Composable
@@ -19,7 +20,7 @@ fun DeleteConfirmationDialog(
         title = { Text(stringResource(R.string.delete_media_title)) },
         text = {
             Text(
-                if (count > 1) stringResource(R.string.delete_confirm_message, count)
+                if (count > 1) pluralStringResource(R.plurals.delete_confirm_message, count, count)
                 else stringResource(R.string.delete_single_confirm_message)
             )
         },

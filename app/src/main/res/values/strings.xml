@@ -4,7 +4,10 @@
     <string name="tab_favorites">Favorites</string>
     <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
-    <string name="delete_confirm_message">Are you sure you want to delete %1$d selected items?</string>
+    <plurals name="delete_confirm_message">
+        <item quantity="one">Are you sure you want to delete %1$d selected item?</item>
+        <item quantity="other">Are you sure you want to delete %1$d selected items?</item>
+    </plurals>
     <string name="delete_single_confirm_message">Are you sure you want to delete this item?</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
@@ -56,7 +59,10 @@
     <string name="permission_denied">Media permission denied.</string>
     <string name="move_completed">Move completed successfully.</string>
     <string name="move_partial_copied">Source items retained because deletion was cancelled.</string>
-    <string name="move_partial_n_failed">%1$d items failed to move.</string>
+    <plurals name="move_partial_n_failed">
+        <item quantity="one">%1$d item failed to move.</item>
+        <item quantity="other">%1$d items failed to move.</item>
+    </plurals>
     <string name="crop">Crop</string>
     <string name="crop_original">Original</string>
     <string name="crop_square">1:1</string>
@@ -124,7 +130,10 @@
 
     <!-- GridScreen copy -->
     <string name="copy_completed">Copy completed</string>
-    <string name="copy_partial_n_failed">%1$d item(s) failed to copy</string>
+    <plurals name="copy_partial_n_failed">
+        <item quantity="one">%1$d item failed to copy</item>
+        <item quantity="other">%1$d items failed to copy</item>
+    </plurals>
 
     <!-- ViewerScreen rename -->
     <string name="rename_success">Media renamed successfully</string>
@@ -156,4 +165,8 @@
 
     <!-- Batch processing -->
     <string name="batch_partially_processed">%1$d of %2$d items processed</string>
+    <!-- Timeline Labels -->
+    <string name="timeline_today">Today</string>
+    <string name="timeline_yesterday">Yesterday</string>
+    <string name="timeline_earlier">Earlier</string>
 </resources>

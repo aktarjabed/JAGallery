@@ -50,10 +50,10 @@ class ViewerViewModel @Inject constructor(
     }
 
     private val sourceStr: String? = savedStateHandle.get<String>("source")
-    private val volumeName: String? = savedStateHandle.get<String>("volumeName")
+    private val volumeName: String? = savedStateHandle.get<String>("volumeName")?.let { android.net.Uri.decode(it) }
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
-    private val relativePath: String? = savedStateHandle.get<String>("relativePath") ?: ""
-    private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")
+    private val relativePath: String? = savedStateHandle.get<String>("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
+    private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")?.let { android.net.Uri.decode(it) }
 
     val initialSource: MediaSource? = parseMediaSource(sourceStr, volumeName, bucketId, relativePath, searchQuery)
 
@@ -140,7 +140,7 @@ class ViewerViewModel @Inject constructor(
                     val index = if (activeId != null) filtered.indexOfFirst { it.id == activeId } else -1
                     if (index != -1) {
                         lastValidIndex = index
-                    } else {
+                    } else if (filtered.isNotEmpty()) {
                         val targetIndex = lastValidIndex.coerceIn(0, filtered.size - 1)
                         val nextItem = filtered[targetIndex]
                         setCurrentMediaId(nextItem.id)

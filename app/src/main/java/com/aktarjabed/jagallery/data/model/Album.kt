@@ -15,5 +15,5 @@ data class Album(
         get() = key.volumeName
 
     val id: String
-        get() = "${key.volumeName}:${key.bucketId}"
+        get() = "${key.volumeName}:${key.bucketId}:${key.relativePath}"
 }

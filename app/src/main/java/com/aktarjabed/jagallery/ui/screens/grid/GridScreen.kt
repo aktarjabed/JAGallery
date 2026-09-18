@@ -102,7 +102,8 @@ fun GridScreen(
                 when (moveResult) {
                     is MoveOperationResult.RequestSourceDelete -> {
                         if (moveResult.failedItems.isNotEmpty()) {
-                            Toast.makeText(context, context.getString(R.string.move_partial_n_failed, moveResult.failedItems.size), Toast.LENGTH_LONG).show()
+                            val count = moveResult.failedItems.size
+                            Toast.makeText(context, context.resources.getQuantityString(R.plurals.move_partial_n_failed, count, count), Toast.LENGTH_LONG).show()
                         }
                         if (moveResult.pendingIntents.isNotEmpty()) {
                             viewModel.batchManager.startBatch(moveResult.pendingIntents, "GRID_MOVE_DELETE")
@@ -130,7 +131,8 @@ fun GridScreen(
                         Toast.makeText(context, context.getString(R.string.copy_completed), Toast.LENGTH_SHORT).show()
                     }
                     is MoveOperationResult.Error -> {
-                        Toast.makeText(context, context.getString(R.string.copy_partial_n_failed, items.size), Toast.LENGTH_LONG).show()
+                        val count = items.size
+                        Toast.makeText(context, context.resources.getQuantityString(R.plurals.copy_partial_n_failed, count, count), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
