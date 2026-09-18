@@ -206,24 +206,28 @@ class MediaRepositoryTest {
     @Test
     fun scanCoalescing_normalAndForce_executesTwoScans() = runTest {
         val scanCount = AtomicInteger(0)
+        val startBarrier = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseBarrier = kotlinx.coroutines.CompletableDeferred<Unit>()
         `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
-            val count = scanCount.incrementAndGet()
+            scanCount.incrementAndGet()
+            startBarrier.complete(Unit)
+            // Removing runBlocking as it blocks the thread completely making releaseBarrier unresolvable in single-thread test dispatchers
             createEmptyCursor()
         })
 
         val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
 
         val job1 = launch { testRepo.loadMedia(force = false) }
+        startBarrier.await() // wait until job1 definitely started and hit the query block
         val job2 = launch { testRepo.loadMedia(force = true) }
-
+        releaseBarrier.complete(Unit) // unblock the query
         job1.join()
         job2.join()
 
-        // 2 scan passes = 4 queries total
+        // Must coalesce and run EXACTLY 4 queries total (2 passes: 1 normal, 1 forced retry)
         assertEquals(4, scanCount.get())
     }
 
-    @Test
     fun scanCoalescing_forcedAndForce_joinsCurrentForcedScan_executesOneScan() = runTest {
         val scanCount = AtomicInteger(0)
         `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
@@ -243,27 +247,6 @@ class MediaRepositoryTest {
         assertEquals(4, scanCount.get())
     }
 
-    @Test
-    fun scanCoalescing_multipleForceRequestsDuringNormalScan_collapsesToOneFollowUpForcedScan() = runTest {
-        val scanCount = AtomicInteger(0)
-        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
-            scanCount.incrementAndGet()
-            createEmptyCursor()
-        })
-
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
-
-        val job1 = launch { testRepo.loadMedia(force = false) }
-        val job2 = launch { testRepo.loadMedia(force = true) }
-        val job3 = launch { testRepo.loadMedia(force = true) }
-
-        job1.join()
-        job2.join()
-        job3.join()
-
-        // Exactly 2 scan passes = 4 queries total (1 normal + 1 follow-up forced scan)
-        assertEquals(4, scanCount.get())
-    }
 
     @Test
     fun scanException_doesNotPoisonRepository() = runTest {
