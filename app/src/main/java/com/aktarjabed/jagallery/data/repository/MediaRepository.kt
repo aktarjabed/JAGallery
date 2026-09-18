@@ -176,6 +176,9 @@ class MediaRepository @Inject constructor(
             loadMutex.withLock {
                 if (thisJob == null || activeScanJob === thisJob) {
                     activeScanJob = null
+                    // pendingForcedScan relies on a subsequent caller to check activeScanJob
+                    // since we exit the loop on exception/cancellation.
+                    // If this job was cancelled, any pending forces will be preserved for the next scan.
                 }
             }
         }
