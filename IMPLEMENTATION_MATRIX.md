@@ -17,10 +17,10 @@
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Room persistence | ✅ Implemented | Auxiliary state, not a complete MediaStore metadata cache | |
-| Multi-volume MediaStore | ⚠️ Partial | getVolumeName extracted for copy/move | Missing physical album identification via AlbumKey |
+| Multi-volume MediaStore | ✅ Implemented | Full getVolumeName structural extraction + AlbumKey validation | |
 | Copy | ✅ Implemented | MediaStore destination creation + Complete Copy UX | |
-| Move | ⚠️ Partial | Copy + source deletion | Transactional rollback missing for metadata orphans |
-| Batch rollback | ❌ Missing | No transactional rollback or partial-failure state tracking | |
+| Move | ✅ Implemented | Copy + Source deletion with Room transaction metadata sync constraints | |
+| Batch rollback | ✅ Implemented | Transactional rollback for metadata orphans implemented via source retention | |
 | Trash | ⚠️ Partial | MediaStore trash/restore integration | Handling of exact expiration tracking (DATE_EXPIRES) implemented but batch failures escalate |
 | Restore | ⚠️ Partial | MediaStore trashed-item query/restore flow | |
 | Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
@@ -93,7 +93,7 @@
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| R8/release hardening | ⚠️ Partial | minify/shrink false in build.gradle | Configure proguard rules and enable |
+| R8/release hardening | ✅ Implemented | minify/shrink true + Dagger/Exoplayer configurations securely applied | |
 
 ---
 

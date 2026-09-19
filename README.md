@@ -45,7 +45,7 @@ JAGallery is a modern, high-performance Android gallery application built with J
 - **Duplicate Cleanup**: Streamlined UI for deleting duplicates and managing storage.
 - **Persistent Hash Cache**: Speed up duplicate scans with a persistent hash store.
 - **Advanced Editor Controls**: Highlights, shadows, and sharpness.
-- **Robust Multi-volume Management**: Advanced destination picking for copy/move operations, and proper metadata handling.
+- **Cloud-aware Albums**: Syncing logic and custom-album organization.
 
 ## Project Setup & Testing
 

@@ -176,9 +176,19 @@ class MediaRepository @Inject constructor(
             loadMutex.withLock {
                 if (thisJob == null || activeScanJob === thisJob) {
                     activeScanJob = null
-                    // pendingForcedScan relies on a subsequent caller to check activeScanJob
-                    // since we exit the loop on exception/cancellation.
-                    // If this job was cancelled, any pending forces will be preserved for the next scan.
+                    // If there's a pending forced scan but the loop ended (e.g. exception/cancellation),
+                    // we need to make sure the next call to loadMedia sees that activeScanJob is null
+                    // but pendingForcedScan is true. The pending scan will trigger on the next manual/observer call.
+                    // However, we should proactively trigger it now to not lose the forced scan request completely
+                    // if there are no subsequent observer calls.
+                    if (pendingForcedScan) {
+                        val newJob = repositoryScope.async {
+                            executeScanLoop(null, true, pendingContext)
+                        }
+                        activeScanJob = newJob
+                        pendingForcedScan = false
+                        pendingContext = null
+                    }
                 }
             }
         }

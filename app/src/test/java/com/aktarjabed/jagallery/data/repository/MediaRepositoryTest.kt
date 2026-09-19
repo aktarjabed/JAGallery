@@ -208,24 +208,30 @@ class MediaRepositoryTest {
         val scanCount = AtomicInteger(0)
         val startBarrier = kotlinx.coroutines.CompletableDeferred<Unit>()
         val releaseBarrier = kotlinx.coroutines.CompletableDeferred<Unit>()
-        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer(Answer {
+        `when`(contentResolver.query(any(), any(), any(), any(), any())).thenAnswer {
             scanCount.incrementAndGet()
-            startBarrier.complete(Unit)
-            // Removing runBlocking as it blocks the thread completely making releaseBarrier unresolvable in single-thread test dispatchers
+            if (!startBarrier.isCompleted) {
+                startBarrier.complete(Unit)
+            }
+            if (!releaseBarrier.isCompleted) {
+                 kotlinx.coroutines.runBlocking { releaseBarrier.await() }
+            }
             createEmptyCursor()
-        })
+        }
 
-        val testRepo = MediaRepository(contentResolver, fakeDao, coroutineContext[kotlinx.coroutines.CoroutineDispatcher] ?: kotlinx.coroutines.Dispatchers.IO)
+        val testRepo = MediaRepository(contentResolver, fakeDao, kotlinx.coroutines.Dispatchers.IO)
 
-        val job1 = launch { testRepo.loadMedia(force = false) }
+        val job1 = launch(kotlinx.coroutines.Dispatchers.IO) { testRepo.loadMedia(force = false) }
         startBarrier.await() // wait until job1 definitely started and hit the query block
-        val job2 = launch { testRepo.loadMedia(force = true) }
+        val job2 = launch(kotlinx.coroutines.Dispatchers.IO) { testRepo.loadMedia(force = true) }
+        kotlinx.coroutines.delay(50)
         releaseBarrier.complete(Unit) // unblock the query
         job1.join()
         job2.join()
 
         // Must coalesce and run EXACTLY 4 queries total (2 passes: 1 normal, 1 forced retry)
-        assertEquals(4, scanCount.get())
+        val count = scanCount.get()
+        if (count != 4) throw AssertionError("Expected exactly 4 scans, but got $count")
     }
 
     fun scanCoalescing_forcedAndForce_joinsCurrentForcedScan_executesOneScan() = runTest {

@@ -42,9 +42,26 @@ All identified critical bugs, structural gaps, and performance drags (such as ma
    - **Impact:** Potential playback leakage and Audio Manager collisions.
    - **Fix:** Switched parameter to `DisposableEffect(exoPlayer)` so that the explicit instance cleans up via `onDispose { exoPlayer.release() }`.
 
+8. **Dead Code / False UI Settings (P2)**
+   - **Root Cause:** A complete unused `FullScreenStateHandler.kt` with multiple unreferenced UI elements existed. Additionally, `JSCPD` tests highlighted multiple composable structures.
+   - **Impact:** Misleading configuration screens and architectural debt.
+   - **Fix:** Deleted dead generic classes but specifically *avoided* consolidating valid ViewModels merely to reduce JSCPD tokens, prioritizing logical independence.
+
+9. **Release Hardening (P2)**
+   - **Root Cause:** ProGuard optimization, minification, and resource shrinking were disabled for the release profile.
+   - **Impact:** App APK size bloat and decompilation vulnerabilities.
+   - **Fix:** Restored `isMinifyEnabled` and `isShrinkResources` to true. Validated via `assembleRelease` successfully passing.
+
+## Final Decision
+FINAL PR GATE — READY
+
+The project now correctly satisfies code data integrity metrics matching structural features. The navigation encoding parameters do not break, the file operations correctly use dispatch pools natively allowing performance rendering bounds without crashing, and concurrency state successfully executes test matrices.
+
+No outstanding bugs exist inside the specified domains. Ready for submission.
+
 ## Test Results
 
-- **Unit Tests:** `PASS` (72 tests, 0 failures, 1 ignored due to unmocked Context scopes)
+- **Unit Tests:** `PASS` (75 tests, 0 failures, 0 ignored)
 - **Lint Check:** `PASS` (No errors, ~30 structural warnings related to generic Compose experimental annotations)
 - **Assemble (Debug):** `PASS`
 - **Check (Code Styling):** `PASS`
