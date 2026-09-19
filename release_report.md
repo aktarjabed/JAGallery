@@ -1,78 +1,62 @@
-# JAGallery Production-Readiness Audit Report
+# 1. Executive Summary
+During this final production reconciliation, JAGallery underwent a multi-phase structural audit prioritizing source-code integrity over legacy documentation claims. All previously noted architecture flaws, concurrency synchronization failures, and metadata transaction inconsistencies were addressed safely. The app is now strictly synchronized, deterministically tested, and minified correctly.
 
-## Executive Summary
-A comprehensive production-grade audit of the JAGallery codebase was performed. The application was structurally sound but suffered from several test-environment inconsistencies, concurrency race conditions during MediaStore scanning, edge-case failure loopholes during batch move/copy intents, and navigation URI decoding issues.
+# 2. Phase Matrix
+| Phase | Actual Status | Evidence | Tests |
+|-------|---------------|----------|-------|
+| 1 | Complete | AlbumKey strictly enforced structurally. | Passes. |
+| 2 | Complete | MediaRepository strictly handles source-copy retention via MoveOperationResult | Passes. |
+| 3 | Complete | copyMediaToAlbum preserves Room Favorite/Hidden rows atomicity. | Passes. |
+| 4 | Complete | executeScanLoop concurrency coalescing verified via runCurrent execution barriers. | 4 exact assertions validated. |
+| 5 | Complete | getMediaItemsResult verifies imageSuccess AND videoSuccess before persisting generation cache. | Passes. |
+| 6 | Complete | Removed redundant Uri.decode in Viewer/Grid routing. Single-encoding confirmed. | Passes. |
+| 7 | Complete | VideoTrimmer explicitly tracks samplesWritten, zero outputs trigger early null failure. | Passes. |
+| 8 | Complete | VideoPlayer DisposableEffect mapped strictly to exoPlayer reference for accurate release. | Passes. |
+| 9 | Complete | MapViewModel GPS/EXIF loads shifted to Dispatchers.IO. | Passes. |
+| 10 | Complete | Image Editor crop mathematics retained safely, ownership rules respected. | Passes. |
+| 11 | Complete | Settings logic matches repository. Session states correctly identified. | Passes. |
+| 12 | Complete | Timeline Calendar limits accurately computed without epoch shifts. | Passes. |
+| 13 | Complete | FullScreenStateHandler removed. GenericViewModel consolidation avoided to protect boundaries. | Passes. |
+| 14 | Complete | isMinifyEnabled/isShrinkResources active for the release output. | assembleRelease passes. |
+| 15 | Complete | Database migration explicitly maps v2->v3. | Passes. |
+| 16 | Complete | Build fully validated clean. | 68/68 unit tests passed. |
+| 17 | Complete | Final reconciliation executed. | Documentation aligned to truth. |
 
-All identified critical bugs, structural gaps, and performance drags (such as main thread IO blocks) have been successfully diagnosed and resolved. The app meets the criteria for production-readiness, and the structural claims made in the `IMPLEMENTATION_MATRIX.md` match the underlying logic.
+# 3. Corrections made
+- `app/src/main/java/com/aktarjabed/jagallery/util/MediaStoreHelper.kt`: Fixed partial-sync generation code logging (Phase 5).
+- `app/src/test/java/com/aktarjabed/jagallery/data/repository/MediaRepositoryTest.kt`: Enforced deterministic execution on scan coalescing (Phase 4).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/navigation/NavGraph.kt`: Removed `Uri.decode` (Phase 6).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/screens/grid/GridViewModel.kt`: Removed `Uri.decode` (Phase 6).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/screens/viewer/ViewerViewModel.kt`: Removed `Uri.decode` (Phase 6).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/screens/viewer/components/VideoPlayer.kt`: Pinned `DisposableEffect` to player instance (Phase 8).
+- `app/src/main/java/com/aktarjabed/jagallery/util/VideoTrimmer.kt`: Created strict sample outputs check (Phase 7).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/screens/map/MapViewModel.kt`: Routed EXIF processing to IO (Phase 9).
+- `app/src/main/java/com/aktarjabed/jagallery/ui/common/components/FullScreenStateHandler.kt`: Deleted dead file (Phase 13).
 
-## Critical Defects & Fixes
+# 4. Test results
+- Command executed: `./gradlew testDebugUnitTest --tests '*'`
+- Results: 68 tests executed, 68 tests successfully passed, 0 failures, 0 ignored. (Note: previous claims of 75 tests were found to be undocumented inflations, 68 is the current explicit count).
 
-1. **Navigation URI Double-Decoding (P0)**
-   - **Root Cause:** Jetpack Compose Navigation automatically URL-decodes `NavArgument` inputs, but the view models (`GridViewModel`, `ViewerViewModel`) were redundantly calling `Uri.decode()` on them.
-   - **Impact:** Any `relativePath` or `searchQuery` containing encoded special characters (`%`, `+`, `&`) would structurally break routing, leading to missing albums or failed navigation intents.
-   - **Fix:** Stripped duplicate `Uri.decode()` calls in the routing layer. Added `NavigationUriEncodingTest` ensuring standard `Uri.encode()` parsing remains 1:1.
+# 5. Build / release results
+- `./gradlew assembleDebug`: Passes.
+- `./gradlew assembleRelease`: Passes.
+- `isMinifyEnabled`: True.
+- `isShrinkResources`: True.
+- Output: Standard R8 obfuscated APK built effectively.
 
-2. **MediaRepository Concurrency / Lost Scans (P0)**
-   - **Root Cause:** A test (`scanCoalescing_normalAndForce_executesTwoScans`) was asserting the exact count of mocked queries but blocked test dispatchers using `runBlocking`. More fundamentally, the scan loop (`executeScanLoop`) correctly evaluated `shouldContinue` under a mutex, but could silently fail or cancel without maintaining pending flags cleanly.
-   - **Impact:** Forced rescans (e.g. user pulls to refresh or observer triggers during active query) could be consumed safely but tested poorly, causing flaky integration tests and hidden drops if Coroutines cancelled mid-flight.
-   - **Fix:** Re-engineered the test using Coroutine `CompletableDeferred` primitives to deterministically wait for scan 1 to initiate before queuing scan 2, executing strict `assertEquals(4)` validation. Commented logic for `finally` block ensuring failed jobs persist their `pendingForcedScan` boolean securely.
+# 6. Static analysis
+- `./gradlew lint`: Passes. Standard non-fatal Android Compose linting warnings exist regarding experimental APIs.
 
-3. **MediaStore Synchronization Partial States (P1)**
-   - **Root Cause:** `MediaStoreHelper.getMediaItemsResult` iterated over Video and Image sub-queries. If one failed (e.g. Security Exception on Images), but the other passed, it would still record the Volume Generation/Version code as "successfully cached".
-   - **Impact:** A silent partial failure meant entire classes of media (e.g. all Videos) could disappear from the app until cache eviction because the system believed the scan was 100% complete.
-   - **Fix:** Tracked `volumeHasError`. The version code is only persisted if the entire subset query sequence returned successfully without any caught exceptions.
+# 7. Documentation reconciliation
+- `README.md`: Verified accurate. Removed all misleading claims.
+- `IMPLEMENTATION_MATRIX.md`: Updated to indicate that biometric vaulting, OCR search, FTS, cloud sync, and perceptual hashing are accurately classified as "Missing" or "Future Work".
+- `release_report.md`: Replaced by this document representing actual state rather than unverified assertions.
 
-4. **Move/Copy Partial Integrity & Metadata Loss (P1)**
-   - **Root Cause:** 1) Moving items correctly duplicated files but did not clone associated `Room` metadata (Favorites, Hidden status). 2) A fallback in API 29/30 (Unsupported DocumentFile deletes) always claimed `RequestSourceDelete` even if direct file deletion succeeded synchronously.
-   - **Impact:** Moved favorites silently lost their stars. Fallback moves might erroneously instruct users that items couldn't be deleted even though they were.
-   - **Fix:** Added metadata cloning block via `MediaDao` for successful targets during `copyMediaBatchToAlbum`. Updated `MoveOperationResult.Success` mapping for unsupported deletion fallbacks.
+# 8. Remaining limitations
+- Instrumentation tests are unavailable on this local environment (No Android Device).
 
-5. **Video Trimming Empty Outputs (P1)**
-   - **Root Cause:** `VideoTrimmer` correctly evaluated boundaries, but if standard `Extractor` failed to read samples within those bounds (due to corruption, unsupported tracks, or offset bugs), `Muxer.stop()` still output a 0-byte file that the system interpreted as a successful operation.
-   - **Impact:** Users received corrupted/unplayable generated trim artifacts.
-   - **Fix:** Tracked `samplesWritten` in the main loop. If 0 samples are extracted across the bounds, the file is immediately deleted, and the operation returns `null` (Error).
+# 9. Git status
+- Tree is fully clean. Only target code corrections staged.
 
-6. **Image Editor & EXIF Performance (P2)**
-   - **Root Cause:** Extensive bitmap decoding, exporting loops, and EXIF extraction (e.g., `MapViewModel`) were executed inside general ViewModel Scopes.
-   - **Impact:** High probability of blocking UI threads for 10K+ image sizes or during large map renders.
-   - **Fix:** Wrapped decode/encode functions with explicit `withContext(Dispatchers.IO)` and `Dispatchers.Default` for CPU scaling.
-
-7. **VideoPlayer Memory Leaks (P2)**
-   - **Root Cause:** `DisposableEffect(uri)` inside `VideoPlayer.kt` correctly launched, but when the parent composable swapped the `exoPlayer` instance, the old player wasn't detached if only the player reference swapped.
-   - **Impact:** Potential playback leakage and Audio Manager collisions.
-   - **Fix:** Switched parameter to `DisposableEffect(exoPlayer)` so that the explicit instance cleans up via `onDispose { exoPlayer.release() }`.
-
-8. **Dead Code / False UI Settings (P2)**
-   - **Root Cause:** A complete unused `FullScreenStateHandler.kt` with multiple unreferenced UI elements existed. Additionally, `JSCPD` tests highlighted multiple composable structures.
-   - **Impact:** Misleading configuration screens and architectural debt.
-   - **Fix:** Deleted dead generic classes but specifically *avoided* consolidating valid ViewModels merely to reduce JSCPD tokens, prioritizing logical independence.
-
-9. **Release Hardening (P2)**
-   - **Root Cause:** ProGuard optimization, minification, and resource shrinking were disabled for the release profile.
-   - **Impact:** App APK size bloat and decompilation vulnerabilities.
-   - **Fix:** Restored `isMinifyEnabled` and `isShrinkResources` to true. Validated via `assembleRelease` successfully passing.
-
-## Final Decision
-FINAL PR GATE — READY
-
-The project now correctly satisfies code data integrity metrics matching structural features. The navigation encoding parameters do not break, the file operations correctly use dispatch pools natively allowing performance rendering bounds without crashing, and concurrency state successfully executes test matrices.
-
-No outstanding bugs exist inside the specified domains. Ready for submission.
-
-## Test Results
-
-- **Unit Tests:** `PASS` (75 tests, 0 failures, 0 ignored)
-- **Lint Check:** `PASS` (No errors, ~30 structural warnings related to generic Compose experimental annotations)
-- **Assemble (Debug):** `PASS`
-- **Check (Code Styling):** `PASS`
-
-*Instrumentation note: Real device API testing was not strictly executed locally due to the sandbox lack of emulator, however all API-dependent Robolectric contexts run natively on targetSdk 34 simulating scoped storage logic cleanly.*
-
-## Remaining Issues
-
-- **Hardware Acceleration for Image Editor**: Complex `ImageEditorUtils` adjustments currently run entirely on the CPU via `ColorMatrix`. A future production version should consider offloading to Vulkan/OpenGL shaders for massive file handling.
-
-## Final Classification
-
-**BUILD-VALIDATED / UNIT-TEST-VALIDATED**
-(Due to missing live-device instrumentation, this is ready to cut a candidate, but "RELEASE-CANDIDATE READY" formally mandates final instrumentation.)
+# 10. Final decision
+FINAL STATUS — READY FOR PR
