@@ -103,8 +103,9 @@ fun MediaSelectionHandler(
         if (succeededCount > 0) {
             android.widget.Toast.makeText(
                 context,
-                context.getString(
-                    com.aktarjabed.jagallery.R.string.batch_partially_processed,
+                context.resources.getQuantityString(
+                    com.aktarjabed.jagallery.R.plurals.batch_partially_processed,
+                    totalCount,
                     succeededCount,
                     totalCount
                 ),

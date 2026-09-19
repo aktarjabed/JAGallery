@@ -164,7 +164,10 @@
     </plurals>
 
     <!-- Batch processing -->
-    <string name="batch_partially_processed">%1$d of %2$d items processed</string>
+    <plurals name="batch_partially_processed">
+        <item quantity="one">%1$d of %2$d item processed</item>
+        <item quantity="other">%1$d of %2$d items processed</item>
+    </plurals>
     <!-- Timeline Labels -->
     <string name="timeline_today">Today</string>
     <string name="timeline_yesterday">Yesterday</string>

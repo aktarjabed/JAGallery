@@ -22,6 +22,7 @@ import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.domain.MoveOperationResult
 import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
 import androidx.compose.material.icons.automirrored.filled.Sort
+import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 import com.aktarjabed.jagallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
@@ -40,15 +41,7 @@ fun GridScreen(
         viewModel.setSource(source)
     }
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
+    OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
     val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()

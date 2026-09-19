@@ -38,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaSource
+import com.aktarjabed.jagallery.ui.common.components.RenameDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,31 +212,14 @@ fun AlbumsScreen(
 
     if (albumToRename != null) {
         val album = albumToRename ?: return@AlbumsScreen
-        var newName by remember(album) { mutableStateOf(album.name) }
-        AlertDialog(
+        RenameDialog(
+            initialName = album.name,
+            title = stringResource(R.string.rename_album),
             onDismissRequest = { albumToRename = null },
-            title = { Text(stringResource(R.string.rename_album)) },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text(stringResource(R.string.new_name)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == album.key } ?: emptyList()
-                    viewModel.renameAlbum(context, album, newName, items)
-                    albumToRename = null
-                }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { albumToRename = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
+            onConfirm = { newName ->
+                val items = (uiState as? AlbumsUiState.Success)?.rawItems?.filter { it.albumKey == album.key } ?: emptyList()
+                viewModel.renameAlbum(context, album, newName, items)
+                albumToRename = null
             }
         )
     }

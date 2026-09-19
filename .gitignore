@@ -18,3 +18,4 @@ app/build/
 *.sh
 *.orig
 *.rej
+node_modules
