@@ -33,23 +33,11 @@ fun InteractiveCropOverlay(
 
             detectDragGestures(
                 onDragStart = { offset ->
-                    val width = size.width
-                    val height = size.height
-
-                    val scaleX = width / imageWidth
-                    val scaleY = height / imageHeight
-                    val scale = min(scaleX, scaleY)
-
-                    val scaledImageWidth = imageWidth * scale
-                    val scaledImageHeight = imageHeight * scale
-
-                    val xOffset = (width - scaledImageWidth) / 2f
-                    val yOffset = (height - scaledImageHeight) / 2f
-
-                    val left = xOffset + cropRect.left * scaledImageWidth
-                    val top = yOffset + cropRect.top * scaledImageHeight
-                    val right = xOffset + cropRect.right * scaledImageWidth
-                    val bottom = yOffset + cropRect.bottom * scaledImageHeight
+                    val rect = calculateScaledImageDimensions(size, imageWidth, imageHeight, cropRect)
+                    val left = rect.left
+                    val top = rect.top
+                    val right = rect.right
+                    val bottom = rect.bottom
 
                     // Simple heuristic: which corner is closest
                     val distTL = Offset(left, top).getDistanceSquared(offset)
@@ -122,21 +110,11 @@ fun InteractiveCropOverlay(
     ) {
         val width = size.width
         val height = size.height
-
-        val scaleX = width / imageWidth
-        val scaleY = height / imageHeight
-        val scale = min(scaleX, scaleY)
-
-        val scaledImageWidth = imageWidth * scale
-        val scaledImageHeight = imageHeight * scale
-
-        val xOffset = (width - scaledImageWidth) / 2f
-        val yOffset = (height - scaledImageHeight) / 2f
-
-        val left = xOffset + cropRect.left * scaledImageWidth
-        val top = yOffset + cropRect.top * scaledImageHeight
-        val right = xOffset + cropRect.right * scaledImageWidth
-        val bottom = yOffset + cropRect.bottom * scaledImageHeight
+        val rect = calculateScaledImageDimensions(size, imageWidth, imageHeight, cropRect)
+        val left = rect.left
+        val top = rect.top
+        val right = rect.right
+        val bottom = rect.bottom
 
         // Draw dimmed background
         drawRect(Color.Black.copy(alpha = 0.5f), size = Size(width, top)) // Top
@@ -183,4 +161,31 @@ private fun Offset.getDistanceSquared(other: Offset): Float {
     val dx = this.x - other.x
     val dy = this.y - other.y
     return dx * dx + dy * dy
+}
+
+private fun calculateScaledImageDimensions(width: Float, height: Float, imageWidth: Float, imageHeight: Float, cropRect: RectF): RectF {
+    val scaleX = width / imageWidth
+    val scaleY = height / imageHeight
+    val scale = min(scaleX, scaleY)
+
+    val scaledImageWidth = imageWidth * scale
+    val scaledImageHeight = imageHeight * scale
+
+    val xOffset = (width - scaledImageWidth) / 2f
+    val yOffset = (height - scaledImageHeight) / 2f
+
+    val left = xOffset + cropRect.left * scaledImageWidth
+    val top = yOffset + cropRect.top * scaledImageHeight
+    val right = xOffset + cropRect.right * scaledImageWidth
+    val bottom = yOffset + cropRect.bottom * scaledImageHeight
+
+    return RectF(left, top, right, bottom)
+}
+
+private fun calculateScaledImageDimensions(size: androidx.compose.ui.unit.IntSize, imageWidth: Float, imageHeight: Float, cropRect: RectF): RectF {
+    return calculateScaledImageDimensions(size.width.toFloat(), size.height.toFloat(), imageWidth, imageHeight, cropRect)
+}
+
+private fun calculateScaledImageDimensions(size: Size, imageWidth: Float, imageHeight: Float, cropRect: RectF): RectF {
+    return calculateScaledImageDimensions(size.width, size.height, imageWidth, imageHeight, cropRect)
 }

@@ -39,6 +39,7 @@ import com.aktarjabed.jagallery.ui.common.selection.shareMediaItems
 import com.aktarjabed.jagallery.ui.screens.viewer.components.ImageViewer
 import com.aktarjabed.jagallery.ui.screens.viewer.components.VideoPlayer
 import com.aktarjabed.jagallery.ui.common.components.MetadataBottomSheet
+import com.aktarjabed.jagallery.ui.common.components.RenameDialog
 import androidx.compose.material.icons.filled.MoreVert
 import com.aktarjabed.jagallery.util.FileUtils
 import kotlinx.coroutines.launch
@@ -420,45 +421,28 @@ fun ViewerScreen(
     }
 
     if (showRenameDialog) {
-        var newName by remember { mutableStateOf(currentItem.name) }
-        AlertDialog(
+        RenameDialog(
+            initialName = currentItem.name,
+            title = stringResource(R.string.rename_media),
             onDismissRequest = { showRenameDialog = false },
-            title = { Text(stringResource(R.string.rename_media)) },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text(stringResource(R.string.new_name)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (newName.isNotBlank()) {
-                        coroutineScope.launch {
-                            when (val result = viewModel.renameMedia(context, currentItem, newName.trim())) {
-                                is com.aktarjabed.jagallery.domain.RenameOperationResult.Success -> {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rename_success), android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                                is com.aktarjabed.jagallery.domain.RenameOperationResult.NeedsPermission -> {
-                                    pendingRename = result
-                                    renamePermissionLauncher.launch(IntentSenderRequest.Builder(result.pendingIntent.intentSender).build())
-                                }
-                                is com.aktarjabed.jagallery.domain.RenameOperationResult.Error -> {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rename_failed), android.widget.Toast.LENGTH_SHORT).show()
-                                }
+            onConfirm = { newName ->
+                if (newName.isNotBlank()) {
+                    coroutineScope.launch {
+                        when (val result = viewModel.renameMedia(context, currentItem, newName.trim())) {
+                            is com.aktarjabed.jagallery.domain.RenameOperationResult.Success -> {
+                                android.widget.Toast.makeText(context, context.getString(R.string.rename_success), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            is com.aktarjabed.jagallery.domain.RenameOperationResult.NeedsPermission -> {
+                                pendingRename = result
+                                renamePermissionLauncher.launch(IntentSenderRequest.Builder(result.pendingIntent.intentSender).build())
+                            }
+                            is com.aktarjabed.jagallery.domain.RenameOperationResult.Error -> {
+                                android.widget.Toast.makeText(context, context.getString(R.string.rename_failed), android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
-                    showRenameDialog = false
-                }) {
-                    Text(stringResource(R.string.ok))
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                showRenameDialog = false
             }
         )
     }

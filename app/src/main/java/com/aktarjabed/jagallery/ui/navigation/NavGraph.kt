@@ -215,6 +215,7 @@ fun NavGraph() {
                 )
             }
         }
+        @android.annotation.SuppressLint("UseKtx")
         composable(
             route = Screen.Editor.route,
             arguments = listOf(

@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
+import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,14 +38,7 @@ fun TrashScreen(
         viewModel.loadTrashedMedia(context)
     }
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val loadResult by viewModel.trashedMediaLoadResult.collectAsStateWithLifecycle()
     val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
@@ -65,12 +59,14 @@ fun TrashScreen(
                     viewModel.refreshAll(context)
                 }
                 if (result.cancelled && result.succeededIds.isNotEmpty()) {
+                    val total = pendingEmptyTrashBatch?.count ?: 0
                     Toast.makeText(
                         context,
-                        context.getString(
-                            R.string.batch_partially_processed,
+                        context.resources.getQuantityString(
+                            R.plurals.batch_partially_processed,
+                            total,
                             result.succeededIds.size,
-                            pendingEmptyTrashBatch?.count ?: 0
+                            total
                         ),
                         Toast.LENGTH_SHORT
                     ).show()

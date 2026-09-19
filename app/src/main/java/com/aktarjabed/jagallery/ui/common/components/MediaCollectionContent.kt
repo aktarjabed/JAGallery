@@ -27,12 +27,12 @@ fun MediaCollectionContent(
     emptyMessage: String,
     topBar: @Composable () -> Unit,
     onItemClick: (MediaItem) -> Unit,
+    modifier: Modifier = Modifier,
     onHideSelected: ((List<MediaItem>) -> Unit)? = null,
     onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
     onMoveSelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
-    onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null
 ) {
     val selectionState = rememberSelectionState()
     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
