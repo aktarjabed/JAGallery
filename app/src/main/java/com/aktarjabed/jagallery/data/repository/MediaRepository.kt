@@ -120,20 +120,18 @@ class MediaRepository @Inject constructor(
             } else {
                 if (force && (currentTime - lastRescanTimeMs < RESCAN_THROTTLE_MS)) {
                     // Throttle fast sequential jobs by firing a delayed job to catch up
-                    lateinit var delayedJob: Deferred<Unit>
-                    delayedJob = repositoryScope.async {
+                    val delayedJob = repositoryScope.async {
                         kotlinx.coroutines.delay(RESCAN_THROTTLE_MS - (currentTime - lastRescanTimeMs))
-                        executeScanLoop(delayedJob, initialForce = force, initialContext = context)
+                        executeScanLoop(null, initialForce = force, initialContext = context)
                     }
                     activeScanJob = delayedJob
                     delayedJob
                 } else {
-                    lateinit var newJob: Deferred<Unit>
-                    newJob = repositoryScope.async {
-                        executeScanLoop(newJob, initialForce = force, initialContext = context)
+                    val actualJob = repositoryScope.async {
+                        executeScanLoop(null, initialForce = force, initialContext = context)
                     }
-                    activeScanJob = newJob
-                    newJob
+                    activeScanJob = actualJob
+                    actualJob
                 }
             }
         }
