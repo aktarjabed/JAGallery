@@ -192,20 +192,11 @@ class MediaOperationsImpl @Inject constructor(
 
         // Derive the new path from the source album's relative path
         val sourcePath = sourceAlbum.key.relativePath
-        val parentPath = if (sourcePath.endsWith("/")) {
-            val parts = sourcePath.trimEnd('/').split("/")
-            if (parts.size > 1) {
-                parts.dropLast(1).joinToString("/") + "/"
-            } else {
-                "" // root level
-            }
+        val parts = sourcePath.trimEnd('/').split("/")
+        val parentPath = if (parts.size > 1) {
+            parts.dropLast(1).joinToString("/") + "/"
         } else {
-            val parts = sourcePath.split("/")
-            if (parts.size > 1) {
-                parts.dropLast(1).joinToString("/") + "/"
-            } else {
-                "" // root level
-            }
+            "" // root level
         }
         val newRelativePath = "$parentPath$newName/"
 
