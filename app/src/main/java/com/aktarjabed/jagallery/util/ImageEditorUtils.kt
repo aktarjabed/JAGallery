@@ -409,28 +409,8 @@ object ImageEditorUtils {
                 }
             }
             throw e
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to save edited image", e)
-            if (newUri != null) {
-                try {
-                    resolver.delete(newUri, null, null)
-                } catch (delEx: Exception) {
-                    // ignore
-                }
-            }
-            null
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException saving edited image", e)
-            if (newUri != null) {
-                try {
-                    resolver.delete(newUri, null, null)
-                } catch (delEx: Exception) {
-                    // ignore
-                }
-            }
-            null
-        } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "IllegalArgumentException saving edited image", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception saving edited image", e)
             if (newUri != null) {
                 try {
                     resolver.delete(newUri, null, null)
@@ -473,14 +453,12 @@ object ImageEditorUtils {
                 destExif.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
                 destExif.saveAttributes()
             }
-        } catch (e: IOException) {
-            Log.w(TAG, "Failed to copy EXIF attributes due to IOException", e)
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Failed to copy EXIF attributes due to SecurityException", e)
-        } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "Failed to copy EXIF attributes due to IllegalArgumentException", e)
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "Failed to copy EXIF attributes due to IllegalStateException", e)
+        } catch (e: Exception) {
+            if (e is IOException || e is SecurityException || e is IllegalArgumentException || e is IllegalStateException) {
+                Log.w(TAG, "Failed to copy EXIF attributes", e)
+            } else {
+                throw e
+            }
         }
     }
 

@@ -291,6 +291,11 @@ fun ViewerScreen(
     if (showWallpaperDialog && !currentItem.isVideo) {
         val setWallpaperAction = { flag: Int? ->
             showWallpaperDialog = false
+            val showErrorToast = suspend {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
             coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     context.contentResolver.openInputStream(currentItem.uri)?.use { stream ->
@@ -304,14 +309,10 @@ fun ViewerScreen(
                             android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_success), android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } ?: run {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                        }
+                        showErrorToast()
                     }
                 } catch (e: Exception) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.wallpaper_failed), android.widget.Toast.LENGTH_SHORT).show()
-                    }
+                    showErrorToast()
                 }
             }
         }
