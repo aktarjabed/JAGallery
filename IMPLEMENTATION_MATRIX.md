@@ -1,5 +1,26 @@
 # Implementation Matrix
 
+## Phase 13 - Dead Code & Duplication
+
+Status: COMPLETE
+
+Genuine duplicate logic was consolidated where semantic reuse was appropriate.
+Shared RenameDialog, BatchOperationObserver handling, Toast handling, and
+image-editor utility/math logic were standardized across applicable screens.
+
+Wildcard imports used solely to influence JSCPD metrics were reverted.
+
+Remaining JSCPD matches are primarily intentional Compose/UI structural
+repetition and are not considered defects requiring further abstraction.
+
+Validation completed successfully:
+- Debug unit tests (115 actionable tasks: 114 executed, 1 up-to-date)
+- lintDebug (No issues found)
+- assembleDebug (BUILD SUCCESSFUL)
+- assembleRelease (BUILD SUCCESSFUL)
+- diff --check (No errors)
+
+
 ## Core Gallery
 
 | Feature | Status | Actual Implementation | Remaining Work |
