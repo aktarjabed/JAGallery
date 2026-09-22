@@ -32,7 +32,8 @@ fun MediaCollectionContent(
     onUnhideSelected: ((List<MediaItem>) -> Unit)? = null,
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
     onMoveSelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
-    onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null
+    onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
+    onMoveToVaultSelected: ((List<MediaItem>) -> Unit)? = null
 ) {
     val selectionState = rememberSelectionState()
     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
@@ -50,6 +51,7 @@ fun MediaCollectionContent(
                 onRestoreSelected = onRestoreSelected,
                 onMoveSelected = onMoveSelected,
                 onCopySelected = onCopySelected,
+                onMoveToVaultSelected = onMoveToVaultSelected,
                 topBarContent = topBar
             )
         },

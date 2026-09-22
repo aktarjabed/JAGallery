@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
@@ -31,7 +32,8 @@ fun SelectionToolbar(
     onUnhideSelected: (() -> Unit)? = null,
     onRestoreSelected: (() -> Unit)? = null,
     onMoveSelected: (() -> Unit)? = null,
-    onCopySelected: (() -> Unit)? = null
+    onCopySelected: (() -> Unit)? = null,
+    onMoveToVaultSelected: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text("$selectedCount ${stringResource(R.string.selected)}") },
@@ -64,6 +66,11 @@ fun SelectionToolbar(
             if (onMoveSelected != null) {
                 IconButton(onClick = onMoveSelected) {
                     Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = stringResource(R.string.move_to_album))
+                }
+            }
+            if (onMoveToVaultSelected != null) {
+                IconButton(onClick = onMoveToVaultSelected) {
+                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Move to Vault")
                 }
             }
             if (onShareSelected != null) {

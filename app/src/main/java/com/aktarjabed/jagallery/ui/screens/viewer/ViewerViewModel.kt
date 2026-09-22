@@ -50,10 +50,10 @@ class ViewerViewModel @Inject constructor(
     }
 
     private val sourceStr: String? = savedStateHandle.get<String>("source")
-    private val volumeName: String? = savedStateHandle.get<String>("volumeName")?.let { android.net.Uri.decode(it) }
+    private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
-    private val relativePath: String? = savedStateHandle.get<String>("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
-    private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")?.let { android.net.Uri.decode(it) }
+    private val relativePath: String? = savedStateHandle.get<String>("relativePath") ?: ""
+    private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")
 
     val initialSource: MediaSource? = parseMediaSource(sourceStr, volumeName, bucketId, relativePath, searchQuery)
 
@@ -66,10 +66,10 @@ class ViewerViewModel @Inject constructor(
     private var lastValidIndex: Int = 0
 
     val currentMediaId: String?
-        get() = savedStateHandle.get<String>("mediaId")?.let { android.net.Uri.decode(it) }
+        get() = savedStateHandle.get<String>("mediaId")
 
     fun setCurrentMediaId(mediaId: String) {
-        savedStateHandle["mediaId"] = android.net.Uri.encode(mediaId)
+        savedStateHandle["mediaId"] = mediaId
     }
 
     val state: StateFlow<ViewerState> = combine(

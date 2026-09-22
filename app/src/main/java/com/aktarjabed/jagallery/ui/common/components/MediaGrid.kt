@@ -64,7 +64,7 @@ fun MediaGrid(
         }
     } else {
         // Observe current date to recalculate if day changes while app is open
-        val currentDayKey = remember(System.currentTimeMillis() / 86400000) {
+        val currentDayKey = remember {
             val now = Calendar.getInstance()
             "${now.get(Calendar.YEAR)}-${now.get(Calendar.DAY_OF_YEAR)}"
         }

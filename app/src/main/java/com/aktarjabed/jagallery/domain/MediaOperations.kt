@@ -44,11 +44,14 @@ interface MediaOperations {
     suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
     suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): RenameOperationResult
     suspend fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newName: String, items: List<MediaItem>): MoveOperationResult
+    suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult
+    suspend fun restoreFromVault(context: android.content.Context, items: List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
 }
 
 @Singleton
 class MediaOperationsImpl @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    private val vaultRepository: com.aktarjabed.jagallery.data.repository.VaultRepository
 ) : MediaOperations {
 
     private suspend fun <T> runOperation(block: suspend () -> T): OperationResult<T> {
@@ -114,39 +117,7 @@ class MediaOperationsImpl @Inject constructor(
             if (successfulCopies.isEmpty()) {
                 return MoveOperationResult.Error("All items failed to copy")
             }
-
-            val sourceUris = successfulCopies.map { it.first.uri }
-            when (val creationResult = com.aktarjabed.jagallery.util.FileUtils.createDeleteRequests(context.contentResolver, sourceUris)) {
-                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Success -> {
-                    if (creationResult.chunks.isNotEmpty()) {
-                        MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, creationResult.chunks)
-                    } else {
-                        MoveOperationResult.CopiedSourceRetained(successfulCopies)
-                    }
-                }
-                is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Unsupported -> {
-                    // Try to direct delete each file, keep track of which succeed so we only pass those back to the UI
-                    val effectivelyDeletedUris = mutableListOf<android.net.Uri>()
-                    val successfullyMovedItems = mutableListOf<Pair<MediaItem, android.net.Uri>>()
-
-                    for ((item, newUri) in successfulCopies) {
-                        val result = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(item.uri))
-                        if (result.isFullySuccessful) {
-                            effectivelyDeletedUris.add(item.uri)
-                            successfullyMovedItems.add(Pair(item, newUri))
-                        }
-                    }
-
-                    if (successfullyMovedItems.isNotEmpty()) {
-                        MoveOperationResult.RequestSourceDelete(successfullyMovedItems, failedItems, emptyList())
-                    } else {
-                        MoveOperationResult.CopiedSourceRetained(successfulCopies)
-                    }
-                }
-                else -> {
-                    MoveOperationResult.CopiedSourceRetained(successfulCopies)
-                }
-            }
+            executeSourceDeleteRequest(context, successfulCopies, failedItems.toMutableList())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -202,5 +173,110 @@ class MediaOperationsImpl @Inject constructor(
 
         val destination = com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum(newName, sourceAlbum.volumeName, newRelativePath)
         return moveMediaBatch(context, items, destination)
+    }
+
+    override suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult {
+        return try {
+            val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+            val failedItems = mutableListOf<MediaItem>()
+
+            for (item in items) {
+                try {
+                    val entity = vaultRepository.moveToVault(item.uri, item.mimeType, item.name)
+                    // We don't have a new MediaStore URI for it, just represent the original item for deletion logic
+                    successfulCopies.add(Pair(item, android.net.Uri.parse(entity.originalUriStr)))
+                } catch (e: Exception) {
+                    failedItems.add(item)
+                }
+            }
+
+            if (successfulCopies.isEmpty()) {
+                return MoveOperationResult.Error("All items failed to move to vault")
+            }
+            executeSourceDeleteRequest(context, successfulCopies, failedItems)
+        } catch (e: Exception) {
+            MoveOperationResult.Error("Move to vault failed", e)
+        }
+    }
+
+    private fun executeSourceDeleteRequest(
+        context: android.content.Context,
+        successfulCopies: List<Pair<MediaItem, android.net.Uri>>,
+        failedItems: MutableList<MediaItem>
+    ): MoveOperationResult {
+        val sourceUris = successfulCopies.map { it.first.uri }
+        return when (val creationResult = com.aktarjabed.jagallery.util.FileUtils.createDeleteRequests(context.contentResolver, sourceUris)) {
+            is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Success -> {
+                if (creationResult.chunks.isNotEmpty()) {
+                    MoveOperationResult.RequestSourceDelete(successfulCopies, failedItems, creationResult.chunks)
+                } else {
+                    MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                }
+            }
+            is com.aktarjabed.jagallery.util.FileUtils.RequestCreationResult.Unsupported -> {
+                val successfullyMovedItems = mutableListOf<Pair<MediaItem, android.net.Uri>>()
+                for ((item, newUri) in successfulCopies) {
+                    val result = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(item.uri))
+                    if (result.isFullySuccessful) {
+                        successfullyMovedItems.add(Pair(item, newUri))
+                    }
+                }
+                if (successfullyMovedItems.isNotEmpty()) {
+                    MoveOperationResult.RequestSourceDelete(successfullyMovedItems, failedItems, emptyList())
+                } else {
+                    MoveOperationResult.CopiedSourceRetained(successfulCopies)
+                }
+            }
+            else -> MoveOperationResult.CopiedSourceRetained(successfulCopies)
+        }
+    }
+
+    private fun createMockItemForEntity(entity: com.aktarjabed.jagallery.data.local.VaultMediaEntity): MediaItem {
+        return MediaItem(
+            uri = android.net.Uri.parse(entity.originalUriStr), mediaStoreId = -1L, name = entity.originalName,
+            dateAdded = entity.dateAdded, mimeType = entity.mimeType, bucketId = -1L, bucketName = "",
+            relativePath = "", isVideo = entity.mimeType.startsWith("video/"), volumeName = "",
+            size = 0L, isFavorite = false, isTrashed = false, dateTrashed = 0L
+        )
+    }
+
+    override suspend fun restoreFromVault(context: android.content.Context, items: List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult {
+        val successfulRestores = mutableListOf<Pair<MediaItem, android.net.Uri>>() // Dummy MediaItem mapping not used by UI yet
+        val failedItems = mutableListOf<MediaItem>() // using dummy mappings to fit the type signature
+
+        for (entity in items) {
+            try {
+                // 1. Decrypt to temporary cache
+                val tempFile = vaultRepository.decryptToTemp(entity)
+
+                // 2. Insert pending MediaStore destination
+                val newUri = com.aktarjabed.jagallery.util.FileUtils.copyFileToMediaStore(
+                    context,
+                    android.net.Uri.fromFile(tempFile),
+                    destination,
+                    entity.originalName,
+                    entity.mimeType
+                )
+
+                if (newUri != null) {
+                    // 3. Successfully wrote to MediaStore, we can safely delete Vault source
+                    vaultRepository.deleteVaultItem(entity)
+                    // We construct a mock MediaItem because the MoveOperationResult interface expects it
+                    val mockItem = createMockItemForEntity(entity)
+                    successfulRestores.add(Pair(mockItem, newUri))
+                } else {
+                    throw IllegalStateException("Failed to insert into MediaStore")
+                }
+            } catch (e: Exception) {
+                // Dummy failure construction
+                failedItems.add(createMockItemForEntity(entity))
+            }
+        }
+
+        if (successfulRestores.isEmpty() && items.isNotEmpty()) {
+            return MoveOperationResult.Error("All items failed to restore from vault")
+        }
+
+        return MoveOperationResult.Success(successfulRestores)
     }
 }

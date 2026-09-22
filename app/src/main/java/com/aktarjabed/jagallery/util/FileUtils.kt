@@ -178,6 +178,67 @@ object FileUtils {
         }
     }
 
+    suspend fun copyFileToMediaStore(
+        context: android.content.Context,
+        sourceUri: Uri,
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination,
+        originalName: String,
+        mimeType: String
+    ): Uri? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val isVideo = mimeType.startsWith("video/")
+        val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            when (destination) {
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                    if (destination.relativePath.isNotEmpty()) destination.relativePath
+                    else if (isVideo) "Movies/${destination.name}/" else "Pictures/${destination.name}/"
+                }
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.key.relativePath
+            }
+        } else ""
+
+        val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            when (destination) {
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                    if (destination.volumeName.isNotEmpty()) destination.volumeName else android.provider.MediaStore.VOLUME_EXTERNAL
+                }
+                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
+            }
+        } else android.provider.MediaStore.VOLUME_EXTERNAL
+
+        val collection = if (isVideo) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Video.Media.getContentUri(volumeName) else android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        } else {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Images.Media.getContentUri(volumeName) else android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val contentValues = android.content.ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, originalName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+            }
+        }
+
+        var newUri: Uri? = null
+        try {
+            newUri = insertPendingMediaEntry(resolver, collection, contentValues) ?: return@withContext null
+            val success = copyMediaFile(resolver, sourceUri, newUri)
+
+            if (success && publishPendingEntry(resolver, newUri, contentValues)) {
+                newUri
+            } else {
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                null
+            }
+        } catch (e: Exception) {
+            if (newUri != null) {
+                try { resolver.delete(newUri, null, null) } catch (delEx: Exception) {}
+            }
+            null
+        }
+    }
+
     fun insertPendingMediaEntry(
         contentResolver: ContentResolver,
         collection: Uri,

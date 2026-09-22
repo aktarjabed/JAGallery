@@ -34,7 +34,8 @@ class GridViewModelTest {
     fun setUp() {
         fakeDao = FakeMediaDao()
         repository = MediaRepository(contentResolver, fakeDao, mainDispatcherRule.testDispatcher)
-        mediaOperations = MediaOperationsImpl(repository)
+        val vaultRepository = mock(com.aktarjabed.jagallery.data.repository.VaultRepository::class.java)
+        mediaOperations = MediaOperationsImpl(repository, vaultRepository)
     }
 
     @Test

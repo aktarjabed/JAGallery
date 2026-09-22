@@ -20,6 +20,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var repository: MediaRepository
 
+    @Inject
+    lateinit var vaultSessionManager: com.aktarjabed.jagallery.domain.VaultSessionManager
+
     private var observerManager: MediaStoreObserverManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,7 +34,7 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             onMediaStoreChanged = {
                 lifecycleScope.launch {
-                    repository.loadMedia(force = true, context = this@MainActivity)
+                    repository.loadMedia(force = true, context = applicationContext)
                 }
             }
         )
@@ -41,13 +44,22 @@ class MainActivity : ComponentActivity() {
                 PermissionHandler(
                     onPermissionChanged = {
                         lifecycleScope.launch {
-                            repository.loadMedia(force = true, context = this@MainActivity)
+                            repository.loadMedia(force = true, context = applicationContext)
                         }
                     }
                 ) {
                     NavGraph()
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (vaultSessionManager.checkTimeout()) {
+            // Re-locked due to timeout, let VaultRepository clean up
+            // To properly do this we'd inject it, but the session manager can handle triggering it
+            // or the ViewModels observing `isUnlocked` will trigger cleanup.
         }
     }
 

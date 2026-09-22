@@ -139,4 +139,16 @@ abstract class BaseMediaViewModel(
     ): com.aktarjabed.jagallery.domain.MoveOperationResult {
         return mediaOperations.moveMediaBatch(context, mediaItems, destination)
     }
+
+    suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): com.aktarjabed.jagallery.domain.MoveOperationResult {
+        return mediaOperations.moveToVault(context, items)
+    }
+
+    suspend fun restoreFromVault(
+        context: android.content.Context,
+        items: List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>,
+        destination: com.aktarjabed.jagallery.data.model.AlbumDestination
+    ): com.aktarjabed.jagallery.domain.MoveOperationResult {
+        return mediaOperations.restoreFromVault(context, items, destination)
+    }
 }

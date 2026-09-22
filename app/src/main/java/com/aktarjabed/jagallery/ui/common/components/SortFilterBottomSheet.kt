@@ -76,7 +76,7 @@ fun SortFilterBottomSheet(
                         onClick = { pendingSortOption = option }
                     )
                     Text(
-                        text = option.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = option.name.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() },
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
@@ -97,7 +97,7 @@ fun SortFilterBottomSheet(
                     FilterChip(
                         selected = pendingSortOrder == order,
                         onClick = { pendingSortOrder = order },
-                        label = { Text(order.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        label = { Text(order.name.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() }) }
                     )
                 }
             }

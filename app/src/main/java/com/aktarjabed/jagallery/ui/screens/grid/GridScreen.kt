@@ -131,6 +131,18 @@ fun GridScreen(
                 }
             }
         },
+        onMoveToVaultSelected = { items ->
+            coroutineScope.launch {
+                when (val result = viewModel.moveToVault(context, items)) {
+                    is MoveOperationResult.Error -> {
+                        Toast.makeText(context, "Failed to move to vault", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        Toast.makeText(context, "Moved to vault", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        },
         emptyIcon = Icons.Default.PhotoLibrary,
         emptyMessage = stringResource(R.string.no_media_found),
         topBar = {

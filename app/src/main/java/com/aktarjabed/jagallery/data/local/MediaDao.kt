@@ -1,6 +1,7 @@
 package com.aktarjabed.jagallery.data.local
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -40,4 +41,28 @@ interface MediaDao {
 
     @Query("DELETE FROM hidden_media WHERE uri IN (:uris)")
     suspend fun unhideMediaBatch(uris: List<String>)
+
+    @Query("SELECT * FROM trash_media")
+    fun getTrashMedia(): Flow<List<TrashMediaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTrashMediaBatch(trashEntities: List<TrashMediaEntity>)
+
+    @Query("DELETE FROM trash_media WHERE uri IN (:uris)")
+    suspend fun removeTrashMediaBatch(uris: List<String>)
+
+    @Query("SELECT * FROM trash_media")
+    suspend fun getAllTrashMediaSync(): List<TrashMediaEntity>
+
+    @Query("SELECT * FROM vault_media")
+    fun getVaultMedia(): Flow<List<VaultMediaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVaultMedia(vaultEntity: VaultMediaEntity)
+
+    @Query("DELETE FROM vault_media WHERE id = :id")
+    suspend fun removeVaultMedia(id: String)
+
+    @Delete
+    suspend fun deleteVaultMedia(vaultEntity: VaultMediaEntity)
 }

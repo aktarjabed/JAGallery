@@ -81,6 +81,7 @@ fun MediaSelectionHandler(
     onRestoreSelected: ((List<MediaItem>) -> Unit)? = null,
     onMoveSelected: ((List<MediaItem>, AlbumDestination) -> Unit)? = null,
     onCopySelected: ((List<MediaItem>, AlbumDestination) -> Unit)? = null,
+    onMoveToVaultSelected: ((List<MediaItem>) -> Unit)? = null,
     topBarContent: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -303,7 +304,14 @@ fun MediaSelectionHandler(
                 {
                     showCopyAlbumDialog = true
                 }
-            } else null
+            } else null,
+            onMoveToVaultSelected = onMoveToVaultSelected?.let { callback ->
+                {
+                    val selected = selectionState.getSelectedItems(items)
+                    callback(selected)
+                    selectionState.clearSelection()
+                }
+            }
         )
     } else {
         topBarContent()

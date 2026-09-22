@@ -68,4 +68,48 @@ class FakeMediaDao : MediaDao {
         current.removeAll { uriSet.contains(it.uri) }
         hiddenFlow.value = current
     }
+
+    val trashFlow = MutableStateFlow<List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>>(emptyList())
+
+    override fun getTrashMedia(): Flow<List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>> = trashFlow
+
+    override suspend fun insertTrashMediaBatch(trashEntities: List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>) {
+        val current = trashFlow.value.toMutableList()
+        val urisToAdd = trashEntities.map { it.uri }.toSet()
+        current.removeAll { urisToAdd.contains(it.uri) }
+        current.addAll(trashEntities)
+        trashFlow.value = current
+    }
+
+    override suspend fun removeTrashMediaBatch(uris: List<String>) {
+        val current = trashFlow.value.toMutableList()
+        val uriSet = uris.toSet()
+        current.removeAll { uriSet.contains(it.uri) }
+        trashFlow.value = current
+    }
+
+    override suspend fun getAllTrashMediaSync(): List<com.aktarjabed.jagallery.data.local.TrashMediaEntity> {
+        return trashFlow.value
+    }
+
+    val vaultFlow = MutableStateFlow<List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>>(emptyList())
+
+    override fun getVaultMedia(): Flow<List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>> = vaultFlow
+
+    override suspend fun insertVaultMedia(vaultEntity: com.aktarjabed.jagallery.data.local.VaultMediaEntity) {
+        val current = vaultFlow.value.toMutableList()
+        current.removeAll { it.id == vaultEntity.id }
+        current.add(vaultEntity)
+        vaultFlow.value = current
+    }
+
+    override suspend fun removeVaultMedia(id: String) {
+        val current = vaultFlow.value.toMutableList()
+        current.removeAll { it.id == id }
+        vaultFlow.value = current
+    }
+
+    override suspend fun deleteVaultMedia(vaultEntity: com.aktarjabed.jagallery.data.local.VaultMediaEntity) {
+        removeVaultMedia(vaultEntity.id)
+    }
 }

@@ -36,7 +36,9 @@ class BatchMoveInstrumentationTest {
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(context, MediaDatabase::class.java).build()
         repository = MediaRepository(resolver, db.mediaDao(), Dispatchers.IO)
-        mediaOperations = MediaOperationsImpl(repository)
+        val vaultCrypto = com.aktarjabed.jagallery.domain.VaultCryptoManager()
+        val vaultRepository = com.aktarjabed.jagallery.data.repository.VaultRepository(context, vaultCrypto, db.mediaDao())
+        mediaOperations = MediaOperationsImpl(repository, vaultRepository)
         createdUris.clear()
     }
 

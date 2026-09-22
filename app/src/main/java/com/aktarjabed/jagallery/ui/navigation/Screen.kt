@@ -21,6 +21,13 @@ sealed class Screen(val route: String) {
     object Trash : Screen("trash")
     object Map : Screen("map")
     object Duplicates : Screen("duplicates")
+    object Settings : Screen("settings")
+    object Vault : Screen("vault")
+    object VaultViewer : Screen("vault_viewer?vaultMediaId={vaultMediaId}") {
+        fun createRoute(vaultMediaId: String): String {
+            return "vault_viewer?vaultMediaId=${Uri.encode(vaultMediaId)}"
+        }
+    }
     object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&relativePath={relativePath}&searchQuery={searchQuery}") {
         fun createRoute(
             mediaId: String,

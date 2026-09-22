@@ -27,9 +27,9 @@ class GridViewModel @Inject constructor(
 ) : BaseMediaViewModel(mediaOperations, repository) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
-    private val volumeName: String? = savedStateHandle.get<String>("volumeName")?.let { android.net.Uri.decode(it) }
+    private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val sourceName: String? = savedStateHandle.get<String>("source")
-    private val relativePath: String = savedStateHandle.get<String>("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
+    private val relativePath: String = savedStateHandle.get<String>("relativePath") ?: ""
 
     private val initialSource: MediaSource = if (sourceName == "ALBUM" && !volumeName.isNullOrBlank() && bucketId != null) {
         MediaSource.Album(volumeName, bucketId, relativePath)
@@ -81,8 +81,8 @@ class GridViewModel @Inject constructor(
                         else filtered.sortedWith(compareByDescending<com.aktarjabed.jagallery.data.model.MediaItem> { it.dateAdded }.thenByDescending { it.name })
                     }
                     SortOption.NAME -> {
-                        if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.name.lowercase() }, { it.dateAdded }))
-                        else filtered.sortedWith(compareByDescending<com.aktarjabed.jagallery.data.model.MediaItem> { it.name.lowercase() }.thenByDescending { it.dateAdded })
+                        if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.name.lowercase(java.util.Locale.ROOT) }, { it.dateAdded }))
+                        else filtered.sortedWith(compareByDescending<com.aktarjabed.jagallery.data.model.MediaItem> { it.name.lowercase(java.util.Locale.ROOT) }.thenByDescending { it.dateAdded })
                     }
                     SortOption.SIZE -> {
                         if (sortOrd == SortOrder.ASCENDING) filtered.sortedWith(compareBy({ it.size }, { it.dateAdded }))
