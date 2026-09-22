@@ -34,7 +34,16 @@ class SearchViewModel @Inject constructor(
                 if (query.isBlank()) {
                     MediaLoadResult.Empty
                 } else {
-                    val filtered = result.items.filter { it.name.contains(query, ignoreCase = true) }
+                    val intent = com.aktarjabed.jagallery.domain.NaturalLanguageSearchParser.parse(query)
+                    val filtered = result.items.filter { item ->
+                        val matchesName = item.name.contains(query, ignoreCase = true)
+
+                        val categoryMatches = intent.category != null && com.aktarjabed.jagallery.domain.SmartAlbumClassifier.classifyCategory(item) == intent.category
+                        val docMatches = intent.isDocument && com.aktarjabed.jagallery.domain.SmartAlbumClassifier.isReceiptOrDocument(item)
+                        val receiptMatches = intent.isReceipt && com.aktarjabed.jagallery.domain.SmartAlbumClassifier.isReceiptOrDocument(item)
+
+                        matchesName || categoryMatches || docMatches || receiptMatches
+                    }
                     if (filtered.isEmpty()) MediaLoadResult.Empty else MediaLoadResult.Success(filtered)
                 }
             }

@@ -39,10 +39,20 @@ JAGallery is a modern, high-performance Android gallery application built with J
 - **Media Loading**: Coil image loading library with `VideoFrameDecoder` support.
 - **Navigation**: Jetpack Compose Navigation with URL-encoded string route parameter passing.
 
+- **Secure Hidden Vault**: Biometric authentication (`androidx.biometric`), AES-256-GCM Keystore encryption, auto-lock mechanism, and App-private encrypted storage.
+- **Smart Albums & AI Classification**: Local heuristic metadata classification (receipts, documents, screenshots) with opt-in support for advanced structure analysis.
+- **Natural Language Search**: Intent-based search to quickly query images by semantics or source.
+- **Configurable Trash Retention**: Policy-driven cleanup (7, 30, 60 days, or Never) executed via resilient idempotent `WorkManager` tasks.
+
+## Threat Model (Secure Vault)
+
+The Vault feature protects files using Android Keystore and AES-256-GCM.
+- Media is encrypted using randomly generated streaming IVs and cannot be read without the specific device Keystore credentials.
+- Vault items are strictly hidden from MediaStore.
+- Upon viewing or sharing, temporary decrypted `content://` streams are generated inside the app's cache directory and proactively cleared on lifecycle events or explicit navigation.
+
 ## Roadmap & Upcoming Features
 
-- **Secure Hidden Vault**: Biometric authentication and private storage encryption for hidden files.
-- **Duplicate Cleanup**: Streamlined UI for deleting duplicates and managing storage.
 - **Persistent Hash Cache**: Speed up duplicate scans with a persistent hash store.
 - **Advanced Editor Controls**: Highlights, shadows, and sharpness.
 - **Cloud-aware Albums**: Syncing logic and custom-album organization.

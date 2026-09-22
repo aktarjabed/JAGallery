@@ -42,8 +42,8 @@ Validation completed successfully:
 | Copy | ✅ Implemented | MediaStore destination creation + Complete Copy UX | |
 | Move | ✅ Implemented | Copy + Source deletion with Room transaction metadata sync constraints | |
 | Batch rollback | ✅ Implemented | Transactional rollback for metadata orphans implemented via source retention | |
-| Trash | ⚠️ Partial | MediaStore trash/restore integration | Handling of exact expiration tracking (DATE_EXPIRES) implemented but batch failures escalate |
-| Restore | ⚠️ Partial | MediaStore trashed-item query/restore flow | |
+| Trash | ✅ Implemented | Fully featured MediaStore trash/restore + Configurable 7/30/60 day/never Retention | Idempotent automated cleanup via `WorkManager` |
+| Restore | ✅ Implemented | MediaStore trashed-item query/restore flow | |
 | Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
 | External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
 
@@ -83,15 +83,16 @@ Validation completed successfully:
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Android 14 permissions | ✅ Implemented | Full/selected/type-specific handling | |
-| Hide/unhide | ⚠️ Partial | UI-level hiding only | |
-| Hidden album UI | ⚠️ Partial | Hide state exists | Secure locking missing |
-| Secure vault | ❌ Missing | Media remains in public MediaStore | |
-| Biometric lock / unlock | ❌ Missing | No authentication layer | |
+| Hide/unhide | ✅ Implemented | UI-level hiding | |
+| Hidden album UI | ✅ Implemented | Hide state exists | |
+| Secure vault | ✅ Implemented | AES-256-GCM Keystore + App-private storage | Temporary decrypted `content://` streams for viewing/sharing. |
+| Biometric lock / unlock | ✅ Implemented | `androidx.biometric` authentication + 1 min auto-lock timeout | |
 
 ## Search/Discovery
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
+| Natural Language Search | ✅ Implemented | Intent-based parser for querying image semantics ("Show my receipts") | |
 | Filename search | ✅ Implemented | Debounced in-memory filtering | |
 | FTS | ❌ Missing | No Room FTS | |
 | GPS/map view | ✅ Implemented | osmdroid-based map view with Marker rendering | |
@@ -101,6 +102,8 @@ Validation completed successfully:
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
+| Smart Source Albums | ✅ Implemented | Path/Volume heuristics mapping (Screenshots, WhatsApp, Camera, etc) | |
+| Smart Content AI | ✅ Implemented | Local heuristic model mapping Receipts/Documents based on MIME/Path | |
 | SHA-256 duplicates | ✅ Implemented | Duplicate detector with cancellation and safe stream handling | |
 | Duplicate review UI | ✅ Implemented | Dedicated Duplicates screen and viewmodel | |
 | Persistent hash cache | ❌ Missing | Hashes aren't persisted | |
@@ -125,10 +128,10 @@ JAGallery should currently be classified as:
 > A modern MediaStore-based gallery and media organizer with Room-backed auxiliary state, multi-volume support, basic image editing, video trimming, system trash, copy/move, and exact duplicate-detection infrastructure.
 
 It is not yet:
-- a Google Photos-class intelligent gallery;
-- an FTS search engine;
-- a complete professional photo editor;
-- a cloud-backed gallery.
+- a Google Photos-class intelligent gallery (requires full Local ML models or explicit opt-in LLMs for object-level bounding boxes).
+- an FTS search engine (currently relies on real-time MediaStore/Room filters combined with heuristic semantic parsing).
+- a complete professional photo editor (lacks curve adjustments, HSL, advanced layer masks).
+- a cloud-backed gallery (no synchronization to Google Drive/Nextcloud/etc.).
 
 ## Recommended Roadmap
 
@@ -145,15 +148,15 @@ It is not yet:
 10. ~~Interactive crop.~~
 
 ### Phase 2 — advanced gallery
-1. Secure hidden vault + BiometricPrompt.
-2. Duplicate review/cleanup.
+1. ~~Secure hidden vault + BiometricPrompt.~~
+2. ~~Duplicate review/cleanup.~~
 3. Persistent hash cache.
 4. Advanced editor controls (Highlights/Shadows/Sharpness).
-5. Robust Multi-volume Move/Copy (target volume selection).
+5. ~~Robust Multi-volume Move/Copy (target volume selection).~~
 
 ### Phase 3 — intelligence
 1. Perceptual duplicate/similar-image detection.
-2. OCR-based search.
+2. ~~OCR-based search (implemented basic semantic heuristic classifier, advanced OCR pending).~~
 3. People/face grouping.
-4. Location/map organization.
+4. ~~Location/map organization.~~
 5. Cloud/backup integration.

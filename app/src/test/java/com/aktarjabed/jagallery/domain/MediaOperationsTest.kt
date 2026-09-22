@@ -13,7 +13,8 @@ import org.mockito.Mockito.verify
 class MediaOperationsTest {
 
     private val repository: MediaRepository = mock(MediaRepository::class.java)
-    private val mediaOperations: MediaOperations = MediaOperationsImpl(repository)
+    private val vaultRepository = mock(com.aktarjabed.jagallery.data.repository.VaultRepository::class.java)
+    private val mediaOperations: MediaOperations = MediaOperationsImpl(repository, vaultRepository)
 
     @Test
     fun toggleFavorite_callsRepositoryToggleFavorite() = runTest {

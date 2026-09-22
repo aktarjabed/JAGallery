@@ -565,15 +565,31 @@ fun ViewerScreen(
                                     showRenameDialog = true
                                 }
                             )
+                            if (!currentItem.isTrashed) {
+                                DropdownMenuItem(
+                                    text = { Text("Move to Vault") },
+                                    onClick = {
+                                        showMenu = false
+                                        coroutineScope.launch {
+                                            when (viewModel.moveToVault(context, listOf(currentItem))) {
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.Error -> {
+                                                    android.widget.Toast.makeText(context, "Failed to move to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {
+                                                    android.widget.Toast.makeText(context, "Moved to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.open_with)) },
                                 onClick = {
                                     showMenu = false
-                                    // Vault is not fully implemented but shareMediaItems encapsulates the share logic which will be adapted later
-                                    // We can reuse the same Share logic or a generic view logic. For ACTION_VIEW specifically:
-                                    val uri = currentItem.uri
+                                    val uriToOpen = currentItem.uri
                                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                        setDataAndType(uri, currentItem.mimeType)
+                                        setDataAndType(uriToOpen, currentItem.mimeType)
                                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     try {

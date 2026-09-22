@@ -27,7 +27,7 @@ fun parseMediaSource(
     relativePath: String?,
     searchQuery: String?
 ): MediaSource? {
-    return when (sourceStr?.uppercase()) {
+    return when (sourceStr?.uppercase(java.util.Locale.ROOT)) {
         "FAVORITES" -> MediaSource.Favorites
         "ALBUM" -> {
             if (!volumeName.isNullOrBlank() && bucketId != null) {
@@ -78,7 +78,31 @@ fun NavGraph() {
                 },
                 onNavigateToDuplicates = {
                     navController.navigate(Screen.Duplicates.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToVault = {
+                    navController.navigate(Screen.Vault.route)
                 }
+            )
+        }
+        composable(Screen.Vault.route) {
+            com.aktarjabed.jagallery.ui.screens.vault.VaultScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToVaultViewer = { vaultMediaId ->
+                    navController.navigate(Screen.VaultViewer.createRoute(vaultMediaId))
+                }
+            )
+        }
+        composable(
+            route = Screen.VaultViewer.route,
+            arguments = listOf(
+                navArgument("vaultMediaId") { type = NavType.StringType }
+            )
+        ) {
+            com.aktarjabed.jagallery.ui.screens.vault.VaultViewerScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Map.route) {
@@ -134,7 +158,7 @@ fun NavGraph() {
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
-            val relativePathStr = backStackEntry.arguments?.getString("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, null)
 
@@ -195,7 +219,7 @@ fun NavGraph() {
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
-            val relativePathStr = backStackEntry.arguments?.getString("relativePath")?.let { android.net.Uri.decode(it) } ?: ""
+            val relativePathStr = backStackEntry.arguments?.getString("relativePath") ?: ""
             val bucketId = bucketIdStr?.toLongOrNull()
             val searchQuery = backStackEntry.arguments?.getString("searchQuery")
             val source = parseMediaSource(sourceStr, volumeNameStr, bucketId, relativePathStr, searchQuery)

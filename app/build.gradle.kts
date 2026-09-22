@@ -99,6 +99,14 @@ dependencies {
 
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    val work_version = "2.9.0"
+    implementation("androidx.work:work-runtime-ktx:$work_version")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    testImplementation("androidx.work:work-testing:$work_version")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("org.mockito:mockito-core:5.11.0")

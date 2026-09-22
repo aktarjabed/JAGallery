@@ -14,7 +14,9 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,7 +52,9 @@ fun AlbumsScreen(
     onNavigateToHidden: () -> Unit,
     onNavigateToTrash: () -> Unit,
     onNavigateToMap: () -> Unit,
-    onNavigateToDuplicates: () -> Unit
+    onNavigateToDuplicates: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToVault: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -148,6 +152,22 @@ fun AlbumsScreen(
                             onClick = {
                                 showMenu = false
                                 onNavigateToDuplicates()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings)) },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToSettings()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.vault_title)) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToVault()
                             }
                         )
                     }

@@ -61,8 +61,11 @@ class MediaDatabaseMigrationTest {
 
         // Step 2: Open with Room v3 using MIGRATION_1_2 and MIGRATION_2_3
         val roomDb = Room.databaseBuilder(context, MediaDatabase::class.java, dbName)
-            .addMigrations(MediaDatabase.MIGRATION_1_2, MediaDatabase.MIGRATION_2_3)
+            .addMigrations(MediaDatabase.MIGRATION_1_2, MediaDatabase.MIGRATION_2_3, MediaDatabase.MIGRATION_3_4, MediaDatabase.MIGRATION_4_5)
             .build()
+
+        // Trigger db creation
+        roomDb.openHelper.writableDatabase
 
         val favorites = roomDb.mediaDao().getFavorites().first()
         val uris = favorites.map { it.uri }.toSet()
