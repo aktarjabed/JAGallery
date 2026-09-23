@@ -29,13 +29,11 @@ class GridViewModel @Inject constructor(
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
     private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val sourceName: String? = savedStateHandle.get<String>("source")
-    private val relativePath: String = savedStateHandle.get<String>("relativePath") ?: ""
+    private val relativePath: String? = savedStateHandle.get<String>("relativePath")
 
-    private val initialSource: MediaSource = if (sourceName == "ALBUM" && !volumeName.isNullOrBlank() && bucketId != null) {
-        MediaSource.Album(volumeName, bucketId, relativePath)
-    } else {
-        MediaSource.All
-    }
+    private val initialSource: MediaSource = com.aktarjabed.jagallery.ui.navigation.parseMediaSource(
+        sourceName, volumeName, bucketId, relativePath, null
+    ) ?: MediaSource.All
 
 
     private val _sortOption = MutableStateFlow(SortOption.DATE)

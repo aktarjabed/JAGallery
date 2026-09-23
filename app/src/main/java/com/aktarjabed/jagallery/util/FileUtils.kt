@@ -200,7 +200,11 @@ object FileUtils {
         val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             when (destination) {
                 is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
-                    if (destination.volumeName.isNotEmpty()) destination.volumeName else android.provider.MediaStore.VOLUME_EXTERNAL
+                    if (destination.volumeName.isNotEmpty()) {
+                        destination.volumeName
+                    } else {
+                        android.provider.MediaStore.getVolumeName(sourceUri)
+                    }
                 }
                 is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
             }

@@ -36,6 +36,11 @@ class TrashCleanupWorker @AssistedInject constructor(
                 if (deleteResult.successfulUris.isNotEmpty()) {
                     database.mediaDao().removeTrashMediaBatch(deleteResult.successfulUris.map { it.toString() })
                 }
+
+                // If not completely successful, retry the worker for remaining failures.
+                if (!deleteResult.isFullySuccessful) {
+                    return@withContext Result.retry()
+                }
             }
 
             Result.success()

@@ -14,6 +14,13 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+sealed class VaultDeleteResult {
+    object Success : VaultDeleteResult()
+    object FileDeletionFailed : VaultDeleteResult()
+    object DatabaseDeletionFailed : VaultDeleteResult()
+    object FileNotFound : VaultDeleteResult()
+}
+
 @Singleton
 class VaultRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -70,15 +77,31 @@ class VaultRepository @Inject constructor(
         tempDir.listFiles()?.forEach { it.delete() }
     }
 
-    suspend fun deleteVaultItem(entity: VaultMediaEntity) = withContext(Dispatchers.IO) {
+    suspend fun deleteVaultItem(entity: VaultMediaEntity): VaultDeleteResult = withContext(Dispatchers.IO) {
         val encryptedFile = File(entity.encryptedFilePath)
+        var fileWasDeleted = false
         if (encryptedFile.exists()) {
-            encryptedFile.delete()
+            fileWasDeleted = encryptedFile.delete()
+            if (!fileWasDeleted) {
+                return@withContext VaultDeleteResult.FileDeletionFailed
+            }
+        } else {
+            // The file is already absent, reconcile that state explicitly
+            fileWasDeleted = true
         }
         val tempFile = File(tempDir, entity.id)
         if (tempFile.exists()) {
             tempFile.delete()
         }
-        mediaDao.deleteVaultMedia(entity)
+
+        if (fileWasDeleted) {
+            try {
+                mediaDao.deleteVaultMedia(entity)
+                return@withContext VaultDeleteResult.Success
+            } catch (e: Exception) {
+                return@withContext VaultDeleteResult.DatabaseDeletionFailed
+            }
+        }
+        return@withContext VaultDeleteResult.FileDeletionFailed
     }
 }

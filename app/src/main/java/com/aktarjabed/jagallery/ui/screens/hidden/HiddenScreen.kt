@@ -21,14 +21,7 @@ fun HiddenScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Error -> android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Success -> android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    com.aktarjabed.jagallery.ui.common.components.OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val loadResult by viewModel.mediaLoadResult.collectAsStateWithLifecycle()
     val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()

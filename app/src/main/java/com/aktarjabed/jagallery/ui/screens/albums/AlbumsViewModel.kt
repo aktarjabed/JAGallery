@@ -67,12 +67,6 @@ class AlbumsViewModel @Inject constructor(
     private val _albumRenameDeleteEvent = MutableSharedFlow<Pair<List<String>, List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>>>()
     val albumRenameDeleteEvent = _albumRenameDeleteEvent.asSharedFlow()
 
-    override fun removeDeletedItems(deletedIds: List<String>) {
-        viewModelScope.launch {
-            repository.removeDeletedItems(deletedIds)
-        }
-    }
-
     fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newAlbumName: String, items: List<com.aktarjabed.jagallery.data.model.MediaItem>) {
         viewModelScope.launch {
             when (val result = mediaOperations.renameAlbum(context, sourceAlbum, newAlbumName, items)) {
@@ -82,7 +76,7 @@ class AlbumsViewModel @Inject constructor(
                             Pair(result.successfulCopies.map { it.first.id }, result.pendingIntents)
                         )
                     } else {
-                        repository.removeDeletedItems(result.successfulCopies.map { it.first.id })
+                        super.removeDeletedItems(result.successfulCopies.map { it.first.id })
                         _operationEvent.emit(com.aktarjabed.jagallery.ui.common.OperationEvent.Success("Album renamed successfully."))
                     }
                 }

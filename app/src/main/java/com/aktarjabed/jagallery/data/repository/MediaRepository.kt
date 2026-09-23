@@ -42,7 +42,6 @@ class MediaRepository @Inject constructor(
 
     // Throttling for bulk rescans
     private var lastRescanTimeMs: Long = 0
-    private val RESCAN_THROTTLE_MS = 2000L
 
     val mediaLoadResult: Flow<MediaLoadResult> = combine(
         _mediaLoadResult,
@@ -241,61 +240,18 @@ class MediaRepository @Inject constructor(
         skipRescan: Boolean = false
     ): android.net.Uri? = withContext(ioDispatcher) {
         val resolver = context.contentResolver
-        val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            when (destination) {
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
-                    if (destination.relativePath.isNotEmpty()) {
-                        destination.relativePath
-                    } else {
-                        if (sourceItem.isVideo) "Movies/${destination.name}/" else "Pictures/${destination.name}/"
-                    }
-                }
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.key.relativePath
-            }
-        } else {
-            ""
-        }
-
-        val contentValues = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, sourceItem.name)
-            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, sourceItem.mimeType)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
-                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
-            }
-        }
-
-        val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            when (destination) {
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
-                    if (destination.volumeName.isNotEmpty()) destination.volumeName else android.provider.MediaStore.getVolumeName(sourceItem.uri)
-                }
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
-            }
-        } else {
-            android.provider.MediaStore.VOLUME_EXTERNAL
-        }
-
-        val collection = if (sourceItem.isVideo) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Video.Media.getContentUri(volumeName) else android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        } else {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Images.Media.getContentUri(volumeName) else android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        }
-
         var newUri: android.net.Uri? = null
         try {
-            newUri = com.aktarjabed.jagallery.util.FileUtils.insertPendingMediaEntry(resolver, collection, contentValues) ?: return@withContext null
+            newUri = com.aktarjabed.jagallery.util.FileUtils.copyFileToMediaStore(
+                context,
+                sourceItem.uri,
+                destination,
+                sourceItem.name,
+                sourceItem.mimeType
+            )
 
-            val success = com.aktarjabed.jagallery.util.FileUtils.copyMediaFile(resolver, sourceItem.uri, newUri)
-
-            if (success && !com.aktarjabed.jagallery.util.FileUtils.publishPendingEntry(resolver, newUri, contentValues)) {
-                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+            if (newUri == null) {
                 return@withContext null
-            }
-
-            if (!success) {
-                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
-                null
             } else {
                 // Preserve Room metadata for Hidden / Favorite
                 val newUriStr = newUri.toString()

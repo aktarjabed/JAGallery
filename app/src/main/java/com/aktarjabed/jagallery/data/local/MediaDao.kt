@@ -42,9 +42,6 @@ interface MediaDao {
     @Query("DELETE FROM hidden_media WHERE uri IN (:uris)")
     suspend fun unhideMediaBatch(uris: List<String>)
 
-    @Query("SELECT * FROM trash_media")
-    fun getTrashMedia(): Flow<List<TrashMediaEntity>>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTrashMediaBatch(trashEntities: List<TrashMediaEntity>)
 
@@ -59,9 +56,6 @@ interface MediaDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVaultMedia(vaultEntity: VaultMediaEntity)
-
-    @Query("DELETE FROM vault_media WHERE id = :id")
-    suspend fun removeVaultMedia(id: String)
 
     @Delete
     suspend fun deleteVaultMedia(vaultEntity: VaultMediaEntity)

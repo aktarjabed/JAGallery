@@ -61,18 +61,7 @@ fun AlbumsScreen(
 
     var albumToRename by remember { mutableStateOf<com.aktarjabed.jagallery.data.model.Album?>(null) }
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Error -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                }
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Success -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
+    com.aktarjabed.jagallery.ui.common.components.OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
