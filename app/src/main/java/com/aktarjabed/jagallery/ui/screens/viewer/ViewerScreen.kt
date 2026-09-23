@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.ui.res.stringResource
+import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aktarjabed.jagallery.R
@@ -66,14 +67,7 @@ fun ViewerScreen(
         }
     }
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is OperationEvent.Error -> snackbarHostState.showSnackbar(event.message)
-                is OperationEvent.Success -> snackbarHostState.showSnackbar(event.message)
-            }
-        }
-    }
+    com.aktarjabed.jagallery.ui.common.components.OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val viewerState by viewModel.state.collectAsStateWithLifecycle()
 

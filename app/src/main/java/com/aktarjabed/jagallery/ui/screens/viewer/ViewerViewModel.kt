@@ -52,7 +52,7 @@ class ViewerViewModel @Inject constructor(
     private val sourceStr: String? = savedStateHandle.get<String>("source")
     private val volumeName: String? = savedStateHandle.get<String>("volumeName")
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
-    private val relativePath: String? = savedStateHandle.get<String>("relativePath") ?: ""
+    private val relativePath: String? = savedStateHandle.get<String>("relativePath")
     private val searchQuery: String? = savedStateHandle.get<String>("searchQuery")
 
     val initialSource: MediaSource? = parseMediaSource(sourceStr, volumeName, bucketId, relativePath, searchQuery)
@@ -66,7 +66,7 @@ class ViewerViewModel @Inject constructor(
     private var lastValidIndex: Int = 0
 
     val currentMediaId: String?
-        get() = savedStateHandle.get<String>("mediaId")
+        get() = savedStateHandle.get<String>("mediaId")?.let { com.aktarjabed.jagallery.util.NavCodec.decode(it) }
 
     fun setCurrentMediaId(mediaId: String) {
         savedStateHandle["mediaId"] = mediaId

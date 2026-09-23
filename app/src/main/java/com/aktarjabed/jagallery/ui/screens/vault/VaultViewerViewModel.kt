@@ -22,7 +22,7 @@ class VaultViewerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val vaultMediaId: String? = savedStateHandle.get<String>("vaultMediaId")
+    private val vaultMediaId: String? = savedStateHandle.get<String>("vaultMediaId")?.let { com.aktarjabed.jagallery.util.NavCodec.decode(it) }
 
     private val _currentEntity = MutableStateFlow<VaultMediaEntity?>(null)
     val currentEntity: StateFlow<VaultMediaEntity?> = _currentEntity
@@ -67,10 +67,8 @@ class VaultViewerViewModel @Inject constructor(
     }
 
     fun cleanTemp() {
-        viewModelScope.launch {
-            vaultRepository.clearTemp()
-            _tempUri.value = null
-        }
+        vaultSessionManager.requestCleanup()
+        _tempUri.value = null
     }
 
     suspend fun restoreItem(context: Context, entity: VaultMediaEntity): Boolean {
@@ -85,9 +83,11 @@ class VaultViewerViewModel @Inject constructor(
         return result is com.aktarjabed.jagallery.domain.MoveOperationResult.Success
     }
 
-    suspend fun deleteItem(entity: VaultMediaEntity) {
-        if (!isUnlocked.value) return
-        vaultRepository.deleteVaultItem(entity)
+    suspend fun deleteItem(entity: VaultMediaEntity): com.aktarjabed.jagallery.data.repository.VaultDeleteResult {
+        try { vaultSessionManager.validateSessionOrThrow() } catch(e: Exception) {
+            return com.aktarjabed.jagallery.data.repository.VaultDeleteResult.FileDeletionFailed
+        }
+        return vaultRepository.deleteVaultItem(entity)
     }
 
     override fun onCleared() {

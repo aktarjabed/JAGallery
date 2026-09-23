@@ -60,7 +60,11 @@ class VaultCryptoManager @Inject constructor() {
         try {
             return getExistingSecretKey()
         } catch (e: VaultCryptoException.KeyUnavailable) {
-            return createSecretKey()
+            // Strictly fail-closed. Do NOT generate a replacement key if an existing key is lost.
+            if (!keyStore.containsAlias(alias)) {
+                return createSecretKey()
+            }
+            throw e
         }
     }
 
@@ -77,14 +81,9 @@ class VaultCryptoManager @Inject constructor() {
             keyGenerator.init(spec)
             return keyGenerator.generateKey()
         } catch (e: Exception) {
-            // Fallback for tests where AndroidKeyStore isn't available
-            val cachedTestKey = testSecretKey
-            if (cachedTestKey != null) return cachedTestKey
-            val keyGenerator = KeyGenerator.getInstance("AES")
-            keyGenerator.init(256)
-            val key = keyGenerator.generateKey()
-            testSecretKey = key
-            return key
+            // No fallback allowed for production.
+            // If testing, we should use a mocked VaultCryptoManager.
+            throw VaultCryptoException.KeyUnavailable(e)
         }
     }
 

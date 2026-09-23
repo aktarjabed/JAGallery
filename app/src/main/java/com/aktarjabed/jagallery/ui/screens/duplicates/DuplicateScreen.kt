@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -104,18 +105,7 @@ fun DuplicateScreen(
         viewModel.loadDuplicates()
     }
 
-    LaunchedEffect(viewModel.operationEvent) {
-        viewModel.operationEvent.collect { event ->
-            when (event) {
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Error -> {
-                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
-                }
-                is com.aktarjabed.jagallery.ui.common.OperationEvent.Success -> {
-                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
+    com.aktarjabed.jagallery.ui.common.components.OperationToastEffect(operationEvent = viewModel.operationEvent)
 
     val totalSelected = selections.values.sumOf { it.size }
 

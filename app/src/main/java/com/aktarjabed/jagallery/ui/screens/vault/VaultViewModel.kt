@@ -32,7 +32,7 @@ class VaultViewModel @Inject constructor(
         viewModelScope.launch {
             isUnlocked.collect { unlocked ->
                 if (!unlocked) {
-                    vaultRepository.clearTemp()
+                    vaultSessionManager.requestCleanup()
                 }
             }
         }
@@ -60,8 +60,5 @@ class VaultViewModel @Inject constructor(
 
     fun lock() {
         vaultSessionManager.lock()
-        viewModelScope.launch {
-            vaultRepository.clearTemp()
-        }
     }
 }

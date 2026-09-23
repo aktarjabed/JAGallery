@@ -109,7 +109,8 @@ fun NavGraph() {
                 navArgument("vaultMediaId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val vaultMediaId = backStackEntry.arguments?.getString("vaultMediaId")
+            // NOTE: The decoding is handled by NavCodec because of Screen.VaultViewer.createRoute Base64 encoding.
+            // Currently not passed into VaultViewerScreen but might be accessed from SavedStateHandle inside ViewModel.
             com.aktarjabed.jagallery.ui.screens.vault.VaultViewerScreen(
                 onBack = { navController.popBackStack() }
             )

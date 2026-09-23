@@ -32,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import com.aktarjabed.jagallery.R
 import androidx.compose.foundation.clickable
 import java.util.Date
-import androidx.compose.foundation.clickable
 import androidx.exifinterface.media.ExifInterface
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.remember

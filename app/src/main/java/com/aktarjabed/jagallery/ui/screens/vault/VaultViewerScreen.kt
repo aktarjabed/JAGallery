@@ -72,8 +72,24 @@ fun VaultViewerScreen(
                             }
                             IconButton(onClick = {
                                 scope.launch {
-                                    viewModel.deleteItem(localEntity)
-                                    onBack()
+                                    val result = viewModel.deleteItem(localEntity)
+                                    when (result) {
+                                        is com.aktarjabed.jagallery.data.repository.VaultDeleteResult.Success -> {
+                                            android.widget.Toast.makeText(context, "Deleted permanently", android.widget.Toast.LENGTH_SHORT).show()
+                                            onBack()
+                                        }
+                                        is com.aktarjabed.jagallery.data.repository.VaultDeleteResult.DatabaseDeletionFailed -> {
+                                            android.widget.Toast.makeText(context, "File deleted, but database cleanup failed", android.widget.Toast.LENGTH_LONG).show()
+                                            onBack()
+                                        }
+                                        is com.aktarjabed.jagallery.data.repository.VaultDeleteResult.FileDeletionFailed -> {
+                                            android.widget.Toast.makeText(context, "File could not be deleted. Vault record retained.", android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                        is com.aktarjabed.jagallery.data.repository.VaultDeleteResult.FileNotFound -> {
+                                            android.widget.Toast.makeText(context, "File was missing, vault record cleaned up.", android.widget.Toast.LENGTH_SHORT).show()
+                                            onBack()
+                                        }
+                                    }
                                 }
                             }) {
                                 Icon(Icons.Filled.Delete, contentDescription = "Delete Permanently")

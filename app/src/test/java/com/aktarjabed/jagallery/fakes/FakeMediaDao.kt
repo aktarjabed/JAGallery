@@ -71,8 +71,6 @@ class FakeMediaDao : MediaDao {
 
     val trashFlow = MutableStateFlow<List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>>(emptyList())
 
-    override fun getTrashMedia(): Flow<List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>> = trashFlow
-
     override suspend fun insertTrashMediaBatch(trashEntities: List<com.aktarjabed.jagallery.data.local.TrashMediaEntity>) {
         val current = trashFlow.value.toMutableList()
         val urisToAdd = trashEntities.map { it.uri }.toSet()
@@ -103,13 +101,9 @@ class FakeMediaDao : MediaDao {
         vaultFlow.value = current
     }
 
-    override suspend fun removeVaultMedia(id: String) {
-        val current = vaultFlow.value.toMutableList()
-        current.removeAll { it.id == id }
-        vaultFlow.value = current
-    }
-
     override suspend fun deleteVaultMedia(vaultEntity: com.aktarjabed.jagallery.data.local.VaultMediaEntity) {
-        removeVaultMedia(vaultEntity.id)
+        val current = vaultFlow.value.toMutableList()
+        current.removeAll { it.id == vaultEntity.id }
+        vaultFlow.value = current
     }
 }

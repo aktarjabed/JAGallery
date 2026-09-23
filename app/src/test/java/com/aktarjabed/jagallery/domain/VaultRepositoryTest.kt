@@ -46,14 +46,10 @@ class VaultRepositoryTest {
 
         val entity = VaultMediaEntity(id, "content://test", "image/jpeg", fakeEncryptedFile.absolutePath, 0L, "test.jpg")
 
-        try {
-            repository.deleteVaultItem(entity)
-            fail("Expected IoFailure")
-        } catch (e: Exception) {
-            assertTrue(e is VaultCryptoException.IoFailure)
-            assertTrue("File should still exist since delete failed", fakeEncryptedFile.exists())
-            // Note: mediaDao.deleteVaultMedia(entity) should NOT have been called because exception was thrown prior.
-        }
+        val result = repository.deleteVaultItem(entity)
+        assertTrue(result is com.aktarjabed.jagallery.data.repository.VaultDeleteResult.FileDeletionFailed)
+        assertTrue("File should still exist since delete failed", fakeEncryptedFile.exists())
+        // Note: mediaDao.deleteVaultMedia(entity) is NOT called because file failed to delete
 
         // cleanup
         File(fakeEncryptedFile, "child.txt").delete()
