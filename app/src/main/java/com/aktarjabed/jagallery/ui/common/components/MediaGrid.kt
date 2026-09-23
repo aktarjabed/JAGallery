@@ -15,7 +15,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,9 +68,18 @@ fun MediaGrid(
         }
     } else {
         // Observe current date to recalculate if day changes while app is open
-        val currentDayKey = remember {
-            val now = Calendar.getInstance()
-            "${now.get(Calendar.YEAR)}-${now.get(Calendar.DAY_OF_YEAR)}"
+        var currentDayKey by remember { mutableStateOf(Calendar.getInstance().let { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }) }
+
+        // This effect will update the currentDayKey periodically so that long-lived sessions
+        // crossing midnight correctly trigger a recomposition of the timeline groups.
+        LaunchedEffect(Unit) {
+            while (true) {
+                kotlinx.coroutines.delay(60_000) // check every minute
+                val newDayKey = Calendar.getInstance().let { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
+                if (newDayKey != currentDayKey) {
+                    currentDayKey = newDayKey
+                }
+            }
         }
 
         val todayStr = stringResource(R.string.timeline_today)

@@ -74,23 +74,45 @@ fun VaultScreen(
                 if (vaultItems.isEmpty()) {
                     Text("Vault is empty")
                 } else {
-                    val dummyMediaItems = remember(vaultItems) {
-                        vaultItems.map { entity ->
-                            com.aktarjabed.jagallery.data.model.MediaItem(
-                                uri = android.net.Uri.parse(entity.originalUriStr), mediaStoreId = -1L, name = entity.originalName,
-                                dateAdded = entity.dateAdded, mimeType = entity.mimeType, bucketId = -1L, bucketName = "",
-                                relativePath = "", isVideo = entity.mimeType.startsWith("video/"), volumeName = "",
-                                size = 0L, isFavorite = false, isTrashed = false, dateTrashed = 0L
-                            )
+                    var decryptedThumbnails by remember { mutableStateOf<Map<String, android.net.Uri>>(emptyMap()) }
+
+                    LaunchedEffect(vaultItems, isUnlocked) {
+                        if (isUnlocked) {
+                            val map = mutableMapOf<String, android.net.Uri>()
+                            for (item in vaultItems) {
+                                val uri = viewModel.getDecryptedTempUriSuspended(item)
+                                if (uri != null) {
+                                    map[item.id] = uri
+                                }
+                            }
+                            decryptedThumbnails = map
+                        } else {
+                            decryptedThumbnails = emptyMap()
+                        }
+                    }
+
+                    val safeMediaItems = remember(vaultItems, decryptedThumbnails) {
+                        vaultItems.mapNotNull { entity ->
+                            val safeUri = decryptedThumbnails[entity.id]
+                            if (safeUri != null) {
+                                com.aktarjabed.jagallery.data.model.MediaItem(
+                                    uri = safeUri, mediaStoreId = -1L, name = entity.originalName,
+                                    dateAdded = entity.dateAdded, mimeType = entity.mimeType, bucketId = -1L, bucketName = "",
+                                    relativePath = "", isVideo = entity.mimeType.startsWith("video/"), volumeName = "",
+                                    size = 0L, isFavorite = false, isTrashed = false, dateTrashed = 0L
+                                )
+                            } else {
+                                null
+                            }
                         }
                     }
 
                     com.aktarjabed.jagallery.ui.common.components.MediaGrid(
-                        items = dummyMediaItems,
+                        items = safeMediaItems,
                         selectedIds = emptySet(),
                         selectionMode = false,
                         onItemClick = { item ->
-                            val vaultId = vaultItems.find { it.originalUriStr == item.uri.toString() }?.id
+                            val vaultId = vaultItems.find { decryptedThumbnails[it.id] == item.uri }?.id
                             if (vaultId != null) {
                                 onNavigateToVaultViewer(vaultId)
                             }

@@ -30,4 +30,12 @@ class VaultSessionManager @Inject constructor() {
         }
         return false
     }
+
+    fun validateSessionOrThrow() {
+        if (checkTimeout() || !_isUnlocked.value) {
+            throw VaultCryptoException.AuthenticationRequired()
+        }
+        // refresh session on valid usage to prevent timeout during active vault work
+        lastUnlockTime = System.currentTimeMillis()
+    }
 }

@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import android.net.Uri
 
 @RunWith(RobolectricTestRunner::class)
 class NavGraphTest {
@@ -15,9 +16,9 @@ class NavGraphTest {
     fun parseMediaSource_validAlbumRoute_returnsAlbumSourceWithVolumeName() {
         val source = parseMediaSource(
             sourceStr = "ALBUM",
-            volumeName = "external_primary",
+            volumeName = com.aktarjabed.jagallery.util.NavCodec.encode("external_primary"),
             bucketId = 123L,
-            relativePath = "Pictures/",
+            relativePath = com.aktarjabed.jagallery.util.NavCodec.encode("Pictures/"),
             searchQuery = null
         )
         assertEquals(MediaSource.Album(AlbumKey("external_primary", 123L, "Pictures/")), source)
@@ -36,7 +37,7 @@ class NavGraphTest {
 
         val missingBucket = parseMediaSource(
             sourceStr = "ALBUM",
-            volumeName = "external_primary",
+            volumeName = com.aktarjabed.jagallery.util.NavCodec.encode("external_primary"),
             bucketId = null,
             relativePath = null,
             searchQuery = null
@@ -63,7 +64,7 @@ class NavGraphTest {
             volumeName = null,
             bucketId = null,
             relativePath = null,
-            searchQuery = "vacation"
+            searchQuery = com.aktarjabed.jagallery.util.NavCodec.encode("vacation")
         )
         assertEquals(MediaSource.Search("vacation"), search)
     }
@@ -79,9 +80,10 @@ class NavGraphTest {
         // 1. Create Route
         val route = Screen.Grid.createRoute(originalSource)
 
-        // The route is something like "grid?source=ALBUM&volumeName=volume%20name%20with%20spaces&bucketId=555&relativePath=Pictures%2FMy%20Vacation%20100%25%20%231%3F%2FNested%2F"
-        // We manually extract arguments to simulate NavGraph backStackEntry behavior
-        val params = route.substringAfter("?").split("&").associate {
+        // Decode full URL route because NavArguments are automatically internally decoded by NavHost components on Android
+        val decodedRoute = Uri.decode(route)
+
+        val params = decodedRoute.substringAfter("?").split("&").associate {
             val parts = it.split("=")
             parts[0] to (if (parts.size > 1) parts[1] else "")
         }
@@ -91,18 +93,14 @@ class NavGraphTest {
         val bucketIdStr = params["bucketId"]
         val relativePathStr = params["relativePath"]
 
-        // 2. Decode as done in NavGraph/ViewModels. Note: Compose Navigation uses Uri.decode internally.
-        // We use java.net.URLDecoder.decode here as an approximation for the test.
-        val decodedVolumeName = volumeNameStr?.let { java.net.URLDecoder.decode(it, "UTF-8") }
         val decodedBucketId = bucketIdStr?.toLongOrNull()
-        val decodedRelativePath = relativePathStr?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
 
-        // 3. Parse Source
+        // 3. Parse Source (decode happens inside parseMediaSource now natively via NavCodec)
         val parsedSource = parseMediaSource(
             sourceStr = sourceStr,
-            volumeName = decodedVolumeName,
+            volumeName = volumeNameStr,
             bucketId = decodedBucketId,
-            relativePath = decodedRelativePath,
+            relativePath = relativePathStr,
             searchQuery = null
         )
         assertEquals(originalSource, parsedSource)

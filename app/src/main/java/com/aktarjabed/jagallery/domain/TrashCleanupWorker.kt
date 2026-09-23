@@ -1,26 +1,25 @@
 package com.aktarjabed.jagallery.domain
 
 import android.content.Context
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.aktarjabed.jagallery.data.local.MediaDatabase
 import com.aktarjabed.jagallery.util.FileUtils
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class TrashCleanupWorker(
-    appContext: Context,
-    workerParams: WorkerParameters
+@HiltWorker
+class TrashCleanupWorker @AssistedInject constructor(
+    @Assisted appContext: Context,
+    @Assisted workerParams: WorkerParameters,
+    private val database: MediaDatabase,
+    private val settings: SettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            val database = androidx.room.Room.databaseBuilder(
-                applicationContext,
-                MediaDatabase::class.java,
-                "gallery_database"
-            ).build()
-            val settings = SettingsRepository(applicationContext)
-
             val policy = settings.getTrashRetentionPolicy()
             if (policy == TrashRetentionPolicy.NEVER) {
                 return@withContext Result.success()
