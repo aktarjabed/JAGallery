@@ -1,6 +1,5 @@
 package com.aktarjabed.jagallery.ui.navigation
 
-import android.net.Uri
 import com.aktarjabed.jagallery.data.model.MediaSource
 
 sealed class Screen(val route: String) {
@@ -8,7 +7,7 @@ sealed class Screen(val route: String) {
     object Grid : Screen("grid?source={source}&volumeName={volumeName}&bucketId={bucketId}&relativePath={relativePath}") {
         fun createRoute(source: MediaSource = MediaSource.All): String {
             return when (source) {
-                is MediaSource.Album -> "grid?source=ALBUM&volumeName=${Uri.encode(source.albumKey.volumeName)}&bucketId=${source.albumKey.bucketId}&relativePath=${Uri.encode(source.albumKey.relativePath)}"
+                is MediaSource.Album -> "grid?source=ALBUM&volumeName=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.volumeName)}&bucketId=${source.albumKey.bucketId}&relativePath=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.relativePath)}"
                 is MediaSource.Search -> "grid?source=SEARCH"
                 is MediaSource.Favorites -> "grid?source=FAVORITES"
                 else -> "grid?source=ALL"
@@ -25,7 +24,7 @@ sealed class Screen(val route: String) {
     object Vault : Screen("vault")
     object VaultViewer : Screen("vault_viewer?vaultMediaId={vaultMediaId}") {
         fun createRoute(vaultMediaId: String): String {
-            return "vault_viewer?vaultMediaId=${Uri.encode(vaultMediaId)}"
+            return "vault_viewer?vaultMediaId=${com.aktarjabed.jagallery.util.NavCodec.encode(vaultMediaId)}"
         }
     }
     object Viewer : Screen("viewer?mediaId={mediaId}&source={source}&volumeName={volumeName}&bucketId={bucketId}&relativePath={relativePath}&searchQuery={searchQuery}") {
@@ -33,7 +32,7 @@ sealed class Screen(val route: String) {
             mediaId: String,
             source: MediaSource
         ): String {
-            val encodedMediaId = Uri.encode(mediaId)
+            val encodedMediaId = com.aktarjabed.jagallery.util.NavCodec.encode(mediaId)
             val sourceName = when (source) {
                 is MediaSource.All -> "ALL"
                 is MediaSource.Favorites -> "FAVORITES"
@@ -45,13 +44,13 @@ sealed class Screen(val route: String) {
             val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=$sourceName")
             when (source) {
                 is MediaSource.Album -> {
-                    builder.append("&volumeName=${Uri.encode(source.albumKey.volumeName)}")
+                    builder.append("&volumeName=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.volumeName)}")
                     builder.append("&bucketId=${source.albumKey.bucketId}")
-                    builder.append("&relativePath=${Uri.encode(source.albumKey.relativePath)}")
+                    builder.append("&relativePath=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.relativePath)}")
                 }
                 is MediaSource.Search -> {
                     if (source.query.isNotBlank()) {
-                        builder.append("&searchQuery=${Uri.encode(source.query)}")
+                        builder.append("&searchQuery=${com.aktarjabed.jagallery.util.NavCodec.encode(source.query)}")
                     }
                 }
                 else -> {}
@@ -61,7 +60,7 @@ sealed class Screen(val route: String) {
     }
     object Editor : Screen("editor?imageUri={imageUri}") {
         fun createRoute(imageUri: String): String {
-            return "editor?imageUri=${Uri.encode(imageUri)}"
+            return "editor?imageUri=${com.aktarjabed.jagallery.util.NavCodec.encode(imageUri)}"
         }
     }
 }

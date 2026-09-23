@@ -150,6 +150,7 @@ object VideoTrimmer {
 
             // Pass 2: Mux using baseTimeUs
             extractor.seekTo(startUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
+            var samplesWritten = 0
             while (true) {
                 bufferInfo.offset = 0
                 bufferInfo.size = extractor.readSampleData(buffer, 0)
@@ -165,12 +166,19 @@ object VideoTrimmer {
                     bufferInfo.presentationTimeUs = normalizedUs
                     bufferInfo.flags = if (extractor.sampleFlags and android.media.MediaExtractor.SAMPLE_FLAG_SYNC != 0) android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
                     muxer.writeSampleData(dstTrackIndex, buffer, bufferInfo)
+                    samplesWritten++
                 }
                 extractor.advance()
             }
 
             muxer.stop()
             isMuxerStarted = false
+
+            if (samplesWritten == 0) {
+                Log.w(TAG, "Zero samples written. Returning null to avoid corrupt media.")
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
+            }
 
             val published = FileUtils.publishPendingEntry(resolver, newUri, android.content.ContentValues())
             if (!published) {

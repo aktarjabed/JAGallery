@@ -6,11 +6,22 @@ import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+
 @HiltAndroidApp
-class GalleryApplication : Application(), ImageLoaderFactory {
+class GalleryApplication : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject
     lateinit var imageLoader: ImageLoader
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()

@@ -31,14 +31,17 @@ fun parseMediaSource(
         "FAVORITES" -> MediaSource.Favorites
         "ALBUM" -> {
             if (!volumeName.isNullOrBlank() && bucketId != null) {
-                MediaSource.Album(AlbumKey(volumeName, bucketId, relativePath ?: ""))
+                val decodedVolume = com.aktarjabed.jagallery.util.NavCodec.decode(volumeName)
+                val decodedRelativePath = if (relativePath != null) com.aktarjabed.jagallery.util.NavCodec.decode(relativePath) else ""
+                MediaSource.Album(AlbumKey(decodedVolume, bucketId, decodedRelativePath))
             } else {
                 null
             }
         }
         "SEARCH" -> {
             if (!searchQuery.isNullOrBlank()) {
-                MediaSource.Search(searchQuery)
+                val decodedQuery = com.aktarjabed.jagallery.util.NavCodec.decode(searchQuery)
+                MediaSource.Search(decodedQuery)
             } else {
                 null
             }
@@ -87,6 +90,11 @@ fun NavGraph() {
                 }
             )
         }
+        composable(Screen.Settings.route) {
+            com.aktarjabed.jagallery.ui.screens.settings.SettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable(Screen.Vault.route) {
             com.aktarjabed.jagallery.ui.screens.vault.VaultScreen(
                 onBack = { navController.popBackStack() },
@@ -100,7 +108,8 @@ fun NavGraph() {
             arguments = listOf(
                 navArgument("vaultMediaId") { type = NavType.StringType }
             )
-        ) {
+        ) { backStackEntry ->
+            val vaultMediaId = backStackEntry.arguments?.getString("vaultMediaId")
             com.aktarjabed.jagallery.ui.screens.vault.VaultViewerScreen(
                 onBack = { navController.popBackStack() }
             )
@@ -215,7 +224,8 @@ fun NavGraph() {
                 }
             )
         ) { backStackEntry ->
-            val mediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
+            val rawMediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
+            val mediaId = com.aktarjabed.jagallery.util.NavCodec.decode(rawMediaId)
             val sourceStr = backStackEntry.arguments?.getString("source")
             val volumeNameStr = backStackEntry.arguments?.getString("volumeName")
             val bucketIdStr = backStackEntry.arguments?.getString("bucketId")
@@ -247,7 +257,8 @@ fun NavGraph() {
             )
         ) { backStackEntry ->
             val uriStr = backStackEntry.arguments?.getString("imageUri") ?: return@composable
-            val imageUri = android.net.Uri.parse(uriStr)
+            val decodedUriStr = com.aktarjabed.jagallery.util.NavCodec.decode(uriStr)
+            val imageUri = android.net.Uri.parse(decodedUriStr)
             EditorScreen(
                 imageUri = imageUri,
                 onBack = { navController.popBackStack() },

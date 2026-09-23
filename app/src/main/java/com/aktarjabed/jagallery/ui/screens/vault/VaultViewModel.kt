@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.net.Uri
 
 @HiltViewModel
 class VaultViewModel @Inject constructor(
@@ -37,18 +38,19 @@ class VaultViewModel @Inject constructor(
         }
     }
 
+    suspend fun getDecryptedTempUriSuspended(entity: VaultMediaEntity): Uri? {
+        try {
+            vaultSessionManager.validateSessionOrThrow()
+            val file = vaultRepository.decryptToTemp(entity)
+            return android.net.Uri.fromFile(file)
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
     fun getDecryptedTempUri(entity: VaultMediaEntity, onUriReady: (android.net.Uri?) -> Unit) {
         viewModelScope.launch {
-            try {
-                if (!isUnlocked.value) {
-                    onUriReady(null)
-                    return@launch
-                }
-                val file = vaultRepository.decryptToTemp(entity)
-                onUriReady(android.net.Uri.fromFile(file))
-            } catch (e: Exception) {
-                onUriReady(null)
-            }
+            onUriReady(getDecryptedTempUriSuspended(entity))
         }
     }
 

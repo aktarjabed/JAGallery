@@ -118,21 +118,12 @@ class MediaRepository @Inject constructor(
                 }
                 existingJob
             } else {
-                if (force && (currentTime - lastRescanTimeMs < RESCAN_THROTTLE_MS)) {
-                    // Throttle fast sequential jobs by firing a delayed job to catch up
-                    val delayedJob = repositoryScope.async {
-                        kotlinx.coroutines.delay(RESCAN_THROTTLE_MS - (currentTime - lastRescanTimeMs))
-                        executeScanLoop(null, initialForce = force, initialContext = context)
-                    }
-                    activeScanJob = delayedJob
-                    delayedJob
-                } else {
-                    val actualJob = repositoryScope.async {
-                        executeScanLoop(null, initialForce = force, initialContext = context)
-                    }
-                    activeScanJob = actualJob
-                    actualJob
+                var actualJob: Deferred<Unit>? = null
+                actualJob = repositoryScope.async {
+                    executeScanLoop(actualJob, initialForce = force, initialContext = context)
                 }
+                activeScanJob = actualJob
+                actualJob
             }
         }
         jobToAwait.await()
@@ -180,8 +171,9 @@ class MediaRepository @Inject constructor(
                     // However, we should proactively trigger it now to not lose the forced scan request completely
                     // if there are no subsequent observer calls.
                     if (pendingForcedScan) {
-                        val newJob = repositoryScope.async {
-                            executeScanLoop(null, true, pendingContext)
+                        var newJob: Deferred<Unit>? = null
+                        newJob = repositoryScope.async {
+                            executeScanLoop(newJob, true, pendingContext)
                         }
                         activeScanJob = newJob
                         pendingForcedScan = false
@@ -307,22 +299,36 @@ class MediaRepository @Inject constructor(
             } else {
                 // Preserve Room metadata for Hidden / Favorite
                 val newUriStr = newUri.toString()
-                if (sourceItem.isFavorite) {
-                    val oldEntity = mediaDao.getFavoriteById(sourceItem.uri.toString())
-                    if (oldEntity != null) {
-                        mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, oldEntity.dateAdded))
-                    } else {
-                        mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, System.currentTimeMillis()))
+                var metadataSuccess = true
+                try {
+                    if (sourceItem.isFavorite) {
+                        val oldEntity = mediaDao.getFavoriteById(sourceItem.uri.toString())
+                        if (oldEntity != null) {
+                            mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, oldEntity.dateAdded))
+                        } else {
+                            mediaDao.insert(com.aktarjabed.jagallery.data.local.MediaEntity(newUriStr, true, System.currentTimeMillis()))
+                        }
                     }
+                    val hiddenRecord = mediaDao.getHiddenMediaById(sourceItem.uri.toString())
+                    if (hiddenRecord != null) {
+                        mediaDao.hideMedia(com.aktarjabed.jagallery.data.local.HiddenMediaEntity(newUriStr, true, hiddenRecord.dateHidden))
+                    }
+                } catch (e: Exception) {
+                    metadataSuccess = false
                 }
-                val hiddenRecord = mediaDao.getHiddenMediaById(sourceItem.uri.toString())
-                if (hiddenRecord != null) {
-                    mediaDao.hideMedia(com.aktarjabed.jagallery.data.local.HiddenMediaEntity(newUriStr, true, hiddenRecord.dateHidden))
+
+                if (!metadataSuccess) {
+                    // Rollback dependent metadata and MediaStore object to prevent orphans
+                    try { mediaDao.removeFavorite(newUriStr) } catch (e: Exception) {}
+                    try { mediaDao.unhideMedia(newUriStr) } catch (e: Exception) {}
+                    try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                    null
+                } else {
+                    if (!skipRescan) {
+                        loadMedia(force = true, context = context)
+                    }
+                    newUri
                 }
-                if (!skipRescan) {
-                    loadMedia(force = true, context = context)
-                }
-                newUri
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             if (newUri != null) {
