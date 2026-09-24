@@ -22,21 +22,24 @@ object MediaStoreHelper {
     private const val KEY_VERSION_PREFIX = "key_mediastore_version_"
     private const val KEY_GENERATION_PREFIX = "key_mediastore_generation_"
 
-    fun getPersistedVolumeVersion(context: Context, volumeName: String): String? {
+    fun getPersistedVolumeVersion(context: Context, volumeName: String, isTrash: Boolean = false): String? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_VERSION_PREFIX + volumeName, null)
+        return prefs.getString(KEY_VERSION_PREFIX + volumeName + getVolumeSyncKeySuffix(isTrash), null)
     }
 
-    fun getPersistedVolumeGeneration(context: Context, volumeName: String): Long {
+    fun getPersistedVolumeGeneration(context: Context, volumeName: String, isTrash: Boolean = false): Long {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getLong(KEY_GENERATION_PREFIX + volumeName, -1L)
+        return prefs.getLong(KEY_GENERATION_PREFIX + volumeName + getVolumeSyncKeySuffix(isTrash), -1L)
     }
 
-    fun persistVolumeSyncInfo(context: Context, volumeName: String, version: String?, generation: Long) {
+    private fun getVolumeSyncKeySuffix(isTrash: Boolean) = if (isTrash) "_trash" else ""
+
+    fun persistVolumeSyncInfo(context: Context, volumeName: String, version: String?, generation: Long, isTrash: Boolean = false) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit {
-            putString(KEY_VERSION_PREFIX + volumeName, version)
-            putLong(KEY_GENERATION_PREFIX + volumeName, generation)
+            val suffix = getVolumeSyncKeySuffix(isTrash)
+            putString(KEY_VERSION_PREFIX + volumeName + suffix, version)
+            putLong(KEY_GENERATION_PREFIX + volumeName + suffix, generation)
         }
     }
 
@@ -53,9 +56,18 @@ object MediaStoreHelper {
             var successfulQueriesCount = 0
             val queryErrors = mutableListOf<Pair<String, Throwable>>()
 
+            val initialGenerationMap = mutableMapOf<String, Long>()
+            val initialVersionMap = mutableMapOf<String, String?>()
+
             for ((imageUri, videoUri, volumeName) in targets) {
                 val effectiveVolume = volumeName ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL_PRIMARY else "external"
-                var volumeHasSuccess = false
+
+                if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                     try {
+                         initialVersionMap[volumeName] = MediaStore.getVersion(context, volumeName)
+                         initialGenerationMap[volumeName] = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) MediaStore.getGeneration(context, volumeName) else 0L
+                     } catch (e: Exception) {}
+                }
 
                 totalQueriesAttempted++
                 val imageQueryResult = queryCollectionResult(contentResolver, imageUri, isVideo = false, volumeName = effectiveVolume, includeTrashed = includeTrashed)
@@ -64,7 +76,6 @@ object MediaStoreHelper {
                     queryErrors.add("Image ($effectiveVolume)" to imageQueryResult.cause)
                 } else if (imageQueryResult is QueryResult.Success) {
                     successfulQueriesCount++
-                    volumeHasSuccess = true
                     items.addAll(imageQueryResult.items)
                 }
 
@@ -75,30 +86,39 @@ object MediaStoreHelper {
                     queryErrors.add("Video ($effectiveVolume)" to videoQueryResult.cause)
                 } else if (videoQueryResult is QueryResult.Success) {
                     successfulQueriesCount++
-                    volumeHasSuccess = true
                     items.addAll(videoQueryResult.items)
-                }
-
-                if (volumeHasSuccess && context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    try {
-                        val version = MediaStore.getVersion(context, volumeName)
-                        val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            MediaStore.getGeneration(context, volumeName)
-                        } else {
-                            0L
-                        }
-                        persistVolumeSyncInfo(context, volumeName, version, generation)
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "SecurityException persisting sync info for volume $volumeName", e)
-                    } catch (e: IllegalArgumentException) {
-                        Log.w(TAG, "IllegalArgumentException persisting sync info for volume $volumeName", e)
-                    }
                 }
             }
 
-            if (successfulQueriesCount == 0 && queryErrors.isNotEmpty()) {
+            if (queryErrors.isNotEmpty()) {
                 MediaLoadResult.Error(queryErrors.first().second)
             } else {
+                var isGenerationConsistent = true
+                for ((_, _, volumeName) in targets) {
+                    if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val finalVersion = MediaStore.getVersion(context, volumeName)
+                            val finalGeneration = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) MediaStore.getGeneration(context, volumeName) else 0L
+                            if (initialVersionMap[volumeName] != finalVersion || initialGenerationMap[volumeName] != finalGeneration) {
+                                isGenerationConsistent = false
+                                break
+                            }
+                        } catch (e: Exception) {
+                            isGenerationConsistent = false
+                        }
+                    }
+                }
+
+                if (isGenerationConsistent) {
+                    for ((_, _, volumeName) in targets) {
+                        if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val version = initialVersionMap[volumeName]
+                            val generation = initialGenerationMap[volumeName] ?: 0L
+                            persistVolumeSyncInfo(context, volumeName, version, generation, isTrash = includeTrashed)
+                        }
+                    }
+                }
+
                 val sorted = items.sortedByDescending { it.dateAdded }
                 if (sorted.isEmpty()) {
                     MediaLoadResult.Empty
@@ -115,18 +135,19 @@ object MediaStoreHelper {
         }
     }
 
-    fun isMediaStoreVersionCurrent(context: Context): Boolean {
+    fun isMediaStoreVersionCurrent(context: Context, isTrash: Boolean = false): Boolean {
         return try {
-            val volumeNames = MediaStore.getExternalVolumeNames(context)
-            if (volumeNames.isEmpty()) return false
-            for (volumeName in volumeNames) {
+            val targets = getCollectionUris(context)
+            if (targets.isEmpty()) return false
+            for (target in targets) {
+                val volumeName = target.volumeName ?: continue
                 val currentVersion = MediaStore.getVersion(context, volumeName)
-                val persistedVersion = getPersistedVolumeVersion(context, volumeName)
+                val persistedVersion = getPersistedVolumeVersion(context, volumeName, isTrash)
                 if (persistedVersion == null || persistedVersion != currentVersion) {
                     return false
                 }
                 val currentGeneration = MediaStore.getGeneration(context, volumeName)
-                val persistedGeneration = getPersistedVolumeGeneration(context, volumeName)
+                val persistedGeneration = getPersistedVolumeGeneration(context, volumeName, isTrash)
                 if (persistedGeneration == -1L || persistedGeneration != currentGeneration) {
                     return false
                 }
@@ -169,13 +190,7 @@ object MediaStoreHelper {
                 Log.w(TAG, "NoSuchMethodError getting volume names", e)
             }
         }
-        return listOf(
-            CollectionTarget(
-                imageUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                videoUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                volumeName = MediaStore.VOLUME_EXTERNAL_PRIMARY
-            )
-        )
+        return emptyList()
     }
 
     private sealed interface QueryResult {
