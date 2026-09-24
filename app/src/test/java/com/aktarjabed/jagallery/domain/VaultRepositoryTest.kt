@@ -35,7 +35,7 @@ class VaultRepositoryTest {
     }
 
     @Test
-    fun deleteVaultItem_whenFileDeletionFails_throwsIoFailureAndPreservesDBRow() = runBlocking {
+    fun deleteVaultItem_whenFileDeletionFails_throwsIoFailureAndPreservesDBRow(): Unit = runBlocking {
         // Create a dummy un-deletable file using Robolectric mocks isn't easy natively without PowerMock,
         // but we can simulate it if the file doesn't exist and we mock existence.
         // Actually, let's just make it a directory with contents so delete() fails.
