@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import androidx.core.net.toUri
 import com.aktarjabed.jagallery.data.local.MediaDatabase
 import com.aktarjabed.jagallery.util.FileUtils
 import dagger.assisted.Assisted
@@ -31,7 +32,7 @@ class TrashCleanupWorker @AssistedInject constructor(
             val expired = trashedMedia.filter { it.dateTrashed < expiryMillis }
 
             if (expired.isNotEmpty()) {
-                val uris = expired.map { android.net.Uri.parse(it.uri) }
+                val uris = expired.map { it.uri.toUri() }
                 val deleteResult = FileUtils.deleteMediaItems(applicationContext.contentResolver, uris)
                 if (deleteResult.successfulUris.isNotEmpty()) {
                     database.mediaDao().removeTrashMediaBatch(deleteResult.successfulUris.map { it.toString() })

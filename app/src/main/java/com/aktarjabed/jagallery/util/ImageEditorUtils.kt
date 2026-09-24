@@ -60,11 +60,7 @@ object ImageEditorUtils {
             options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
             options.inJustDecodeBounds = false
 
-            val bitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            } ?: return@withContext null
-
-            rotateBitmapIfNeeded(context, uri, bitmap)
+            decodeAndRotateBitmap(context, uri, options)
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
@@ -87,16 +83,11 @@ object ImageEditorUtils {
         uri: Uri,
         inSampleSize: Int = 1
     ): Bitmap? = withContext(Dispatchers.IO) {
-        val resolver = context.contentResolver
         try {
             val options = BitmapFactory.Options().apply {
                 this.inSampleSize = inSampleSize
             }
-            val bitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            } ?: return@withContext null
-
-            rotateBitmapIfNeeded(context, uri, bitmap)
+            decodeAndRotateBitmap(context, uri, options)
         } catch (e: CancellationException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -112,6 +103,15 @@ object ImageEditorUtils {
             Log.e(TAG, "IllegalArgumentException decoding full resolution bitmap", e)
             null
         }
+    }
+
+    private fun decodeAndRotateBitmap(context: Context, uri: Uri, options: BitmapFactory.Options): Bitmap? {
+        val resolver = context.contentResolver
+        val bitmap = resolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, options)
+        } ?: return null
+
+        return rotateBitmapIfNeeded(context, uri, bitmap)
     }
 
     private fun calculateInSampleSize(

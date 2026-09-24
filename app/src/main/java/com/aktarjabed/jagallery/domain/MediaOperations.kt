@@ -4,6 +4,7 @@ import com.aktarjabed.jagallery.data.model.MediaItem
 import com.aktarjabed.jagallery.data.repository.MediaRepository
 import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
+import androidx.core.net.toUri
 import javax.inject.Singleton
 
 sealed interface OperationResult<out T> {
@@ -184,7 +185,7 @@ class MediaOperationsImpl @Inject constructor(
                 try {
                     val entity = vaultRepository.moveToVault(item.uri, item.mimeType, item.name)
                     // We don't have a new MediaStore URI for it, just represent the original item for deletion logic
-                    successfulCopies.add(Pair(item, android.net.Uri.parse(entity.originalUriStr)))
+                    successfulCopies.add(Pair(item, entity.originalUriStr.toUri()))
                 } catch (e: Exception) {
                     failedItems.add(item)
                 }
@@ -233,7 +234,7 @@ class MediaOperationsImpl @Inject constructor(
 
     private fun createMockItemForEntity(entity: com.aktarjabed.jagallery.data.local.VaultMediaEntity): MediaItem {
         return MediaItem(
-            uri = android.net.Uri.parse(entity.originalUriStr), mediaStoreId = -1L, name = entity.originalName,
+            uri = entity.originalUriStr.toUri(), mediaStoreId = -1L, name = entity.originalName,
             dateAdded = entity.dateAdded, mimeType = entity.mimeType, bucketId = -1L, bucketName = "",
             relativePath = "", isVideo = entity.mimeType.startsWith("video/"), volumeName = "",
             size = 0L, isFavorite = false, isTrashed = false, dateTrashed = 0L
