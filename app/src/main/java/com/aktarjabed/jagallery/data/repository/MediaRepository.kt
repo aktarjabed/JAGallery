@@ -36,12 +36,9 @@ class MediaRepository @Inject constructor(
     private val loadMutex = Mutex()
     private val favoriteMutex = Mutex()
 
-    private var activeScanJob: Deferred<Unit>? = null
-    private var pendingForcedScan = false
-    private var pendingContext: Context? = null
-
-    // Throttling for bulk rescans
-    private var lastRescanTimeMs: Long = 0
+    private data class ScanRequest(val force: Boolean, val context: Context?)
+    private var currentScanJob: Deferred<Unit>? = null
+    private var pendingRequest: ScanRequest? = null
 
     val mediaLoadResult: Flow<MediaLoadResult> = combine(
         _mediaLoadResult,
@@ -106,78 +103,60 @@ class MediaRepository @Inject constructor(
         }
     }
 
-    suspend fun loadMedia(force: Boolean = false, context: Context? = null) = withContext(ioDispatcher) {
+    suspend fun loadMedia(force: Boolean = false, context: Context? = null) {
         val jobToAwait = loadMutex.withLock {
-            val currentTime = System.currentTimeMillis()
-            val existingJob = activeScanJob
-            if (existingJob != null) {
+            if (currentScanJob != null) {
                 if (force) {
-                    pendingForcedScan = true
-                    pendingContext = context
+                    pendingRequest = ScanRequest(force = true, context = context)
+                } else if (pendingRequest == null) {
+                    pendingRequest = ScanRequest(force = false, context = context)
                 }
-                existingJob
+                currentScanJob!!
             } else {
-                var actualJob: Deferred<Unit>? = null
-                actualJob = repositoryScope.async {
-                    executeScanLoop(actualJob, initialForce = force, initialContext = context)
+                val newJob = repositoryScope.async {
+                    executeScanLoop(ScanRequest(force, context))
                 }
-                activeScanJob = actualJob
-                actualJob
+                currentScanJob = newJob
+                newJob
             }
         }
         jobToAwait.await()
     }
 
-    private suspend fun executeScanLoop(thisJob: Deferred<Unit>?, initialForce: Boolean, initialContext: Context?) {
-        var forceForCurrentPass = initialForce
-        var contextForCurrentPass = initialContext
+    private suspend fun executeScanLoop(initialRequest: ScanRequest) {
+        var currentRequest = initialRequest
 
         try {
             while (true) {
-                if (forceForCurrentPass) {
-                    lastRescanTimeMs = System.currentTimeMillis()
-                }
                 val current = _mediaLoadResult.value
-                val skip = !forceForCurrentPass && contextForCurrentPass != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(contextForCurrentPass)
+                val skip = !currentRequest.force && currentRequest.context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && MediaStoreHelper.isMediaStoreVersionCurrent(currentRequest.context)
+
                 if (!skip) {
-                    val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, contextForCurrentPass)
+                    val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, currentRequest.context)
                     _mediaLoadResult.value = result
                 }
 
-                val shouldContinue = loadMutex.withLock {
-                    if (pendingForcedScan) {
-                        forceForCurrentPass = true
-                        contextForCurrentPass = pendingContext
-                        pendingForcedScan = false
-                        pendingContext = null
-                        true
-                    } else {
-                        false
-                    }
+                val nextRequest = loadMutex.withLock {
+                    val next = pendingRequest
+                    pendingRequest = null
+                    next
                 }
 
-                if (!shouldContinue) {
+                if (nextRequest == null) {
                     break
                 }
+                currentRequest = nextRequest
             }
         } finally {
             loadMutex.withLock {
-                if (thisJob == null || activeScanJob === thisJob) {
-                    activeScanJob = null
-                    // If there's a pending forced scan but the loop ended (e.g. exception/cancellation),
-                    // we need to make sure the next call to loadMedia sees that activeScanJob is null
-                    // but pendingForcedScan is true. The pending scan will trigger on the next manual/observer call.
-                    // However, we should proactively trigger it now to not lose the forced scan request completely
-                    // if there are no subsequent observer calls.
-                    if (pendingForcedScan) {
-                        var newJob: Deferred<Unit>? = null
-                        newJob = repositoryScope.async {
-                            executeScanLoop(newJob, true, pendingContext)
-                        }
-                        activeScanJob = newJob
-                        pendingForcedScan = false
-                        pendingContext = null
+                currentScanJob = null
+                val nextRequest = pendingRequest
+                if (nextRequest != null) {
+                    pendingRequest = null
+                    val newJob = repositoryScope.async {
+                        executeScanLoop(nextRequest)
                     }
+                    currentScanJob = newJob
                 }
             }
         }
