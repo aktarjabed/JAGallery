@@ -86,6 +86,16 @@ class FakeMediaDao : MediaDao {
         list.add(vaultEntity)
         vaultFlow.value = list
     }
+    override suspend fun insertAll(items: List<VaultMediaEntity>) {
+        val list = vaultFlow.value.toMutableList()
+        val ids = items.map { it.id }.toSet()
+        list.removeAll { ids.contains(it.id) }
+        list.addAll(items)
+        vaultFlow.value = list
+    }
+    override suspend fun insertVaultMediaBatch(items: List<VaultMediaEntity>) {
+        insertAll(items)
+    }
     override suspend fun deleteVaultMedia(vaultEntity: VaultMediaEntity) {
         val list = vaultFlow.value.toMutableList()
         list.removeAll { it.id == vaultEntity.id }

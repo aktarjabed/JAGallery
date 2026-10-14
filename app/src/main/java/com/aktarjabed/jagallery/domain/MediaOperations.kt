@@ -1,8 +1,15 @@
 package com.aktarjabed.jagallery.domain
 
+import android.content.ContentProviderOperation
+import android.provider.MediaStore
 import com.aktarjabed.jagallery.data.model.MediaItem
 import com.aktarjabed.jagallery.data.repository.MediaRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.yield
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,10 +53,30 @@ interface MediaOperations {
     suspend fun moveMediaBatch(context: android.content.Context, sourceItems: List<MediaItem>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
     suspend fun renameMedia(context: android.content.Context, item: MediaItem, newName: String): RenameOperationResult
     suspend fun renameAlbum(context: android.content.Context, sourceAlbum: com.aktarjabed.jagallery.data.model.Album, newName: String, items: List<MediaItem>): MoveOperationResult
+    suspend fun renameAlbumAtomically(context: android.content.Context, mediaUris: List<android.net.Uri>, newRelativePath: String): Result<Int>
     suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult
     suspend fun restoreFromVault(context: android.content.Context, items: List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>, destination: com.aktarjabed.jagallery.data.model.AlbumDestination): MoveOperationResult
     suspend fun rollbackMoveDestinationCopies(context: android.content.Context, unconfirmedIds: List<String>, destinationMapping: Map<String, android.net.Uri>)
     suspend fun rollbackVaultDestinationEntries(unconfirmedIds: List<String>, vaultMapping: Map<String, String>)
+
+    companion object {
+        fun resolveTargetVolumeName(
+            context: android.content.Context,
+            sourceUri: android.net.Uri
+        ): String {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val volumeNames = MediaStore.getExternalVolumeNames(context)
+                val pathSegments = sourceUri.pathSegments
+                if (pathSegments.isNotEmpty()) {
+                    val candidate = pathSegments.first()
+                    if (candidate in volumeNames) return candidate
+                }
+                return MediaStore.getVolumeName(sourceUri).takeIf { it in volumeNames }
+                    ?: MediaStore.VOLUME_EXTERNAL_PRIMARY
+            }
+            return "external"
+        }
+    }
 }
 
 @Singleton
@@ -181,18 +208,36 @@ class MediaOperationsImpl @Inject constructor(
         return moveMediaBatch(context, items, destination)
     }
 
+    private val vaultIoSemaphore = Semaphore(4)
+
+    suspend fun <T, R> executeBoundedVaultStaging(
+        items: List<T>,
+        stageBlock: suspend (T) -> R?
+    ): List<R> = coroutineScope {
+        items.map { item ->
+            async {
+                vaultIoSemaphore.withPermit {
+                    runCatching { stageBlock(item) }.getOrNull()
+                }
+            }
+        }.awaitAll().filterNotNull()
+    }
+
     override suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult {
         return try {
+            val triples = items.map { Triple(it.uri, it.mimeType, it.name) }
+            val movedEntities = vaultRepository.batchMoveToVault(triples)
+            val movedMap = movedEntities.associateBy { it.originalUriStr }
+
             val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
             val failedItems = mutableListOf<MediaItem>()
 
             for (item in items) {
-                yield()
-                try {
-                    val entity = vaultRepository.moveToVault(item.uri, item.mimeType, item.name)
+                val entity = movedMap[item.uri.toString()]
+                if (entity != null) {
                     // Embed vault id so grid knows what to rollback if canceled
                     successfulCopies.add(Pair(item, android.net.Uri.parse("vault://${entity.id}")))
-                } catch (e: Exception) {
+                } else {
                     failedItems.add(item)
                 }
             }
@@ -336,4 +381,35 @@ class MediaOperationsImpl @Inject constructor(
             }
         }
     }
+
+    override suspend fun renameAlbumAtomically(
+        context: android.content.Context,
+        mediaUris: List<android.net.Uri>,
+        newRelativePath: String
+    ): Result<Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            if (mediaUris.isEmpty()) return@runCatching 0
+            val normalizedPath = if (newRelativePath.endsWith("/")) newRelativePath else "$newRelativePath/"
+            val operations = ArrayList<ContentProviderOperation>(mediaUris.size)
+            for (uri in mediaUris) {
+                operations.add(
+                    ContentProviderOperation.newUpdate(uri)
+                        .withValue(MediaStore.MediaColumns.RELATIVE_PATH, normalizedPath)
+                        .build()
+                )
+            }
+            val results = context.contentResolver.applyBatch(MediaStore.AUTHORITY, operations)
+            results.sumOf { it.count ?: 0 }
+        }
+    }
+
+    fun resolveTargetVolumeName(
+        context: android.content.Context,
+        sourceUri: android.net.Uri
+    ): String = MediaOperations.resolveTargetVolumeName(context, sourceUri)
 }
+
+fun resolveTargetVolumeName(
+    context: android.content.Context,
+    sourceUri: android.net.Uri
+): String = MediaOperations.resolveTargetVolumeName(context, sourceUri)

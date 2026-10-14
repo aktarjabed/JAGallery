@@ -31,11 +31,19 @@ data class TransformationPlan(
     val exposure: Float = 0f,
     val cropRect: RectF? = null,
     val flipHorizontal: Boolean = false,
-    val flipVertical: Boolean = false
+    val flipVertical: Boolean = false,
+    val shadows: Float = 0f,
+    val highlights: Float = 0f,
+    val sharpness: Float = 0f
 ) {
     fun isIdentity(): Boolean =
-        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && exposure == 0f && (cropRect == null || (cropRect.left <= 0f && cropRect.top <= 0f && cropRect.right >= 1f && cropRect.bottom >= 1f)) && !flipHorizontal && !flipVertical
+        rotationDegrees == 0f && brightness == 0f && contrast == 1f && saturation == 1f && exposure == 0f &&
+        shadows == 0f && highlights == 0f && sharpness == 0f &&
+        (cropRect == null || (cropRect.left <= 0f && cropRect.top <= 0f && cropRect.right >= 1f && cropRect.bottom >= 1f)) &&
+        !flipHorizontal && !flipVertical
 }
+
+typealias TransformationConfig = TransformationPlan
 
 object ImageEditorUtils {
 
@@ -213,7 +221,16 @@ object ImageEditorUtils {
             }
             canvas.drawBitmap(rotated, 0f, 0f, paint)
 
-            result
+            if (plan.shadows != 0f || plan.highlights != 0f || plan.sharpness > 0f) {
+                coroutineContext.ensureActive()
+                val toned = applyToneAndSharpness(result, plan.shadows, plan.highlights, plan.sharpness)
+                if (toned !== result) {
+                    result.recycle()
+                }
+                toned
+            } else {
+                result
+            }
         } catch (e: CancellationException) {
             throw e
         } finally {
@@ -497,5 +514,92 @@ object ImageEditorUtils {
             return rotated
         }
         return bitmap
+    }
+
+    fun applyToneAndSharpness(
+        source: Bitmap,
+        shadows: Float = 0f,
+        highlights: Float = 0f,
+        sharpness: Float = 0f
+    ): Bitmap {
+        if (shadows == 0f && highlights == 0f && sharpness <= 0f) return source
+        val width = source.width
+        val height = source.height
+        if (width <= 2 || height <= 2) return source
+
+        val inPixels = IntArray(width * height)
+        source.getPixels(inPixels, 0, width, 0, 0, width, height)
+
+        if (shadows != 0f || highlights != 0f) {
+            val sClamped = shadows.coerceIn(-1f, 1f)
+            val hClamped = highlights.coerceIn(-1f, 1f)
+            for (i in inPixels.indices) {
+                val px = inPixels[i]
+                val a = px ushr 24
+                var r = (px shr 16) and 0xFF
+                var g = (px shr 8) and 0xFF
+                var b = px and 0xFF
+
+                val lum = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
+                val shadowMask = (1f - lum) * (1f - lum)
+                val highlightMask = lum * lum
+                val delta = (sClamped * shadowMask + hClamped * highlightMask) * 128f
+
+                r = (r + delta).toInt().coerceIn(0, 255)
+                g = (g + delta).toInt().coerceIn(0, 255)
+                b = (b + delta).toInt().coerceIn(0, 255)
+
+                inPixels[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+            }
+        }
+
+        if (sharpness > 0f) {
+            val outPixels = inPixels.copyOf()
+            val amount = sharpness.coerceIn(0f, 1f)
+            val centerWeight = 1f + 4f * amount
+            val neighborWeight = -amount
+
+            for (y in 1 until height - 1) {
+                val row = y * width
+                for (x in 1 until width - 1) {
+                    val idx = row + x
+                    val c = inPixels[idx]
+                    val top = inPixels[idx - width]
+                    val bottom = inPixels[idx + width]
+                    val left = inPixels[idx - 1]
+                    val right = inPixels[idx + 1]
+
+                    val a = c ushr 24
+                    val r = (
+                        ((c shr 16) and 0xFF) * centerWeight +
+                        (((top shr 16) and 0xFF) + ((bottom shr 16) and 0xFF) +
+                         ((left shr 16) and 0xFF) + ((right shr 16) and 0xFF)) * neighborWeight
+                    ).toInt().coerceIn(0, 255)
+                    val g = (
+                        ((c shr 8) and 0xFF) * centerWeight +
+                        (((top shr 8) and 0xFF) + ((bottom shr 8) and 0xFF) +
+                         ((left shr 8) and 0xFF) + ((right shr 8) and 0xFF)) * neighborWeight
+                    ).toInt().coerceIn(0, 255)
+                    val b = (
+                        (c and 0xFF) * centerWeight +
+                        ((top and 0xFF) + (bottom and 0xFF) +
+                         (left and 0xFF) + (right and 0xFF)) * neighborWeight
+                    ).toInt().coerceIn(0, 255)
+
+                    outPixels[idx] = (a shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+            val result = Bitmap.createBitmap(
+                width, height, Bitmap.Config.ARGB_8888
+            )
+            result.setPixels(outPixels, 0, width, 0, 0, width, height)
+            return result
+        }
+
+        val result = Bitmap.createBitmap(
+            width, height, Bitmap.Config.ARGB_8888
+        )
+        result.setPixels(inPixels, 0, width, 0, 0, width, height)
+        return result
     }
 }

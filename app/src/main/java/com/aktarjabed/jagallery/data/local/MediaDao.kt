@@ -57,6 +57,12 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVaultMedia(vaultEntity: VaultMediaEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<VaultMediaEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVaultMediaBatch(items: List<VaultMediaEntity>)
+
     @Delete
     suspend fun deleteVaultMedia(vaultEntity: VaultMediaEntity)
 }

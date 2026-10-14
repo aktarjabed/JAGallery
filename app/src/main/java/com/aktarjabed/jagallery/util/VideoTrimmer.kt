@@ -78,7 +78,8 @@ object VideoTrimmer {
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             }
 
-            val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val targetVolume = com.aktarjabed.jagallery.domain.MediaOperations.resolveTargetVolumeName(context, sourceUri)
+            val collection = MediaStore.Video.Media.getContentUri(targetVolume)
 
             newUri = FileUtils.insertPendingMediaEntry(resolver, collection, contentValues)
             if (newUri == null) {

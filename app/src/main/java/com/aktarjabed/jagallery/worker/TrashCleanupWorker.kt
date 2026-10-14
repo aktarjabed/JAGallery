@@ -91,4 +91,10 @@ class TrashCleanupWorker @AssistedInject constructor(
             Result.retry()
         }
     }
+
+    companion object {
+        fun schedulePeriodicPurge(context: Context) {
+            TrashCleanupScheduler.schedulePeriodicPurge(context)
+        }
+    }
 }

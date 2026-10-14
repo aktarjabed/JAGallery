@@ -42,7 +42,7 @@ Validation completed successfully:
 | Copy | ✅ Implemented | MediaStore destination creation + Complete Copy UX | |
 | Move | ✅ Implemented | Copy + Source deletion with Room transaction metadata sync constraints | |
 | Batch rollback | ✅ Implemented | Transactional rollback for metadata orphans implemented via source retention | |
-| Trash | ✅ Implemented | Fully featured MediaStore trash/restore + Configurable 7/30/60 day/never Retention | Idempotent automated cleanup via `WorkManager` |
+| Trash | ✅ Implemented | Fully featured MediaStore trash/restore + Configurable 7/30/60 day/never Retention + WorkManager auto-purge | |
 | Restore | ✅ Implemented | MediaStore trashed-item query/restore flow | |
 | Rename individual media | ✅ Implemented | MediaStore rename via ContentResolver update | |
 | External MediaStore synchronization | ✅ Implemented | MediaStore observing | |
@@ -54,7 +54,7 @@ Validation completed successfully:
 | Albums | ✅ Implemented | MediaStore/folder-based albums | |
 | Sort/Filter | ✅ Implemented | Bottom-sheet based | |
 | Create album | ✅ Implemented | Available through MediaStore folder creation | |
-| Rename album | ⚠️ Partial | Batch move + delete intent flow (copy/delete rather than atomic rename) | |
+| Rename album | ✅ Implemented | Atomic MediaStore batch rename via applyBatch with fallback to move batch | |
 | Timeline/date grouping | ✅ Implemented | Today/Yesterday/Month grid separators | |
 | Favorites persistence | ✅ Implemented | | |
 
@@ -63,7 +63,7 @@ Validation completed successfully:
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Basic image editing | ✅ Implemented | Rotate/brightness/contrast/saturation/flip | |
-| Advanced photo editor | ⚠️ Partial | Interactive Free Crop maps correctly, preserves EXIF | Highlights/Shadows/Sharpness absent |
+| Advanced photo editor | ✅ Implemented | Interactive Free Crop, tone curves (Highlights/Shadows), unsharp sharpness | |
 | Crop | ✅ Implemented | Interactive Crop overlay / Aspect ratio crop (Square/Free/Original) | |
 | Flip horizontal/vertical | ✅ Implemented | Matrix postScale flip operations | |
 | GIF-specific editing | ❌ Missing | | |
@@ -73,7 +73,7 @@ Validation completed successfully:
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| Video trimming | ✅ Implemented | Dedicated trimming/export pipeline, boundary validation | Writes to primary storage |
+| Video trimming | ✅ Implemented | Dedicated trimming/export pipeline, multi-volume resolution | |
 | Video trim UI | ✅ Implemented | Full trim workflow with bottom sheet | |
 | Video mute | ❌ Missing | | |
 | Video frame extraction | ❌ Missing | | |
@@ -85,7 +85,7 @@ Validation completed successfully:
 | Android 14 permissions | ✅ Implemented | Full/selected/type-specific handling | |
 | Hide/unhide | ✅ Implemented | UI-level hiding | |
 | Hidden album UI | ✅ Implemented | Hide state exists | |
-| Secure vault | ✅ Implemented | AES-256-GCM Keystore + App-private storage | Temporary decrypted `content://` streams for viewing/sharing. |
+| Secure vault | ✅ Implemented | AES-256-GCM Keystore + App-private storage + Zero-disk PFD pipe streaming | |
 | Biometric lock / unlock | ✅ Implemented | `androidx.biometric` authentication + 1 min auto-lock timeout | |
 
 ## Search/Discovery
@@ -151,7 +151,7 @@ It is not yet:
 1. ~~Secure hidden vault + BiometricPrompt.~~
 2. ~~Duplicate review/cleanup.~~
 3. ~~Persistent hash cache.~~
-4. Advanced editor controls (Highlights/Shadows/Sharpness).
+4. ~~Advanced editor controls (Highlights/Shadows/Sharpness).~~
 5. ~~Robust Multi-volume Move/Copy (target volume selection).~~
 
 ### Phase 3 — intelligence

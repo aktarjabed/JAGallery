@@ -6,6 +6,11 @@ import com.aktarjabed.jagallery.data.local.MediaDao
 import com.aktarjabed.jagallery.data.local.VaultMediaEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -29,6 +34,21 @@ class VaultRepository @Inject constructor(
 ) {
     private val vaultDir = File(context.filesDir, "vault").apply { mkdirs() }
     private val tempDir = File(context.cacheDir, "vault_temp").apply { mkdirs() }
+
+    private val batchVaultSemaphore = Semaphore(4)
+
+    suspend fun <T, R> runBoundedBatchIo(
+        items: List<T>,
+        block: suspend (T) -> R?
+    ): List<R> = coroutineScope {
+        items.map { item ->
+            async {
+                batchVaultSemaphore.withPermit {
+                    runCatching { block(item) }.getOrNull()
+                }
+            }
+        }.awaitAll().filterNotNull()
+    }
 
     suspend fun moveToVault(originalUri: Uri, mimeType: String, originalName: String): VaultMediaEntity = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
@@ -58,6 +78,63 @@ class VaultRepository @Inject constructor(
             }
             throw e
         }
+    }
+
+    /**
+     * Batch-encrypts files concurrently (bounded by [batchVaultSemaphore]) and performs
+     * a single atomic Room [MediaDao.insertVaultMediaBatch]. If the DB insert throws,
+     * all staged encrypted files are rolled back.
+     */
+    suspend fun batchMoveToVault(
+        items: List<Triple<Uri, String, String>> // (uri, mimeType, originalName)
+    ): List<VaultMediaEntity> = withContext(Dispatchers.IO) {
+        // Stage encrypted files concurrently with bounded parallelism
+        data class StagedItem(val entity: VaultMediaEntity, val encryptedFile: File)
+
+        val staged: List<StagedItem> = coroutineScope {
+            items.map { (uri, mimeType, originalName) ->
+                async {
+                    batchVaultSemaphore.withPermit {
+                        val id = UUID.randomUUID().toString()
+                        val encryptedFile = File(vaultDir, id)
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                FileOutputStream(encryptedFile).use { output ->
+                                    vaultCryptoManager.encrypt(input, output)
+                                }
+                            } ?: throw IllegalStateException("Could not open input stream for $uri")
+
+                            StagedItem(
+                                VaultMediaEntity(
+                                    id = id,
+                                    originalUriStr = uri.toString(),
+                                    mimeType = mimeType,
+                                    encryptedFilePath = encryptedFile.absolutePath,
+                                    dateAdded = System.currentTimeMillis(),
+                                    originalName = originalName
+                                ),
+                                encryptedFile
+                            )
+                        } catch (e: Exception) {
+                            if (encryptedFile.exists()) encryptedFile.delete()
+                            null
+                        }
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
+
+        if (staged.isEmpty()) return@withContext emptyList()
+
+        // Atomic batch DB insert — rollback staged files on failure
+        try {
+            mediaDao.insertVaultMediaBatch(staged.map { it.entity })
+        } catch (e: Exception) {
+            staged.forEach { it.encryptedFile.delete() }
+            throw e
+        }
+
+        staged.map { it.entity }
     }
 
     suspend fun decryptToTemp(entity: VaultMediaEntity): File = withContext(Dispatchers.IO) {
@@ -102,3 +179,4 @@ class VaultRepository @Inject constructor(
         }
     }
 }
+
