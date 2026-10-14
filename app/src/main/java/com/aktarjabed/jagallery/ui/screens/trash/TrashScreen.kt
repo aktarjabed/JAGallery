@@ -26,11 +26,20 @@ import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
 import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 
+import com.aktarjabed.jagallery.ui.common.components.JAGalleryBottomBar
+import com.aktarjabed.jagallery.ui.common.components.MainBottomTab
+import com.aktarjabed.jagallery.ui.theme.TrashRed
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrashScreen(
     onNavigateToViewer: (mediaId: String, source: MediaSource) -> Unit,
     onBack: () -> Unit,
+    onNavigateToPhotos: () -> Unit = onBack,
+    onNavigateToAlbums: () -> Unit = onBack,
+    onNavigateToVault: () -> Unit = {},
     viewModel: TrashViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -46,7 +55,7 @@ fun TrashScreen(
 
     var showEmptyTrashDialog by rememberSaveable { mutableStateOf(false) }
 
-    var pendingEmptyTrashBatch by remember { mutableStateOf<PendingDeleteBatch?>(null) }
+    var pendingEmptyTrashBatch by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
 
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
@@ -138,7 +147,12 @@ fun TrashScreen(
         emptyMessage = stringResource(R.string.no_trash_found),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.tab_trash)) },
+                title = {
+                    Text(
+                        stringResource(R.string.tab_trash),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -148,8 +162,25 @@ fun TrashScreen(
                     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
                     if (items.isNotEmpty()) {
                         IconButton(onClick = { showEmptyTrashDialog = true }) {
-                            Icon(Icons.Default.DeleteForever, contentDescription = stringResource(R.string.empty_trash))
+                            Icon(Icons.Default.DeleteForever, contentDescription = stringResource(R.string.empty_trash), tint = TrashRed)
                         }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
+            )
+        },
+        bottomBar = {
+            JAGalleryBottomBar(
+                currentTab = MainBottomTab.TRASH,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        MainBottomTab.PHOTOS -> onNavigateToPhotos()
+                        MainBottomTab.ALBUMS -> onNavigateToAlbums()
+                        MainBottomTab.TRASH -> {}
+                        MainBottomTab.VAULT -> onNavigateToVault()
                     }
                 }
             )

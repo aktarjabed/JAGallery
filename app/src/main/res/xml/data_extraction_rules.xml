@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Exclude all private app data from cloud backup -->
         <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="file" path="."/>
+        <exclude domain="cache" path="."/>
+        <exclude domain="external" path="."/>
     </cloud-backup>
     <device-transfer>
+        <!-- Exclude all private app data from device-to-device transfer -->
         <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="file" path="."/>
+        <exclude domain="cache" path="."/>
+        <exclude domain="external" path="."/>
     </device-transfer>
 </data-extraction-rules>

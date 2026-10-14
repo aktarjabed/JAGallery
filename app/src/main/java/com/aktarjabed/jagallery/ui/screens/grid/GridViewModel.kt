@@ -8,9 +8,12 @@ import com.aktarjabed.jagallery.data.repository.MediaRepository
 import com.aktarjabed.jagallery.domain.MediaOperations
 import com.aktarjabed.jagallery.ui.common.BaseMediaViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import com.aktarjabed.jagallery.ui.common.components.MediaTypeFilter
@@ -37,7 +40,7 @@ class GridViewModel @Inject constructor(
 
 
     private val _sortOption = MutableStateFlow(SortOption.DATE)
-    val sortOption: StateFlow<SortOption> = _sortOption.kotlinx.coroutines.flow.asStateFlow()
+    val sortOption: StateFlow<SortOption> = _sortOption.asStateFlow()
 
     private var currentMoveDestinationMapping: Map<String, android.net.Uri>? = null
     private var currentVaultDestinationMapping: Map<String, String>? = null
@@ -45,10 +48,10 @@ class GridViewModel @Inject constructor(
     private var requestedVaultSourceIds: List<String> = emptyList()
 
     private val _sortOrder = MutableStateFlow(SortOrder.DESCENDING)
-    val sortOrder: StateFlow<SortOrder> = _sortOrder.kotlinx.coroutines.flow.asStateFlow()
+    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
     private val _mediaFilter = MutableStateFlow(MediaTypeFilter.ALL)
-    val mediaFilter: StateFlow<MediaTypeFilter> = _mediaFilter.kotlinx.coroutines.flow.asStateFlow()
+    val mediaFilter: StateFlow<MediaTypeFilter> = _mediaFilter.asStateFlow()
 
     fun setSortAndFilter(option: SortOption, order: SortOrder, filter: MediaTypeFilter) {
         _sortOption.value = option
@@ -56,7 +59,7 @@ class GridViewModel @Inject constructor(
         _mediaFilter.value = filter
     }
     private val _source = MutableStateFlow<MediaSource>(initialSource)
-    val source: StateFlow<MediaSource> = _source.kotlinx.coroutines.flow.asStateFlow()
+    val source: StateFlow<MediaSource> = _source.asStateFlow()
 
     val mediaLoadResult: StateFlow<MediaLoadResult> = combine(
         repository.mediaLoadResult,
@@ -114,30 +117,32 @@ class GridViewModel @Inject constructor(
     }
 
     fun rollbackMove(context: android.content.Context, confirmedDeletedIds: List<String>) {
+        val mapping = currentMoveDestinationMapping ?: return
         val unconfirmed = requestedMoveSourceIds.filterNot { it in confirmedDeletedIds }
-        if (unconfirmed.isNotEmpty() && currentMoveDestinationMapping != null) {
+        if (unconfirmed.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    mediaOperations.rollbackMoveDestinationCopies(context, unconfirmed, currentMoveDestinationMapping!!)
-                } catch (e: kotlinx.coroutines.CancellationException) {
+                    mediaOperations.rollbackMoveDestinationCopies(context, unconfirmed, mapping)
+                } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    // Ignore
+                    _operationEvent.emit(com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Rollback failed: ${e.message}"))
                 }
             }
         }
     }
 
     fun rollbackVault(context: android.content.Context, confirmedDeletedIds: List<String>) {
+        val mapping = currentVaultDestinationMapping ?: return
         val unconfirmed = requestedVaultSourceIds.filterNot { it in confirmedDeletedIds }
-        if (unconfirmed.isNotEmpty() && currentVaultDestinationMapping != null) {
+        if (unconfirmed.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    mediaOperations.rollbackVaultDestinationEntries(unconfirmed, currentVaultDestinationMapping!!)
-                } catch (e: kotlinx.coroutines.CancellationException) {
+                    mediaOperations.rollbackVaultDestinationEntries(unconfirmed, mapping)
+                } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    // Ignore
+                    _operationEvent.emit(com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Rollback failed: ${e.message}"))
                 }
             }
         }

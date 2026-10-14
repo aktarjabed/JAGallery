@@ -177,7 +177,13 @@ abstract class BaseMediaViewModel(
         mediaItems: List<MediaItem>,
         destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): com.aktarjabed.jagallery.domain.MoveOperationResult {
-        return mediaOperations.copyMediaBatch(context, mediaItems, destination)
+        return try {
+            mediaOperations.copyMediaBatch(context, mediaItems, destination)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.aktarjabed.jagallery.domain.MoveOperationResult.Error(e.message ?: "Unknown error", e)
+        }
     }
 
     suspend fun moveMediaBatch(
@@ -185,11 +191,23 @@ abstract class BaseMediaViewModel(
         mediaItems: List<MediaItem>,
         destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): com.aktarjabed.jagallery.domain.MoveOperationResult {
-        return mediaOperations.moveMediaBatch(context, mediaItems, destination)
+        return try {
+            mediaOperations.moveMediaBatch(context, mediaItems, destination)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.aktarjabed.jagallery.domain.MoveOperationResult.Error(e.message ?: "Unknown error", e)
+        }
     }
 
     suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): com.aktarjabed.jagallery.domain.MoveOperationResult {
-        return mediaOperations.moveToVault(context, items)
+        return try {
+            mediaOperations.moveToVault(context, items)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.aktarjabed.jagallery.domain.MoveOperationResult.Error(e.message ?: "Unknown error", e)
+        }
     }
 
     suspend fun restoreFromVault(
@@ -197,6 +215,12 @@ abstract class BaseMediaViewModel(
         items: List<com.aktarjabed.jagallery.data.local.VaultMediaEntity>,
         destination: com.aktarjabed.jagallery.data.model.AlbumDestination
     ): com.aktarjabed.jagallery.domain.MoveOperationResult {
-        return mediaOperations.restoreFromVault(context, items, destination)
+        return try {
+            mediaOperations.restoreFromVault(context, items, destination)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.aktarjabed.jagallery.domain.MoveOperationResult.Error(e.message ?: "Unknown error", e)
+        }
     }
 }

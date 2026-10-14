@@ -13,7 +13,6 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Paint
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
@@ -357,7 +356,7 @@ object ImageEditorUtils {
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         }
 
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && sourceUri != null) {
+        val collection = if (sourceUri != null) {
             try {
                 val volumeName = MediaStore.getVolumeName(sourceUri)
                 MediaStore.Images.Media.getContentUri(volumeName)
@@ -390,7 +389,9 @@ object ImageEditorUtils {
             }
 
             if (success && !FileUtils.publishPendingEntry(resolver, newUri, contentValues)) {
-                try { resolver.delete(newUri, null, null) } catch (e: Exception) {}
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {
+                    Log.w(TAG, "Failed to rollback pending MediaStore entry after publish failure", e)
+                }
                 return@withContext null
             }
 

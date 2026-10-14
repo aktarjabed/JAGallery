@@ -33,17 +33,59 @@ class TrashCleanupWorker @AssistedInject constructor(
             val expired = trashedMedia.filter { it.dateTrashed < cutoff }
 
             if (expired.isNotEmpty()) {
-                val uris = expired.map { android.net.Uri.parse(it.uri) }
-                val deleteResult = FileUtils.deleteMediaItems(applicationContext.contentResolver, uris)
-                if (deleteResult.successfulUris.isNotEmpty()) {
-                    mediaRepository.mediaDao.removeTrashMediaBatch(deleteResult.successfulUris.map { it.toString() })
+                val resolver = applicationContext.contentResolver
+                val existingUris = mutableListOf<android.net.Uri>()
+                val nonExistingUris = mutableListOf<String>()
+
+                for (item in expired) {
+                    val uri = android.net.Uri.parse(item.uri)
+                    var exists = false
+                    try {
+                        resolver.query(uri, arrayOf(android.provider.MediaStore.MediaColumns._ID), null, null, null)?.use { cursor ->
+                            exists = cursor.moveToFirst()
+                        }
+                    } catch (e: Exception) {
+                        // If query fails (e.g. security or not found), treat as not existing
+                        exists = false
+                    }
+                    if (exists) {
+                        existingUris.add(uri)
+                    } else {
+                        nonExistingUris.add(item.uri)
+                    }
                 }
 
-                if (!deleteResult.isFullySuccessful) {
-                    return@withContext Result.retry()
+                // Cleanup DB for items no longer in MediaStore
+                if (nonExistingUris.isNotEmpty()) {
+                    mediaRepository.mediaDao.removeTrashMediaBatch(nonExistingUris)
+                }
+
+                // Attempt deletion for remaining items
+                if (existingUris.isNotEmpty()) {
+                    try {
+                        val deleteResult = FileUtils.deleteMediaItems(resolver, existingUris)
+                        if (deleteResult.successfulUris.isNotEmpty()) {
+                            mediaRepository.mediaDao.removeTrashMediaBatch(deleteResult.successfulUris.map { it.toString() })
+                        }
+                        if (!deleteResult.isFullySuccessful) {
+                            return@withContext Result.retry()
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: SecurityException) {
+                        android.util.Log.e("TrashCleanupWorker", "SecurityException during deletion, skipping retry", e)
+                        // Don't retry on SecurityException
+                    } catch (e: Exception) {
+                        return@withContext Result.retry()
+                    }
                 }
             }
 
+            Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: SecurityException) {
+            android.util.Log.e("TrashCleanupWorker", "SecurityException, skipping retry", e)
             Result.success()
         } catch (e: Exception) {
             Result.retry()

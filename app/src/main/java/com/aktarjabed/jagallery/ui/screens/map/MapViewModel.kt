@@ -10,6 +10,7 @@ import com.aktarjabed.jagallery.util.ExifGpsExtractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,9 +58,12 @@ class MapViewModel @Inject constructor(
                     _errorMessage.value = "Failed to load media"
                     return@launch
                 }
-                val geoItems = result.items.mapNotNull { item ->
-                    val latLng = ExifGpsExtractor.extractLatLng(context, item.uri)
-                    latLng?.let { GeoMediaItem(item, it.first, it.second) }
+                val geoItems = withContext(Dispatchers.IO) {
+                    result.items.mapNotNull { item ->
+                        ensureActive()
+                        val latLng = ExifGpsExtractor.extractLatLng(context, item.uri)
+                        latLng?.let { GeoMediaItem(item, it.first, it.second) }
+                    }
                 }
                 _geoItems.value = geoItems
             } catch (e: kotlinx.coroutines.CancellationException) {

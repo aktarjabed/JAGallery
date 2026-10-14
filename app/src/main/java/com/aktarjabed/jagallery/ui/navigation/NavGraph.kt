@@ -107,6 +107,21 @@ fun NavGraph() {
                 onBack = { navController.popBackStack() },
                 onNavigateToVaultViewer = { vaultMediaId ->
                     navController.navigate(Screen.VaultViewer.createRoute(vaultMediaId))
+                },
+                onNavigateToPhotos = {
+                    navController.navigate(Screen.Grid.createRoute(MediaSource.All)) {
+                        popUpTo(Screen.Albums.route)
+                    }
+                },
+                onNavigateToAlbums = {
+                    navController.navigate(Screen.Albums.route) {
+                        popUpTo(Screen.Albums.route) { inclusive = true }
+                    }
+                },
+                onNavigateToTrash = {
+                    navController.navigate(Screen.Trash.route) {
+                        popUpTo(Screen.Albums.route)
+                    }
                 }
             )
         }
@@ -148,7 +163,22 @@ fun NavGraph() {
                 onNavigateToViewer = { mediaId, source ->
                     navController.navigate(Screen.Viewer.createRoute(mediaId, source))
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToPhotos = {
+                    navController.navigate(Screen.Grid.createRoute(MediaSource.All)) {
+                        popUpTo(Screen.Albums.route)
+                    }
+                },
+                onNavigateToAlbums = {
+                    navController.navigate(Screen.Albums.route) {
+                        popUpTo(Screen.Albums.route) { inclusive = true }
+                    }
+                },
+                onNavigateToVault = {
+                    navController.navigate(Screen.Vault.route) {
+                        popUpTo(Screen.Albums.route)
+                    }
+                }
             )
         }
         composable(
@@ -189,7 +219,22 @@ fun NavGraph() {
                     onNavigateToViewer = { mediaId, src ->
                         navController.navigate(Screen.Viewer.createRoute(mediaId, src))
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onNavigateToAlbums = {
+                        navController.navigate(Screen.Albums.route) {
+                            popUpTo(Screen.Albums.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToTrash = {
+                        navController.navigate(Screen.Trash.route) {
+                            popUpTo(Screen.Albums.route)
+                        }
+                    },
+                    onNavigateToVault = {
+                        navController.navigate(Screen.Vault.route) {
+                            popUpTo(Screen.Albums.route)
+                        }
+                    }
                 )
             }
         }

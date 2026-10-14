@@ -13,6 +13,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
 
@@ -41,10 +43,10 @@ fun InteractiveCropOverlay(
                     val bottom = rect.bottom
 
                     // Simple heuristic: which corner is closest
-                    val distTL = Offset(left, top).getDistanceSquared(offset)
-                    val distTR = Offset(right, top).getDistanceSquared(offset)
-                    val distBL = Offset(left, bottom).getDistanceSquared(offset)
-                    val distBR = Offset(right, bottom).getDistanceSquared(offset)
+                    val distTL = (Offset(left, top) - offset).getDistanceSquared()
+                    val distTR = (Offset(right, top) - offset).getDistanceSquared()
+                    val distBL = (Offset(left, bottom) - offset).getDistanceSquared()
+                    val distBR = (Offset(right, bottom) - offset).getDistanceSquared()
 
                     val thresholdSq = handleRadius * handleRadius
 

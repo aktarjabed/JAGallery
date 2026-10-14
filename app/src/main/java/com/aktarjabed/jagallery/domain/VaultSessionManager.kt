@@ -1,35 +1,56 @@
 package com.aktarjabed.jagallery.domain
 
 import com.aktarjabed.jagallery.data.repository.VaultRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class VaultSessionManager @Inject constructor(
-    private val vaultRepository: VaultRepository
+    private val vaultRepository: VaultRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     private val _isUnlocked = MutableStateFlow(false)
     val isUnlocked: StateFlow<Boolean> = _isUnlocked
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private var timerJob: kotlinx.coroutines.Job? = null
+
     private var lastUnlockTime = 0L
-    private val TIMEOUT_MS = 60 * 1000L // 1 minute auto-lock
+
+    private fun startTimer() {
+        cancelTimer()
+        val timeoutMins = settingsRepository.vaultTimeoutMinutes.value
+        val timeoutMs = timeoutMins * 60 * 1000L
+        if (timeoutMs > 0L) {
+            timerJob = applicationScope.launch {
+                kotlinx.coroutines.delay(timeoutMs)
+                lock()
+            }
+        }
+    }
+
+    private fun cancelTimer() {
+        timerJob?.cancel()
+        timerJob = null
+    }
 
     fun unlock() {
         _isUnlocked.value = true
         lastUnlockTime = System.currentTimeMillis()
+        startTimer()
     }
 
     fun lock() {
         _isUnlocked.value = false
         lastUnlockTime = 0L
+        cancelTimer()
         requestCleanup()
     }
 
@@ -40,9 +61,13 @@ class VaultSessionManager @Inject constructor(
     }
 
     fun checkTimeout(): Boolean {
-        if (_isUnlocked.value && System.currentTimeMillis() - lastUnlockTime > TIMEOUT_MS) {
-            lock()
-            return true
+        if (_isUnlocked.value) {
+            val timeoutMins = settingsRepository.vaultTimeoutMinutes.value
+            val timeoutMs = timeoutMins * 60 * 1000L
+            if (timeoutMs == 0L || System.currentTimeMillis() - lastUnlockTime > timeoutMs) {
+                lock()
+                return true
+            }
         }
         return false
     }
@@ -53,5 +78,6 @@ class VaultSessionManager @Inject constructor(
         }
         // refresh session on valid usage to prevent timeout during active vault work
         lastUnlockTime = System.currentTimeMillis()
+        startTimer()
     }
 }

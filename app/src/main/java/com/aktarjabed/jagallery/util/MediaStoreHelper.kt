@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.content.edit
@@ -61,12 +60,12 @@ object MediaStoreHelper {
             val initialVersionMap = mutableMapOf<String, String?>()
 
             for ((imageUri, videoUri, volumeName) in targets) {
-                val effectiveVolume = volumeName ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL_PRIMARY else "external"
+                val effectiveVolume = volumeName ?: MediaStore.VOLUME_EXTERNAL_PRIMARY
 
-                if (volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (volumeName != null) {
                      try {
                          initialVersionMap[volumeName] = MediaStore.getVersion(context, volumeName)
-                         initialGenerationMap[volumeName] = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) MediaStore.getGeneration(context, volumeName) else 0L
+                         initialGenerationMap[volumeName] = MediaStore.getGeneration(context, volumeName)
                      } catch (e: Exception) {}
                 }
 
@@ -96,10 +95,10 @@ object MediaStoreHelper {
             } else {
                 var isGenerationConsistent = true
                 for ((_, _, volumeName) in targets) {
-                    if (context != null && volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (volumeName != null) {
                         try {
                             val finalVersion = MediaStore.getVersion(context, volumeName)
-                            val finalGeneration = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) MediaStore.getGeneration(context, volumeName) else 0L
+                            val finalGeneration = MediaStore.getGeneration(context, volumeName)
                             if (initialVersionMap[volumeName] != finalVersion || initialGenerationMap[volumeName] != finalGeneration) {
                                 isGenerationConsistent = false
                                 break
@@ -112,7 +111,7 @@ object MediaStoreHelper {
 
                 if (isGenerationConsistent) {
                     for ((_, _, volumeName) in targets) {
-                        if (volumeName != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        if (volumeName != null) {
                             val version = initialVersionMap[volumeName]
                             val generation = initialGenerationMap[volumeName] ?: 0L
                             persistVolumeSyncInfo(context, volumeName, version, generation, isTrash = includeTrashed)
@@ -212,9 +211,7 @@ object MediaStoreHelper {
             MediaStore.MediaColumns.SIZE
         )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            projectionList.add(MediaStore.MediaColumns.RELATIVE_PATH)
-        }
+        projectionList.add(MediaStore.MediaColumns.RELATIVE_PATH)
 
         projectionList.add(MediaStore.MediaColumns.IS_TRASHED)
         projectionList.add(MediaStore.MediaColumns.DATE_EXPIRES)

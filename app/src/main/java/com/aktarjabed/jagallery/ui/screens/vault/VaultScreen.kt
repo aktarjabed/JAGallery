@@ -18,11 +18,29 @@ import com.aktarjabed.jagallery.domain.VaultAuthenticator
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.launch
 
+import android.app.Activity
+import android.view.WindowManager
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import com.aktarjabed.jagallery.ui.common.components.JAGalleryBottomBar
+import com.aktarjabed.jagallery.ui.common.components.MainBottomTab
+import com.aktarjabed.jagallery.ui.theme.PrimaryContainerDark
+import com.aktarjabed.jagallery.ui.theme.PrimaryPurple
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultScreen(
     onBack: () -> Unit,
     onNavigateToVaultViewer: (String) -> Unit = {},
+    onNavigateToPhotos: () -> Unit = onBack,
+    onNavigateToAlbums: () -> Unit = onBack,
+    onNavigateToTrash: () -> Unit = {},
     viewModel: VaultViewModel = hiltViewModel(),
     authenticator: VaultAuthenticator = VaultAuthenticator()
 ) {
@@ -31,10 +49,24 @@ fun VaultScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Enforce FLAG_SECURE on the Vault screen to protect against screenshots and screen recorders
+    DisposableEffect(Unit) {
+        val window = (context as? Activity)?.window
+        window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.vault_title)) },
+                title = {
+                    Text(
+                        stringResource(R.string.vault_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
@@ -43,8 +75,25 @@ fun VaultScreen(
                 actions = {
                     if (isUnlocked) {
                         IconButton(onClick = { viewModel.lock() }) {
-                            Icon(Icons.Filled.Lock, contentDescription = stringResource(R.string.cd_lock_vault))
+                            Icon(Icons.Filled.Lock, contentDescription = stringResource(R.string.cd_lock_vault), tint = PrimaryPurple)
                         }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
+            )
+        },
+        bottomBar = {
+            JAGalleryBottomBar(
+                currentTab = MainBottomTab.VAULT,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        MainBottomTab.PHOTOS -> onNavigateToPhotos()
+                        MainBottomTab.ALBUMS -> onNavigateToAlbums()
+                        MainBottomTab.TRASH -> onNavigateToTrash()
+                        MainBottomTab.VAULT -> {}
                     }
                 }
             )
@@ -52,27 +101,102 @@ fun VaultScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             if (!isUnlocked) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(64.dp))
-                    Spacer(Modifier.height(16.dp))
-                    Text(stringResource(R.string.vault_locked))
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = {
-                        scope.launch {
-                            if (context is FragmentActivity) {
-                                val success = authenticator.authenticate(context)
-                                if (success) {
-                                    viewModel.unlock()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(PrimaryContainerDark, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = PrimaryPurple
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = stringResource(R.string.vault_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.vault_locked),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(28.dp))
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                if (context is FragmentActivity) {
+                                    val success = authenticator.authenticate(context)
+                                    if (success) {
+                                        viewModel.unlock()
+                                    }
                                 }
                             }
-                        }
-                    }) {
-                        Text(stringResource(R.string.vault_unlock))
+                        },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryPurple,
+                            contentColor = Color.Black
+                        ),
+                        contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LockOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.vault_unlock),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             } else {
                 if (vaultItems.isEmpty()) {
-                    Text(stringResource(R.string.vault_empty))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = PrimaryPurple
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.vault_empty),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Media moved here is encrypted on-device with Android Keystore.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 } else {
                     var decryptedThumbnails by remember { mutableStateOf<Map<String, android.net.Uri>>(emptyMap()) }
                     var isDecrypting by remember { mutableStateOf(false) }
@@ -96,7 +220,7 @@ fun VaultScreen(
                     }
 
                     if (isDecrypting) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PrimaryPurple)
                     }
 
                     val safeMediaItems = remember(vaultItems, decryptedThumbnails) {

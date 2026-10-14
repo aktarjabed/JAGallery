@@ -1,52 +1,31 @@
 package com.aktarjabed.jagallery.ui.screens.albums
 
-import android.net.Uri
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aktarjabed.jagallery.R
+import com.aktarjabed.jagallery.data.model.Album
 import com.aktarjabed.jagallery.data.model.MediaSource
+import com.aktarjabed.jagallery.ui.common.components.*
 import com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver
-import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
-import com.aktarjabed.jagallery.ui.common.components.RenameDialog
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AlbumsScreen(
     viewModel: AlbumsViewModel = hiltViewModel(),
@@ -63,7 +42,8 @@ fun AlbumsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var albumToRename by remember { mutableStateOf<com.aktarjabed.jagallery.data.model.Album?>(null) }
+    var albumToRename by remember { mutableStateOf<Album?>(null) }
+    var showMoreMenu by rememberSaveable { mutableStateOf(false) }
 
     OperationToastEffect(operationEvent = viewModel.operationEvent)
 
@@ -95,128 +75,148 @@ fun AlbumsScreen(
         }
     }
 
-    var showMenu by rememberSaveable { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_hint))
+            Column {
+                JAGalleryTopBar(
+                    onNavigateToSearch = onNavigateToSearch,
+                    onNavigateToFavorites = onNavigateToFavorites,
+                    onMoreOptionsClick = { showMoreMenu = true }
+                )
+                FilterChipRow(
+                    selectedTab = GalleryFilterTab.ALBUMS,
+                    onTabSelected = { tab ->
+                        when (tab) {
+                            GalleryFilterTab.ALBUMS -> {}
+                            GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.All)
+                            GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.All)
+                            GalleryFilterTab.FAVORITES -> onNavigateToFavorites()
+                        }
                     }
-                    IconButton(onClick = onNavigateToFavorites) {
-                        Icon(Icons.Default.Favorite, contentDescription = stringResource(R.string.tab_favorites))
-                    }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.tab_hidden_media)) },
-                            leadingIcon = { Icon(Icons.Default.VisibilityOff, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToHidden()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.tab_trash)) },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToTrash()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.map_view_title)) },
-                            leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToMap()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.duplicates_title)) },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToDuplicates()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings)) },
-                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToSettings()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.vault_title)) },
-                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onNavigateToVault()
-                            }
-                        )
+                )
+            }
+        },
+        bottomBar = {
+            JAGalleryBottomBar(
+                currentTab = MainBottomTab.ALBUMS,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        MainBottomTab.PHOTOS -> onNavigateToGrid(MediaSource.All)
+                        MainBottomTab.ALBUMS -> {}
+                        MainBottomTab.TRASH -> onNavigateToTrash()
+                        MainBottomTab.VAULT -> onNavigateToVault()
                     }
                 }
             )
         }
     ) { padding ->
-        when (val state = uiState) {
-            is AlbumsUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            DropdownMenu(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.tab_hidden_media)) },
+                    leadingIcon = { Icon(Icons.Default.VisibilityOff, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onNavigateToHidden()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.map_view_title)) },
+                    leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onNavigateToMap()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.duplicates_title)) },
+                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onNavigateToDuplicates()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.title_settings)) },
+                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onNavigateToSettings()
+                    }
+                )
             }
-            is AlbumsUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(text = state.cause.localizedMessage ?: "Failed to load media", color = MaterialTheme.colorScheme.error)
-                }
-            }
-            is AlbumsUiState.Empty -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.PhotoLibrary,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(text = stringResource(R.string.no_media_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            when (val state = uiState) {
+                is AlbumsUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            }
-            is AlbumsUiState.Success -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 180.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(4.dp)
-                ) {
-                    item {
-                        AlbumCard(
-                            title = stringResource(R.string.tab_all_media),
-                            count = state.totalCount,
-                            coverUri = state.coverUri ?: Uri.EMPTY,
-                            onClick = { onNavigateToGrid(MediaSource.All) }
+                is AlbumsUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = state.cause.localizedMessage ?: "Failed to load media",
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
-                    items(state.albums) { album ->
-                        AlbumCard(
-                            title = album.name.ifBlank { stringResource(R.string.album_default_title) },
-                            count = album.mediaCount,
-                            coverUri = album.coverUri,
-                            onClick = { onNavigateToGrid(MediaSource.Album(album.key)) },
-                            onLongClick = { albumToRename = album }
-                        )
+                }
+                is AlbumsUiState.Empty -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = stringResource(R.string.no_media_found),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                is AlbumsUiState.Success -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.albums, key = { it.id }) { album ->
+                            AlbumMosaicCard(
+                                title = album.name.ifBlank { stringResource(R.string.album_default_title) },
+                                count = album.mediaCount,
+                                coverUris = album.coverUris,
+                                isVideo = album.isVideo,
+                                onClick = { onNavigateToGrid(MediaSource.Album(album.key)) },
+                                onLongClick = { albumToRename = album },
+                                onMenuClick = { albumToRename = album }
+                            )
+                        }
+
+                        // Bottom Section: Category Cards for Trash & Vault
+                        item(span = { GridItemSpan(1) }) {
+                            TrashCategoryCard(
+                                itemCount = state.trashCount,
+                                onClick = onNavigateToTrash
+                            )
+                        }
+                        item(span = { GridItemSpan(1) }) {
+                            VaultCategoryCard(
+                                itemCount = state.vaultCount,
+                                onClick = onNavigateToVault
+                            )
+                        }
                     }
                 }
             }
@@ -235,43 +235,5 @@ fun AlbumsScreen(
                 albumToRename = null
             }
         )
-    }
-}
-
-@androidx.compose.foundation.ExperimentalFoundationApi
-@Composable
-fun AlbumCard(
-    title: String,
-    count: Int,
-    coverUri: Uri,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = Modifier
-            .padding(4.dp)
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        Column {
-            AsyncImage(
-                model = coverUri,
-                contentDescription = title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-            )
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(
-                    text = pluralStringResource(R.plurals.media_item_count, count, count),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
     }
 }

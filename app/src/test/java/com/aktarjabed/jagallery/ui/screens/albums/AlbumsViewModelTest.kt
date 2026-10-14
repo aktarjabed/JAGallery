@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.aktarjabed.jagallery.data.model.AlbumKey
-import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.data.repository.MediaRepository
 import com.aktarjabed.jagallery.fakes.FakeMediaDao
 import com.aktarjabed.jagallery.fixtures.MediaTestData

@@ -61,10 +61,15 @@ The Vault feature protects files using Android Keystore and AES-256-GCM.
 
 ## Project Setup & Testing
 
-### Building the Project
+### Building the Project (Local APK)
+You can generate a debug APK for testing directly on your device by running:
 ```bash
 ./gradlew assembleDebug
 ```
+Once the build completes, the APK will be available at:
+`app/build/outputs/apk/debug/app-debug.apk`
+
+Transfer this file to your Android device to install and test the app.
 
 ### Running Unit Tests
 ```bash

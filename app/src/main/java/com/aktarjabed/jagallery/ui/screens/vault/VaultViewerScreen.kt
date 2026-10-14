@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.ui.screens.viewer.components.ImageViewer
 import com.aktarjabed.jagallery.ui.screens.viewer.components.VideoPlayer

@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import com.aktarjabed.jagallery.R
@@ -69,8 +70,6 @@ fun shareMediaItems(context: Context, items: List<MediaItem>) {
     }
 }
 
-import androidx.compose.runtime.saveable.rememberSaveable
-
 @Composable
 fun MediaSelectionHandler(
     items: List<MediaItem>,
@@ -97,17 +96,17 @@ fun MediaSelectionHandler(
     var showMoveAlbumDialog by rememberSaveable { mutableStateOf(false) }
     var showCopyAlbumDialog by rememberSaveable { mutableStateOf(false) }
 
-    var pendingDeleteBatchForMessage by remember { mutableStateOf<PendingDeleteBatch?>(null) }
-    var pendingRestoreBatchForMessage by remember { mutableStateOf<PendingDeleteBatch?>(null) }
+    var pendingDeleteBatchForMessage by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
+    var pendingRestoreBatchForMessage by rememberSaveable { mutableStateOf<PendingDeleteBatch?>(null) }
 
     val batchState by batchManager.batchState.collectAsStateWithLifecycle()
 
     val showPartialBatchToast = { succeededCount: Int, totalCount: Int ->
         if (succeededCount > 0) {
-            android.widget.Toast.makeText(
+            Toast.makeText(
                 context,
                 context.resources.getQuantityString(
-                    com.aktarjabed.jagallery.R.plurals.batch_partially_processed,
+                    R.plurals.batch_partially_processed,
                     totalCount,
                     succeededCount,
                     totalCount
@@ -159,8 +158,6 @@ fun MediaSelectionHandler(
                 count = currentState.batch.count,
                 isPermanent = isTrashedBatch,
                 onConfirm = {
-                    val isTrashedBatch = items.any { currentState.batch.ids.contains(it.id) && it.isTrashed }
-
                     val requestResult = if (isTrashedBatch) {
                         FileUtils.createDeleteRequests(context.contentResolver, currentState.batch.uris)
                     } else {

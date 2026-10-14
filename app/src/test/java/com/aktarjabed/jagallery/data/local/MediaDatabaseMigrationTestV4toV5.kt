@@ -53,9 +53,9 @@ class MediaDatabaseMigrationTestV4toV5 {
 
         v4Db.close()
 
-        // Open with Room v5 using MIGRATION_4_5
+        // Open with Room v6 using MIGRATION_4_5 and MIGRATION_5_6
         val roomDb = Room.databaseBuilder(context, MediaDatabase::class.java, dbName)
-            .addMigrations(MediaDatabase.MIGRATION_4_5)
+            .addMigrations(MediaDatabase.MIGRATION_4_5, MediaDatabase.MIGRATION_5_6)
             .build()
 
         roomDb.openHelper.writableDatabase

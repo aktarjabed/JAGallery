@@ -11,22 +11,17 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.aktarjabed.jagallery.R
 
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +41,21 @@ fun SelectionToolbar(
     var showOverflowMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("$selectedCount ${stringResource(R.string.selected)}") },
+        title = {
+            Text(
+                "$selectedCount ${stringResource(R.string.selected)}",
+                fontWeight = FontWeight.Bold
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel))
             }
         },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
         actions = {
             if (onShareSelected != null) {
                 IconButton(onClick = onShareSelected) {

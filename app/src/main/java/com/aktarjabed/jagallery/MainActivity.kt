@@ -3,9 +3,15 @@ package com.aktarjabed.jagallery
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.aktarjabed.jagallery.data.repository.MediaRepository
+import com.aktarjabed.jagallery.domain.SettingsRepository
+import com.aktarjabed.jagallery.domain.ThemeMode
+import com.aktarjabed.jagallery.domain.VaultSessionManager
 import com.aktarjabed.jagallery.ui.common.components.PermissionHandler
 import com.aktarjabed.jagallery.ui.navigation.NavGraph
 import com.aktarjabed.jagallery.ui.theme.AdvancedGalleryTheme
@@ -21,7 +27,10 @@ class MainActivity : FragmentActivity() {
     lateinit var repository: MediaRepository
 
     @Inject
-    lateinit var vaultSessionManager: com.aktarjabed.jagallery.domain.VaultSessionManager
+    lateinit var vaultSessionManager: VaultSessionManager
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     private var observerManager: MediaStoreObserverManager? = null
 
@@ -40,7 +49,19 @@ class MainActivity : FragmentActivity() {
         )
 
         setContent {
-            AdvancedGalleryTheme {
+            val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle()
+            val dynamicColor by settingsRepository.dynamicColor.collectAsStateWithLifecycle()
+
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            AdvancedGalleryTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColor
+            ) {
                 PermissionHandler(
                     onPermissionChanged = {
                         lifecycleScope.launch {
@@ -58,8 +79,6 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         if (vaultSessionManager.checkTimeout()) {
             // Re-locked due to timeout, let VaultRepository clean up
-            // To properly do this we'd inject it, but the session manager can handle triggering it
-            // or the ViewModels observing `isUnlocked` will trigger cleanup.
         }
     }
 

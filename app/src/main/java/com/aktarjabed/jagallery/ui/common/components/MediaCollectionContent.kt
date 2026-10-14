@@ -34,7 +34,8 @@ fun MediaCollectionContent(
     onMoveSelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
     onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
     onMoveToVaultSelected: ((List<MediaItem>) -> Unit)? = null,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val selectionState = rememberSelectionState()
     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
@@ -56,6 +57,7 @@ fun MediaCollectionContent(
                 topBarContent = topBar
             )
         },
+        bottomBar = bottomBar,
         modifier = modifier
     ) { padding ->
         when (loadResult) {

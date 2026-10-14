@@ -32,7 +32,7 @@ class TrashViewModel @Inject constructor(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Ignore
+                _operationEvent.emit(com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Failed to load trash: ${e.message}"))
             }
         }
     }
@@ -45,7 +45,7 @@ class TrashViewModel @Inject constructor(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Ignore
+                _operationEvent.emit(com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Failed to refresh: ${e.message}"))
             }
         }
     }

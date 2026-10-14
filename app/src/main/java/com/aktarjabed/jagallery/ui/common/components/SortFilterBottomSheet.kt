@@ -145,9 +145,15 @@ fun SortFilterBottomSheet(
                     Text(androidx.compose.ui.res.stringResource(com.aktarjabed.jagallery.R.string.sort_filter_close))
                 }
                 Spacer(modifier = Modifier.padding(8.dp))
-                androidx.compose.material3.Button(onClick = {
-                    onApply(pendingSortOption, pendingSortOrder, pendingFilter)
-                }) {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        onApply(pendingSortOption, pendingSortOrder, pendingFilter)
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = com.aktarjabed.jagallery.ui.theme.PrimaryPurple,
+                        contentColor = androidx.compose.ui.graphics.Color.Black
+                    )
+                ) {
                     Text(androidx.compose.ui.res.stringResource(com.aktarjabed.jagallery.R.string.sort_filter_apply))
                 }
             }

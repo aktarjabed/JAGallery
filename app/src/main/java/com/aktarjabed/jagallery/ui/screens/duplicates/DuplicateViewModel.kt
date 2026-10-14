@@ -63,9 +63,13 @@ class DuplicateViewModel @Inject constructor(
      * Retrieves or computes the hash record for a media item.
      * Uses the persistent cache (FileHashDao) to avoid redundant computation.
      */
-    private suspend fun getOrComputeHash(item: MediaItem): FileHashEntity? {
+    private suspend fun getOrComputeHash(
+        item: MediaItem,
+        existingHashes: Map<String, FileHashEntity>,
+        newHashes: MutableList<FileHashEntity>
+    ): FileHashEntity? {
         val uriStr = item.uri.toString()
-        val existing = fileHashDao.getHashForUri(uriStr)
+        val existing = existingHashes[uriStr]
 
         // Cache hit: return if the file hasn't been modified
         if (existing != null && existing.lastModifiedTime == item.dateAdded) {
@@ -84,7 +88,7 @@ class DuplicateViewModel @Inject constructor(
             perceptualHash = pHash,
             lastModifiedTime = item.dateAdded
         )
-        fileHashDao.insertHash(entity)
+        newHashes.add(entity)
         return entity
     }
 
@@ -114,6 +118,12 @@ class DuplicateViewModel @Inject constructor(
                     val sizeGroups = allItems.groupBy { it.size }.filter { it.key > 0 && it.value.size > 1 }
                     var processed = 0
                     val totalCandidates = sizeGroups.values.sumOf { it.size }
+                    
+                    val candidateUrisPhase1 = sizeGroups.values.flatten().map { it.uri.toString() }
+                    val existingHashesPhase1 = if (candidateUrisPhase1.isNotEmpty()) {
+                        fileHashDao.getHashesForUris(candidateUrisPhase1).associateBy { it.uriStr }
+                    } else emptyMap()
+                    val newHashesPhase1 = mutableListOf<FileHashEntity>()
 
                     for ((size, candidateItems) in sizeGroups) {
                         ensureActive()
@@ -121,7 +131,7 @@ class DuplicateViewModel @Inject constructor(
 
                         for (item in candidateItems) {
                             yield()
-                            val hashRecord = getOrComputeHash(item)
+                            val hashRecord = getOrComputeHash(item, existingHashesPhase1, newHashesPhase1)
 
                             if (hashRecord != null) {
                                 hashGroups.getOrPut(hashRecord.sha256Hash!!) { mutableListOf() }.add(item)
@@ -144,15 +154,26 @@ class DuplicateViewModel @Inject constructor(
                             }
                         }
                     }
+                    
+                    if (newHashesPhase1.isNotEmpty()) {
+                        fileHashDao.insertHashes(newHashesPhase1)
+                    }
 
                     // ── Phase 2: Similar Photos (Perceptual Hash / dHash) ──
                     // Also hash images that weren't in a same-size group
                     val imageItems = allItems.filter {
                         it.mimeType.startsWith("image/") && !exactDuplicateIds.contains(it.id)
                     }
+                    
+                    val candidateUrisPhase2 = imageItems.map { it.uri.toString() }
+                    val existingHashesPhase2 = if (candidateUrisPhase2.isNotEmpty()) {
+                        fileHashDao.getHashesForUris(candidateUrisPhase2).associateBy { it.uriStr }
+                    } else emptyMap()
+                    val newHashesPhase2 = mutableListOf<FileHashEntity>()
+                    
                     for (item in imageItems) {
                         yield()
-                        val hashRecord = getOrComputeHash(item)
+                        val hashRecord = getOrComputeHash(item, existingHashesPhase2, newHashesPhase2)
                         if (hashRecord?.perceptualHash != null) {
                             // Only add if not already collected in Phase 1
                             if (allPHashEntries.none { it.second.id == item.id }) {
@@ -161,6 +182,10 @@ class DuplicateViewModel @Inject constructor(
                         }
                         processed++
                         _scanProgress.value = (processed.toFloat() / (totalCandidates + imageItems.size)).coerceIn(0f, 1f)
+                    }
+                    
+                    if (newHashesPhase2.isNotEmpty()) {
+                        fileHashDao.insertHashes(newHashesPhase2)
                     }
 
                     // Cluster similar photos using Hamming distance on 64-bit dHash

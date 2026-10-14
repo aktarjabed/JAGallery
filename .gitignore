@@ -1,12 +1,7 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+.idea/
 .DS_Store
 /build
 /captures
@@ -19,3 +14,10 @@ app/build/
 *.orig
 *.rej
 node_modules
+build_output.log
+lint_output.txt
+process_viewmodels.py
+release_report.md
+.kilo/
+.kotlin/
+/JAGallery/

@@ -206,7 +206,7 @@ class MediaOperationsImpl @Inject constructor(
         }
     }
 
-    private fun executeSourceDeleteRequest(
+    private suspend fun executeSourceDeleteRequest(
         context: android.content.Context,
         successfulCopies: List<Pair<MediaItem, android.net.Uri>>,
         failedItems: MutableList<MediaItem>

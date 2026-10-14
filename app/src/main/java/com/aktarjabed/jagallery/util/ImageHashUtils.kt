@@ -12,10 +12,29 @@ import java.security.MessageDigest
 
 object ImageHashUtils {
 
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
     suspend fun calculateSha256(uri: Uri, context: Context): String? = withContext(Dispatchers.IO) {
         return@withContext try {
             val digest = MessageDigest.getInstance("SHA-256")
-            val inputStream: InputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
+            val inputStream: InputStream =
+                context.contentResolver.openInputStream(uri) ?: return@withContext null
             inputStream.use { input ->
                 val buffer = ByteArray(8192)
                 var bytesRead: Int
@@ -33,45 +52,44 @@ object ImageHashUtils {
 
     suspend fun calculatePHash(uri: Uri, context: Context): Long? = withContext(Dispatchers.IO) {
         return@withContext try {
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = false
+            // Pass 1: read dimensions only — no pixel memory allocation
+            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)
+                ?.use { BitmapFactory.decodeStream(it, null, boundsOptions) }
+
+            // Pass 2: decode at reduced size to avoid OOM on large camera photos (e.g. 40 MP)
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = calculateInSampleSize(boundsOptions, reqWidth = 512, reqHeight = 512)
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            val inputStream: InputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
-            val bitmap = inputStream.use { input ->
-                BitmapFactory.decodeStream(input, null, options)
+            val bitmap = context.contentResolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input, null, decodeOptions)
             } ?: return@withContext null
 
-            // Resize to 9x8 for difference hash
+            // Resize to 9×8 for difference hash
             val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 9, 8, true)
-            if (scaledBitmap != bitmap) {
-                bitmap.recycle()
-            }
+            if (scaledBitmap != bitmap) bitmap.recycle()
 
-            // Convert to grayscale and get pixels
+            // Build grayscale pixel array and compute hash
             val width = scaledBitmap.width
             val height = scaledBitmap.height
             val pixels = IntArray(width * height)
             scaledBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
             scaledBitmap.recycle()
 
-            // Calculate pHash (difference hash)
             var hash = 0L
             for (y in 0 until height) {
                 for (x in 0 until width - 1) {
-                    val indexLeft = y * width + x
-                    val indexRight = y * width + (x + 1)
-                    
-                    val pLeft = pixels[indexLeft]
-                    val pRight = pixels[indexRight]
-                    
-                    val grayLeft = (pLeft shr 16 and 0xFF) * 0.299 + (pLeft shr 8 and 0xFF) * 0.587 + (pLeft and 0xFF) * 0.114
-                    val grayRight = (pRight shr 16 and 0xFF) * 0.299 + (pRight shr 8 and 0xFF) * 0.587 + (pRight and 0xFF) * 0.114
-                    
+                    val pLeft = pixels[y * width + x]
+                    val pRight = pixels[y * width + (x + 1)]
+                    val grayLeft = (pLeft shr 16 and 0xFF) * 0.299 +
+                            (pLeft shr 8 and 0xFF) * 0.587 +
+                            (pLeft and 0xFF) * 0.114
+                    val grayRight = (pRight shr 16 and 0xFF) * 0.299 +
+                            (pRight shr 8 and 0xFF) * 0.587 +
+                            (pRight and 0xFF) * 0.114
                     hash = hash shl 1
-                    if (grayLeft < grayRight) {
-                        hash = hash or 1L
-                    }
+                    if (grayLeft < grayRight) hash = hash or 1L
                 }
             }
             hash

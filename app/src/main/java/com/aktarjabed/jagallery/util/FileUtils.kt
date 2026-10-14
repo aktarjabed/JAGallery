@@ -3,7 +3,6 @@ package com.aktarjabed.jagallery.util
 import android.app.PendingIntent
 import android.content.ContentResolver
 import android.net.Uri
-import android.os.Build
 import android.content.ContentUris
 import android.provider.MediaStore
 import android.util.Log
@@ -187,41 +186,35 @@ object FileUtils {
     ): Uri? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val resolver = context.contentResolver
         val isVideo = mimeType.startsWith("video/")
-        val relativePath = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            when (destination) {
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
-                    if (destination.relativePath.isNotEmpty()) destination.relativePath
-                    else if (isVideo) "Movies/${destination.name}/" else "Pictures/${destination.name}/"
-                }
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.key.relativePath
+        val relativePath = when (destination) {
+            is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                if (destination.relativePath.isNotEmpty()) destination.relativePath
+                else if (isVideo) "Movies/${destination.name}/" else "Pictures/${destination.name}/"
             }
-        } else ""
+            is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.key.relativePath
+        }
 
-        val volumeName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            when (destination) {
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
-                    if (destination.volumeName.isNotEmpty()) {
-                        destination.volumeName
-                    } else {
-                        android.provider.MediaStore.getVolumeName(sourceUri)
-                    }
+        val volumeName = when (destination) {
+            is com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum -> {
+                if (destination.volumeName.isNotEmpty()) {
+                    destination.volumeName
+                } else {
+                    android.provider.MediaStore.getVolumeName(sourceUri)
                 }
-                is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
             }
-        } else android.provider.MediaStore.VOLUME_EXTERNAL
+            is com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum -> destination.album.volumeName
+        }
 
         val collection = if (isVideo) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Video.Media.getContentUri(volumeName) else android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            android.provider.MediaStore.Video.Media.getContentUri(volumeName)
         } else {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) android.provider.MediaStore.Images.Media.getContentUri(volumeName) else android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            android.provider.MediaStore.Images.Media.getContentUri(volumeName)
         }
 
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, originalName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
-            }
+            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
         }
 
         var newUri: Uri? = null

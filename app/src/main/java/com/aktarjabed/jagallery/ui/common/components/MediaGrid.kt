@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Icon
@@ -23,15 +25,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import java.util.Calendar
-import java.util.Date
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaItem
+import kotlinx.coroutines.delay
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun MediaGrid(
@@ -41,6 +42,7 @@ fun MediaGrid(
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     modifier: Modifier = Modifier,
+    columnsCount: Int = 0,
     emptyIcon: ImageVector? = null,
     emptyMessage: String = "No media found"
 ) {
@@ -68,13 +70,13 @@ fun MediaGrid(
         }
     } else {
         // Observe current date to recalculate if day changes while app is open
-        var currentDayKey by remember { mutableStateOf(Calendar.getInstance().let { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }) }
+        var currentDayKey by remember {
+            mutableStateOf(Calendar.getInstance().let { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" })
+        }
 
-        // This effect will update the currentDayKey periodically so that long-lived sessions
-        // crossing midnight correctly trigger a recomposition of the timeline groups.
         LaunchedEffect(Unit) {
             while (true) {
-                kotlinx.coroutines.delay(60_000) // check every minute
+                delay(60_000) // check every minute
                 val newDayKey = Calendar.getInstance().let { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
                 if (newDayKey != currentDayKey) {
                     currentDayKey = newDayKey
@@ -86,7 +88,6 @@ fun MediaGrid(
         val yesterdayStr = stringResource(R.string.timeline_yesterday)
         val earlierStr = stringResource(R.string.timeline_earlier)
 
-        // Group items by timeline
         val groupedItems = remember(items, currentDayKey) {
             items.groupBy { item ->
                 val time = if (item.dateAdded > 10000000000L) item.dateAdded else item.dateAdded * 1000
@@ -99,7 +100,7 @@ fun MediaGrid(
                 } else if (cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)) {
                     yesterdayStr
                 } else if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
-                    val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale.getDefault())
+                    val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault())
                     month ?: earlierStr
                 } else {
                     cal.get(Calendar.YEAR).toString()
@@ -107,8 +108,10 @@ fun MediaGrid(
             }
         }
 
+        val gridCells = if (columnsCount > 0) GridCells.Fixed(columnsCount) else GridCells.Adaptive(minSize = 120.dp)
+
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 120.dp),
+            columns = gridCells,
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(2.dp)
         ) {

@@ -19,6 +19,7 @@
     <string name="reset">Reset</string>
     <string name="save">Save</string>
     <string name="back">Back</string>
+    <string name="open_album">Open album</string>
     <string name="edit_photo">Edit Photo</string>
     <string name="image_saved">Image saved successfully</string>
     <string name="failed_to_save_image">Failed to save image</string>
@@ -199,11 +200,32 @@
 
     <!-- Settings Screen -->
     <string name="title_settings">Settings</string>
+    <string name="settings_category_appearance">Appearance &amp; Display</string>
+    <string name="theme_mode_title">App Theme</string>
+    <string name="theme_mode_system">System Default</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="dynamic_colors_title">Material You Dynamic Colors</string>
+    <string name="dynamic_colors_desc">Use wallpaper color palette on supported devices</string>
+    <string name="grid_columns_title">Grid Layout</string>
+    <string name="grid_columns_auto">Auto (Adaptive)</string>
+    <string name="grid_columns_n">%1$d Columns</string>
+    <string name="settings_category_security">Security &amp; Vault</string>
+    <string name="vault_timeout_title">Vault Auto-Lock Timeout</string>
+    <string name="vault_timeout_immediately">Immediately</string>
+    <string name="vault_timeout_minutes">%1$d minute(s)</string>
+    <string name="settings_category_storage">Storage &amp; Trash</string>
     <string name="trash_retention_policy">Trash Retention Policy</string>
-    <string name="trash_retention_description">Select how long items should stay in the trash before permanent deletion.</string>
+    <string name="trash_retention_description">Select how long items stay in trash before permanent deletion.</string>
     <string name="retention_never">Never (Keep forever)</string>
     <string name="retention_days">%1$d days</string>
     <string name="retention_updated">Trash retention set to %1$s</string>
+    <string name="clear_cache_title">Clear Image Cache</string>
+    <string name="clear_cache_desc">Free up memory and thumbnail disk space</string>
+    <string name="cache_cleared">Thumbnail cache cleared successfully</string>
+    <string name="settings_category_about">About</string>
+    <string name="app_version">Version 1.0.0</string>
+    <string name="app_about_desc">J.A Gallery - Smart, Fast &amp; Secure Media Gallery for Android.</string>
 
     <!-- Error / Restore -->
     <string name="failed_to_restore_media">Failed to restore media</string>

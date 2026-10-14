@@ -23,11 +23,10 @@ class SmartAnalyzer(
 ) {
 
     suspend fun analyzeAndSave(uri: Uri) = withContext(Dispatchers.IO) {
+        val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+        val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             val inputImage = InputImage.fromFilePath(context, uri)
-
-            val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-            val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
             val labels = labeler.process(inputImage).await()
             val textResult = textRecognizer.process(inputImage).await()
@@ -55,6 +54,9 @@ class SmartAnalyzer(
             e.printStackTrace()
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            labeler.close()
+            textRecognizer.close()
         }
     }
 

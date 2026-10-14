@@ -25,6 +25,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.aktarjabed.jagallery.data.model.MediaItem
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.ui.res.stringResource
+import com.aktarjabed.jagallery.ui.theme.PrimaryPurple
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaThumbnail(
@@ -32,13 +40,14 @@ fun MediaThumbnail(
     isSelected: Boolean,
     selectionMode: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .padding(2.dp)
-            .clip(MaterialTheme.shapes.small)
+            .clip(RoundedCornerShape(10.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -53,42 +62,76 @@ fun MediaThumbnail(
             modifier = Modifier.fillMaxSize()
         )
 
+        // Video pill indicator
         if (mediaItem.isVideo) {
-            Icon(
-                imageVector = Icons.Default.PlayCircleOutline,
-                contentDescription = androidx.compose.ui.res.stringResource(com.aktarjabed.jagallery.R.string.cd_video_indicator),
-                tint = Color.White,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(48.dp)
-            )
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = stringResource(com.aktarjabed.jagallery.R.string.cd_video_indicator),
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
 
+        // Favorite heart indicator
+        if (mediaItem.isFavorite) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .size(22.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = stringResource(com.aktarjabed.jagallery.R.string.tab_favorites),
+                    tint = Color.White,
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+        }
+
+        // Selection overlay
         if (selectionMode) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(if (isSelected) Color.Black.copy(alpha = 0.4f) else Color.Transparent)
+                    .background(if (isSelected) Color.Black.copy(alpha = 0.45f) else Color.Transparent)
             )
             if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = androidx.compose.ui.res.stringResource(com.aktarjabed.jagallery.R.string.cd_selected),
-                    tint = MaterialTheme.colorScheme.primary,
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .background(Color.White, CircleShape)
-                        .border(1.dp, Color.White, CircleShape)
-                )
-            } else {
-                 Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(6.dp)
                         .size(24.dp)
-                        .border(2.dp, Color.White, CircleShape)
-                 )
+                        .background(PrimaryPurple, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = stringResource(com.aktarjabed.jagallery.R.string.cd_selected),
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(24.dp)
+                        .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                )
             }
         }
     }

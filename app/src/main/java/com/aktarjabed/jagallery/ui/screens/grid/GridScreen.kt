@@ -1,5 +1,6 @@
 package com.aktarjabed.jagallery.ui.screens.grid
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,12 +28,20 @@ import com.aktarjabed.jagallery.ui.common.components.OperationToastEffect
 import com.aktarjabed.jagallery.ui.common.components.SortFilterBottomSheet
 import kotlinx.coroutines.launch
 
+import com.aktarjabed.jagallery.ui.common.components.JAGalleryBottomBar
+import com.aktarjabed.jagallery.ui.common.components.MainBottomTab
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GridScreen(
     source: MediaSource,
     onNavigateToViewer: (mediaId: String, source: MediaSource) -> Unit,
     onBack: () -> Unit,
+    onNavigateToAlbums: () -> Unit = onBack,
+    onNavigateToTrash: () -> Unit = {},
+    onNavigateToVault: () -> Unit = {},
     viewModel: GridViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -114,6 +123,7 @@ fun GridScreen(
                     is MoveOperationResult.Error -> {
                         Toast.makeText(context, moveResult.message, Toast.LENGTH_SHORT).show()
                     }
+                    else -> {}
                 }
             }
         },
@@ -150,7 +160,8 @@ fun GridScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            titleText ?: stringResource(R.string.tab_all_media)
+                            titleText ?: stringResource(R.string.tab_all_media),
+                            fontWeight = FontWeight.Bold
                         )
                     },
                     actions = {
@@ -159,14 +170,35 @@ fun GridScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        if (source !is MediaSource.All) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
+                if (batchState is com.aktarjabed.jagallery.ui.common.selection.BatchProcessorState.Running) {
+                    LinearProgressIndicator(modifier = androidx.compose.ui.Modifier.fillMaxWidth())
+                }
+            }
+        },
+        bottomBar = {
+            if (source is MediaSource.All) {
+                JAGalleryBottomBar(
+                    currentTab = MainBottomTab.PHOTOS,
+                    onTabSelected = { tab ->
+                        when (tab) {
+                            MainBottomTab.PHOTOS -> {}
+                            MainBottomTab.ALBUMS -> onNavigateToAlbums()
+                            MainBottomTab.TRASH -> onNavigateToTrash()
+                            MainBottomTab.VAULT -> onNavigateToVault()
                         }
                     }
                 )
-                if (batchState != null) {
-                    LinearProgressIndicator(modifier = androidx.compose.ui.Modifier.fillMaxWidth())
-                }
             }
         },
         onItemClick = { item ->

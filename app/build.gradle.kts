@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aktarjabed.jagallery"
-        minSdk = 26
+        minSdk = 31
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -67,6 +67,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
 
     val composeBom = platform("androidx.compose:compose-bom:2024.11.00")
     implementation(composeBom)
@@ -99,11 +102,12 @@ dependencies {
 
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // ML Kit - Smart Albums & OCR
     implementation("com.google.mlkit:image-labeling:17.0.9")
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     val work_version = "2.9.0"
     implementation("androidx.work:work-runtime-ktx:$work_version")

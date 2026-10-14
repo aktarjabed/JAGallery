@@ -12,6 +12,11 @@ import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
 
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import com.aktarjabed.jagallery.ui.theme.PrimaryPurple
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
@@ -29,16 +34,25 @@ fun FavoritesScreen(
         allAlbums = allAlbums,
         batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
-        emptyIcon = Icons.Default.FavoriteBorder,
+        emptyIcon = Icons.Filled.Favorite,
         emptyMessage = stringResource(R.string.no_favorites_found),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.tab_favorites)) },
+                title = {
+                    Text(
+                        stringResource(R.string.tab_favorites),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
             )
         },
         onItemClick = { item ->

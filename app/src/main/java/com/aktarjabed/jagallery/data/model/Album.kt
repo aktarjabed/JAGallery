@@ -6,7 +6,9 @@ data class Album(
     val key: AlbumKey,
     val name: String,
     val mediaCount: Int,
-    val coverUri: Uri
+    val coverUri: Uri,
+    val coverUris: List<Uri> = listOf(coverUri),
+    val isVideo: Boolean = false
 ) {
     val bucketId: Long
         get() = key.bucketId

@@ -48,13 +48,14 @@ class MediaDatabaseMigrationTestFull {
 
         v1Db.close()
 
-        // Open with Room v5 using all migrations
+        // Open with Room v6 using all migrations
         val roomDb = Room.databaseBuilder(context, MediaDatabase::class.java, dbName)
             .addMigrations(
                 MediaDatabase.MIGRATION_1_2,
                 MediaDatabase.MIGRATION_2_3,
                 MediaDatabase.MIGRATION_3_4,
-                MediaDatabase.MIGRATION_4_5
+                MediaDatabase.MIGRATION_4_5,
+                MediaDatabase.MIGRATION_5_6
             )
             .build()
 

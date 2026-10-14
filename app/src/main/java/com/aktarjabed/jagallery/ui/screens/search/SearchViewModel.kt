@@ -7,11 +7,13 @@ import com.aktarjabed.jagallery.data.repository.MediaRepository
 import com.aktarjabed.jagallery.domain.MediaOperations
 import com.aktarjabed.jagallery.ui.common.BaseMediaViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -49,7 +51,8 @@ class SearchViewModel @Inject constructor(
             }
             else -> result
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MediaLoadResult.Loading)
+    }.flowOn(Dispatchers.IO)
+     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MediaLoadResult.Loading)
 
     fun updateSearchQuery(query: String) {
         savedStateHandle["searchQuery"] = query

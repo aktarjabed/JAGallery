@@ -26,6 +26,17 @@ class GalleryApplication : Application(), ImageLoaderFactory, Configuration.Prov
     override fun onCreate() {
         super.onCreate()
 
+        Thread {
+            try {
+                val tempDir = java.io.File(cacheDir, "vault_temp")
+                if (tempDir.exists() && tempDir.isDirectory) {
+                    tempDir.listFiles()?.forEach { it.delete() }
+                }
+            } catch (e: Exception) {
+                // Ignore cleanup failures
+            }
+        }.start()
+
         val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.aktarjabed.jagallery.worker.TrashCleanupWorker>(1, java.util.concurrent.TimeUnit.DAYS)
             .build()
         androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(

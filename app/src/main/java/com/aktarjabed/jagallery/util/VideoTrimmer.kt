@@ -87,7 +87,9 @@ object VideoTrimmer {
 
             destPfd = resolver.openFileDescriptor(newUri, "rw")
             if (destPfd == null) {
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                try { resolver.delete(newUri, null, null) } catch (e: Exception) {
+                    Log.w(TAG, "Failed to rollback pending entry (no dest fd)", e)
+                }
                 return@withContext null
             }
 

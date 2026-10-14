@@ -94,14 +94,11 @@ class VaultRepository @Inject constructor(
             tempFile.delete()
         }
 
-        if (fileWasDeleted) {
-            try {
-                mediaDao.deleteVaultMedia(entity)
-                return@withContext VaultDeleteResult.Success
-            } catch (e: Exception) {
-                return@withContext VaultDeleteResult.DatabaseDeletionFailed
-            }
+        try {
+            mediaDao.deleteVaultMedia(entity)
+            return@withContext VaultDeleteResult.Success
+        } catch (e: Exception) {
+            return@withContext VaultDeleteResult.DatabaseDeletionFailed
         }
-        return@withContext VaultDeleteResult.FileDeletionFailed
     }
 }

@@ -53,7 +53,6 @@ class VaultCryptoManager @Inject constructor() {
         }
     }
 
-    private var testSecretKey: SecretKey? = null
 
     @Throws(VaultCryptoException::class)
     private fun getOrCreateSecretKey(): SecretKey {
@@ -77,6 +76,12 @@ class VaultCryptoManager @Inject constructor() {
             )
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setUserAuthenticationRequired(true)
+                .setInvalidatedByBiometricEnrollment(true)
+                .setUserAuthenticationParameters(
+                    30,
+                    KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+                )
                 .build()
             keyGenerator.init(spec)
             return keyGenerator.generateKey()
