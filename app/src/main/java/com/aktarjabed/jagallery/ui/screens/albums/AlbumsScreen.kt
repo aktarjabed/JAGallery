@@ -42,6 +42,10 @@ fun AlbumsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    LaunchedEffect(viewModel) {
+        viewModel.refreshTrashCount()
+    }
+
     var albumToRename by remember { mutableStateOf<Album?>(null) }
     var showMoreMenu by rememberSaveable { mutableStateOf(false) }
 
