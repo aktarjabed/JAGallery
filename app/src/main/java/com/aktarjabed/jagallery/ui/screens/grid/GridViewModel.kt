@@ -66,10 +66,6 @@ class GridViewModel @Inject constructor(
         }
     }
 
-    fun setGridColumns(value: Int) {
-        _gridColumns.value = value.coerceIn(0, 8)
-    }
-
     fun setSortAndFilter(option: SortOption, order: SortOrder, filter: MediaTypeFilter) {
         _sortOption.value = option
         _sortOrder.value = order
