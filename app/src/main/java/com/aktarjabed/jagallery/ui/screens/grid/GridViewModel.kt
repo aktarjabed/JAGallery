@@ -134,13 +134,18 @@ class GridViewModel @Inject constructor(
         }
     }
 
-    fun rollbackVault(context: android.content.Context, deletedSourceIds: Set<String>) {
+    fun rollbackVault(retainedSourceIds: Set<String>) {
         val mapping = currentVaultDestinationMapping ?: return
-        val unconfirmedSourceIds = requestedVaultSourceIds.filterNot { it in deletedSourceIds }
-        if (unconfirmedSourceIds.isNotEmpty()) {
+        val stagedVaultIds = requestedVaultSourceIds
+            .filterNot { it in retainedSourceIds }
+            .mapNotNull { mapping[it] }
+        if (stagedVaultIds.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    mediaOperations.rollbackVaultDestinationEntries(unconfirmedSourceIds, mapping)
+                    mediaOperations.rollbackVaultDestinationEntries(
+                        unconfirmedIds = requestedVaultSourceIds.filterNot { it in retainedSourceIds },
+                        vaultMapping = mapping
+                    )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
