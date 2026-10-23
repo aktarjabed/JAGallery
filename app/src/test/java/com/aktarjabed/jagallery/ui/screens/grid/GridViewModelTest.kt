@@ -6,6 +6,7 @@ import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.data.repository.MediaRepository
 import com.aktarjabed.jagallery.domain.MediaOperationsImpl
+import com.aktarjabed.jagallery.domain.SettingsRepository
 import com.aktarjabed.jagallery.fakes.FakeMediaDao
 import com.aktarjabed.jagallery.fixtures.MediaTestData
 import com.aktarjabed.jagallery.rules.MainDispatcherRule
@@ -29,6 +30,8 @@ class GridViewModelTest {
     private lateinit var repository: MediaRepository
     private lateinit var mediaOperations: MediaOperationsImpl
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
+    private val context = mock(android.content.Context::class.java)
+    private val settingsRepository = SettingsRepository(context)
 
     @Before
     fun setUp() {
@@ -40,7 +43,7 @@ class GridViewModelTest {
 
     @Test
     fun setSource_filtersBySourceCorrectly() = runTest {
-        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.Album("external_primary", 10L, ""))
 
         assertTrue(viewModel.mediaLoadResult.value is MediaLoadResult.Loading || viewModel.mediaLoadResult.value is MediaLoadResult.Empty)
