@@ -18,8 +18,6 @@ import com.aktarjabed.jagallery.domain.VaultAuthenticator
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.launch
 
-import android.app.Activity
-import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
