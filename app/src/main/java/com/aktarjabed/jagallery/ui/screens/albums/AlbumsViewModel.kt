@@ -43,7 +43,7 @@ sealed interface AlbumsUiState {
 
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
-    repository: MediaRepository,
+    private val repository: MediaRepository,
     mediaOperations: MediaOperations,
     @ApplicationContext private val context: Context
 ) : BaseMediaViewModel(mediaOperations, repository) {
@@ -89,6 +89,20 @@ class AlbumsViewModel @Inject constructor(
             }
         }
     }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
+
+    fun refreshTrashCount() {
+        viewModelScope.launch {
+            try {
+                repository.loadTrashedMedia(context)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _operationEvent.emit(
+                    OperationEvent.Error("Failed to refresh Trash count: ${e.message}")
+                )
+            }
+        }
+    }
 
     private val _albumRenameDeleteEvent = MutableSharedFlow<Pair<List<String>, List<DeleteRequestChunk>>>()
     val albumRenameDeleteEvent = _albumRenameDeleteEvent.asSharedFlow()
