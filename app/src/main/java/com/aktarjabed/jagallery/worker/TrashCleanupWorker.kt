@@ -35,48 +35,57 @@ class TrashCleanupWorker @AssistedInject constructor(
             if (expired.isNotEmpty()) {
                 val resolver = applicationContext.contentResolver
                 val existingUris = mutableListOf<android.net.Uri>()
-                val nonExistingUris = mutableListOf<String>()
 
                 for (item in expired) {
                     val uri = android.net.Uri.parse(item.uri)
-                    var exists = false
                     try {
-                        resolver.query(uri, arrayOf(android.provider.MediaStore.MediaColumns._ID), null, null, null)?.use { cursor ->
-                            exists = cursor.moveToFirst()
+                        val cursor = resolver.query(
+                            uri,
+                            arrayOf(android.provider.MediaStore.MediaColumns._ID),
+                            null,
+                            null,
+                            null
+                        )
+                        if (cursor != null) {
+                            cursor.use {
+                                if (it.moveToFirst()) {
+                                    existingUris.add(uri)
+                                }
+                                // An empty result is ambiguous under scoped media access.
+                                // Keep the tracking row instead of assuming the item vanished.
+                            }
                         }
+                    } catch (e: SecurityException) {
+                        // A query denial is not evidence that the media was deleted.
+                        android.util.Log.w("TrashCleanupWorker", "Cannot inspect tracked Trash item; retaining its record", e)
                     } catch (e: Exception) {
-                        // If query fails (e.g. security or not found), treat as not existing
-                        exists = false
-                    }
-                    if (exists) {
-                        existingUris.add(uri)
-                    } else {
-                        nonExistingUris.add(item.uri)
+                        // Preserve the record when provider state cannot be confirmed.
+                        android.util.Log.w("TrashCleanupWorker", "Cannot inspect tracked Trash item; retaining its record", e)
                     }
                 }
 
-                // Cleanup DB for items no longer in MediaStore
-                if (nonExistingUris.isNotEmpty()) {
-                    mediaRepository.mediaDao.removeTrashMediaBatch(nonExistingUris)
-                }
-
-                // Attempt deletion for remaining items
+                // Only remove tracking rows for entries the provider confirms were deleted.
+                // Background work cannot present MediaStore's interactive delete-consent UI.
                 if (existingUris.isNotEmpty()) {
                     try {
                         val deleteResult = FileUtils.deleteMediaItems(resolver, existingUris)
                         if (deleteResult.successfulUris.isNotEmpty()) {
-                            mediaRepository.mediaDao.removeTrashMediaBatch(deleteResult.successfulUris.map { it.toString() })
+                            mediaRepository.mediaDao.removeTrashMediaBatch(
+                                deleteResult.successfulUris.map { it.toString() }
+                            )
                         }
-                        if (!deleteResult.isFullySuccessful) {
+                        if (!deleteResult.isFullySuccessful && runAttemptCount < MAX_RETRIES_PER_RUN) {
                             return@withContext Result.retry()
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         throw e
                     } catch (e: SecurityException) {
-                        android.util.Log.e("TrashCleanupWorker", "SecurityException during deletion, skipping retry", e)
-                        // Don't retry on SecurityException
+                        android.util.Log.w("TrashCleanupWorker", "Deletion needs permission unavailable to background worker; retaining records", e)
                     } catch (e: Exception) {
-                        return@withContext Result.retry()
+                        android.util.Log.e("TrashCleanupWorker", "Trash purge attempt failed; retaining records", e)
+                        if (runAttemptCount < MAX_RETRIES_PER_RUN) {
+                            return@withContext Result.retry()
+                        }
                     }
                 }
             }
@@ -93,6 +102,8 @@ class TrashCleanupWorker @AssistedInject constructor(
     }
 
     companion object {
+        private const val MAX_RETRIES_PER_RUN = 2
+
         fun schedulePeriodicPurge(context: Context) {
             TrashCleanupScheduler.schedulePeriodicPurge(context)
         }
