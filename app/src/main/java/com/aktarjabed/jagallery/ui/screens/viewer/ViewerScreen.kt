@@ -275,12 +275,18 @@ fun ViewerScreen(
                 "VIEWER_VAULT_DELETE" -> {
                     val requestedItem = pendingVaultDeleteItem
                     if (requestedItem != null) {
+                        val sourceDeleteConfirmed = result.succeededIds.any { rawId ->
+                            rawId == requestedItem.mediaStoreId.toString()
+                        }
                         viewModel.onVaultSourceDeleteResult(
                             requestedItem,
-                            deleteConfirmed = !result.cancelled && result.succeededIds.contains(requestedItem.id)
+                            deleteConfirmed = !result.cancelled && sourceDeleteConfirmed
                         )
                         if (result.cancelled) {
-                            viewModel.rollbackVault(context, result.succeededIds)
+                            viewModel.rollbackVault(
+                                context,
+                                if (sourceDeleteConfirmed) setOf(requestedItem.id) else emptySet()
+                            )
                         }
                     }
                     pendingVaultDeleteItem = null
