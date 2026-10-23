@@ -224,9 +224,17 @@ class MediaOperationsImpl @Inject constructor(
     }
 
     override suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult {
+        if (items.isEmpty()) return MoveOperationResult.Error("No media selected")
         return try {
             val triples = items.map { Triple(it.uri, it.mimeType, it.name) }
             val movedEntities = vaultRepository.batchMoveToVault(triples)
+            if (movedEntities.size != items.size) {
+                // A partial Vault write must not be followed by a source-delete request.
+                // The caller gets an explicit failure and originals remain untouched.
+                return MoveOperationResult.Error(
+                    "Vault encryption failed for ${items.size - movedEntities.size} item(s); originals were retained"
+                )
+            }
             val movedMap = movedEntities.associateBy { it.originalUriStr }
 
             val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
