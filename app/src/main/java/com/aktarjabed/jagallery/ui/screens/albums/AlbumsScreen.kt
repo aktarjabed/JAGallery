@@ -88,7 +88,7 @@ fun AlbumsScreen(
                     onTabSelected = { tab ->
                         when (tab) {
                             GalleryFilterTab.ALBUMS -> {}
-                            GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.All)
+                            GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.TypeFiltered(isVideo = false))
                             GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.TypeFiltered(isVideo = true))
                             GalleryFilterTab.FAVORITES -> onNavigateToFavorites()
                         }
