@@ -205,6 +205,7 @@ object MediaStoreHelper {
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.BUCKET_ID,
             MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
@@ -253,6 +254,7 @@ object MediaStoreHelper {
             val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
             val nameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
             val dateAddedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
+            val dateModifiedColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
             val mimeTypeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
             val bucketIdColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_ID)
             val bucketNameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
@@ -267,6 +269,7 @@ object MediaStoreHelper {
                 val mediaStoreId = cursor.getLong(idColumn)
                 val name = if (nameColumn != -1) cursor.getString(nameColumn) ?: "" else ""
                 val dateAdded = if (dateAddedColumn != -1) cursor.getLong(dateAddedColumn) else 0L
+                val dateModified = if (dateModifiedColumn != -1) cursor.getLong(dateModifiedColumn) else dateAdded
                 val mimeType = if (mimeTypeColumn != -1) cursor.getString(mimeTypeColumn) ?: "" else ""
                 val bucketId = if (bucketIdColumn != -1) cursor.getLong(bucketIdColumn) else 0L
                 val bucketName = if (bucketNameColumn != -1) cursor.getString(bucketNameColumn) ?: "" else ""
@@ -288,6 +291,7 @@ object MediaStoreHelper {
                         name = name,
                         dateAdded = dateAdded,
                         mimeType = mimeType,
+                        dateModified = dateModified,
                         bucketId = bucketId,
                         bucketName = bucketName,
                         relativePath = relativePath,
