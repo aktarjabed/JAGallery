@@ -61,6 +61,20 @@ The Vault feature protects files using Android Keystore and AES-256-GCM.
 
 ## Project Setup & Testing
 
+### Prerequisites
+- **JDK 17** — Required for compilation. Install [Microsoft OpenJDK 17](https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-17), [Adoptium Temurin 17](https://adoptium.net/), or any OpenJDK 17 distribution.
+- **Android SDK** — Install via [Android Studio](https://developer.android.com/studio) or the [command-line tools](https://developer.android.com/studio#command-line-tools-only). Ensure `local.properties` contains your SDK path (e.g. `sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk`).
+- **`JAVA_HOME`** — Must point to your JDK 17 installation. Set it permanently:
+  ```powershell
+  # Windows (PowerShell)
+  [System.Environment]::SetEnvironmentVariable("JAVA_HOME", "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot", "User")
+  ```
+  ```bash
+  # macOS / Linux
+  export JAVA_HOME=$(/usr/libexec/java_home -v 17)  # macOS
+  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk      # Linux (path may vary)
+  ```
+
 ### Building the Project (Local APK)
 You can generate a debug APK for testing directly on your device by running:
 ```bash
