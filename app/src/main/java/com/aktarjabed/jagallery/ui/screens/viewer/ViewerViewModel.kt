@@ -65,6 +65,9 @@ class ViewerViewModel @Inject constructor(
 
     private var lastValidIndex: Int = 0
 
+    private var currentVaultDestinationMapping: Map<String, String>? = null
+    private var requestedVaultSourceIds: List<String> = emptyList()
+
     val currentMediaId: String?
         get() = savedStateHandle.get<String>("mediaId")?.let { com.aktarjabed.jagallery.util.NavCodec.decode(it) }
 
@@ -188,6 +191,29 @@ class ViewerViewModel @Inject constructor(
      * Handles the MediaStore delete request result for the currently viewed item.
      * Only removes the item from the UI/repository after Android confirms deletion.
      */
+    fun storeVaultContext(sourceIds: List<String>, mapping: Map<String, String>) {
+        requestedVaultSourceIds = sourceIds
+        currentVaultDestinationMapping = mapping
+    }
+
+    fun rollbackVault(context: Context, confirmedDeletedIds: List<String>) {
+        val mapping = currentVaultDestinationMapping ?: return
+        val unconfirmed = requestedVaultSourceIds.filterNot { it in confirmedDeletedIds }
+        if (unconfirmed.isNotEmpty()) {
+            viewModelScope.launch {
+                try {
+                    mediaOperations.rollbackVaultDestinationEntries(unconfirmed, mapping)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _operationEvent.emit(
+                        com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Vault rollback failed: ${e.message}")
+                    )
+                }
+            }
+        }
+    }
+
     fun onVaultSourceDeleteResult(item: MediaItem, deleteConfirmed: Boolean) {
         viewModelScope.launch {
             if (deleteConfirmed) {
