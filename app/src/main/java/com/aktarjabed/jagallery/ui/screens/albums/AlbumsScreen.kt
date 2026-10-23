@@ -89,7 +89,7 @@ fun AlbumsScreen(
                         when (tab) {
                             GalleryFilterTab.ALBUMS -> {}
                             GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.All)
-                            GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.All)
+                            GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.TypeFiltered(isVideo = true))
                             GalleryFilterTab.FAVORITES -> onNavigateToFavorites()
                         }
                     }
