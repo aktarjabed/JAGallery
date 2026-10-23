@@ -53,6 +53,13 @@ class GridViewModel @Inject constructor(
     private val _mediaFilter = MutableStateFlow(MediaTypeFilter.ALL)
     val mediaFilter: StateFlow<MediaTypeFilter> = _mediaFilter.asStateFlow()
 
+    private val _gridColumns = MutableStateFlow(0)
+    val gridColumns: StateFlow<Int> = _gridColumns.asStateFlow()
+
+    fun setGridColumns(value: Int) {
+        _gridColumns.value = value.coerceIn(0, 8)
+    }
+
     fun setSortAndFilter(option: SortOption, order: SortOrder, filter: MediaTypeFilter) {
         _sortOption.value = option
         _sortOrder.value = order
