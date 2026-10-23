@@ -66,15 +66,28 @@ fun GridScreen(
         batchState = batchState,
         onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
-            if (result.tag == "GRID_MOVE_DELETE") {
-                if (result.succeededIds.isNotEmpty()) {
-                    viewModel.removeDeletedItems(result.succeededIds)
+            when (result.tag) {
+                "GRID_MOVE_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItems(result.succeededIds)
+                    }
+                    if (result.cancelled) {
+                        viewModel.rollbackMove(context, result.succeededIds)
+                        Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                    }
                 }
-                if (result.cancelled) {
-                    viewModel.rollbackMove(context, result.succeededIds)
-                    Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                "GRID_VAULT_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItems(result.succeededIds)
+                    }
+                    if (result.cancelled) {
+                        viewModel.rollbackVault(context, result.succeededIds)
+                        Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             viewModel.batchManager.clearState()
@@ -108,6 +121,10 @@ fun GridScreen(
                             Toast.makeText(context, context.resources.getQuantityString(R.plurals.move_partial_n_failed, count, count), Toast.LENGTH_LONG).show()
                         }
                         if (moveResult.pendingIntents.isNotEmpty()) {
+                            viewModel.storeMoveContext(
+                                sourceIds = moveResult.successfulCopies.map { it.first.id },
+                                mapping = moveResult.successfulCopies.associate { it.first.id to it.second }
+                            )
                             viewModel.batchManager.startBatch(moveResult.pendingIntents, "GRID_MOVE_DELETE")
                         } else {
                             viewModel.removeDeletedItems(moveResult.successfulCopies.map { it.first.id })
@@ -146,6 +163,32 @@ fun GridScreen(
                 when (val result = viewModel.moveToVault(context, items)) {
                     is MoveOperationResult.Error -> {
                         Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_SHORT).show()
+                    }
+                    is MoveOperationResult.RequestSourceDelete -> {
+                        if (result.failedItems.isNotEmpty()) {
+                            val count = result.failedItems.size
+                            Toast.makeText(
+                                context,
+                                context.resources.getQuantityString(R.plurals.move_partial_n_failed, count, count),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        if (result.pendingIntents.isNotEmpty()) {
+                            val vaultMapping = result.successfulCopies.mapNotNull { (item, uri) ->
+                                uri.host?.let { item.id to it }
+                            }.toMap()
+                            viewModel.storeVaultContext(
+                                sourceIds = result.successfulCopies.map { it.first.id },
+                                mapping = vaultMapping
+                            )
+                            viewModel.batchManager.startBatch(result.pendingIntents, "GRID_VAULT_DELETE")
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    is MoveOperationResult.CopiedSourceRetained,
+                    is MoveOperationResult.RollbackFailed -> {
+                        Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
                     }
                     else -> {
                         Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
