@@ -116,6 +116,8 @@ class GridViewModel @Inject constructor(
         currentVaultDestinationMapping = mapping
     }
 
+    fun currentVaultSourceIds(): List<String> = requestedVaultSourceIds
+
     fun rollbackMove(context: android.content.Context, confirmedDeletedIds: List<String>) {
         val mapping = currentMoveDestinationMapping ?: return
         val unconfirmed = requestedMoveSourceIds.filterNot { it in confirmedDeletedIds }
