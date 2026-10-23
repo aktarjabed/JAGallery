@@ -19,10 +19,16 @@ class BatchOperationManagerTest {
         manager = BatchOperationManager()
     }
 
+    private fun mediaUri(value: String): android.net.Uri {
+        val uri = mock(android.net.Uri::class.java)
+        org.mockito.Mockito.`when`(uri.toString()).thenReturn(value)
+        return uri
+    }
+
     private fun createDummyChunk(ids: List<String>): DeleteRequestChunk {
         return DeleteRequestChunk(
             ids = ids,
-            uris = ids.map { android.net.Uri.parse("content://media/test/$it") },
+            uris = ids.map { mediaUri("content://media/test/$it") },
             pendingIntent = mock()
         )
     }
@@ -103,8 +109,8 @@ class BatchOperationManagerTest {
         val chunk = DeleteRequestChunk(
             ids = listOf("123", "123"),
             uris = listOf(
-                android.net.Uri.parse(imageUri),
-                android.net.Uri.parse(videoUri)
+                mediaUri(imageUri),
+                mediaUri(videoUri)
             ),
             pendingIntent = mock()
         )
