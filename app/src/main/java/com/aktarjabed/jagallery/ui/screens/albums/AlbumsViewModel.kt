@@ -62,8 +62,6 @@ class AlbumsViewModel @Inject constructor(
                 if (items.isEmpty()) {
                     AlbumsUiState.Empty
                 } else {
-                    // This combine transform reads Room synchronously; keep it off Main.
-                    val trashItems = runCatching { repository.mediaDao.getAllTrashMediaSync() }.getOrDefault(emptyList())
                     val albumsList = items.groupBy { it.albumKey }
                         .map { (albumKey, bucketItems) ->
                             val firstItem = bucketItems.first()
