@@ -50,6 +50,22 @@ class GridViewModelTest {
     }
 
     @Test
+    fun typeFilteredSource_onlyReturnsRequestedMediaType() = runTest {
+        val images = listOf(MediaTestData.image(id = 11L), MediaTestData.image(id = 12L))
+        val videos = listOf(MediaTestData.video(id = 21L), MediaTestData.video(id = 22L))
+        val all = images + videos
+        repository.scanOperation = { MediaLoadResult.Success(all) }
+
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
+        viewModel.loadMedia(context = context)
+        viewModel.setSource(MediaSource.TypeFiltered(isVideo = true))
+
+        val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
+        assertEquals(listOf("content://media/external/video/media/21", "content://media/external/video/media/22"), loaded.items.map { it.id })
+        assertTrue(loaded.items.all { it.isVideo })
+    }
+
+    @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
         val fav = MediaTestData.favorite(uriString = "content://media/external/images/media/100")
         fakeDao.insert(fav)
