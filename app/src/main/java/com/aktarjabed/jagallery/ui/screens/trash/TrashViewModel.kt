@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TrashViewModel @Inject constructor(
-    private val repository: MediaRepository,
+    repository: MediaRepository,
     mediaOperations: MediaOperations
 ) : BaseMediaViewModel(mediaOperations, repository) {
 
