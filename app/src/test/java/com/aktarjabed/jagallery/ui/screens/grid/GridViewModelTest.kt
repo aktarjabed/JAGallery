@@ -1,7 +1,9 @@
 package com.aktarjabed.jagallery.ui.screens.grid
 
 import android.content.ContentResolver
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
+import androidx.test.core.app.ApplicationProvider
 import com.aktarjabed.jagallery.data.model.MediaLoadResult
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.data.repository.MediaRepository
@@ -30,7 +32,7 @@ class GridViewModelTest {
     private lateinit var repository: MediaRepository
     private lateinit var mediaOperations: MediaOperationsImpl
     private val contentResolver: ContentResolver = mock(ContentResolver::class.java)
-    private val context = mock(android.content.Context::class.java)
+    private val context = ApplicationProvider.getApplicationContext<Context>()
     private val settingsRepository = SettingsRepository(context)
 
     @Before
