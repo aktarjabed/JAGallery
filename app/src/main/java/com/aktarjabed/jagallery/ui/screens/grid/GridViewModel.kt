@@ -79,6 +79,7 @@ class GridViewModel @Inject constructor(
             is MediaLoadResult.Success -> {
                 var filtered = when (currentSource) {
                     is MediaSource.Album -> result.items.filter { it.albumKey == currentSource.albumKey }
+                    is MediaSource.TypeFiltered -> result.items.filter { it.isVideo == currentSource.isVideo }
                     else -> result.items
                 }
 
