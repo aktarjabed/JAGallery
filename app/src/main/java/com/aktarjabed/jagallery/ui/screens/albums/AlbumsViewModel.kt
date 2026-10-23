@@ -50,8 +50,9 @@ class AlbumsViewModel @Inject constructor(
 
     val uiState: StateFlow<AlbumsUiState> = combine(
         repository.mediaLoadResult,
-        repository.mediaDao.getVaultMedia()
-    ) { result, vaultItems ->
+        repository.mediaDao.getVaultMedia(),
+        repository.mediaDao.getTrashMedia()
+    ) { result, vaultItems, trashItems ->
         when (result) {
             is MediaLoadResult.Loading -> AlbumsUiState.Loading
             is MediaLoadResult.Error -> AlbumsUiState.Error(result.cause)
