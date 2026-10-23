@@ -23,6 +23,7 @@ import org.junit.Test
 import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
 class GridViewModelTest {
 
     @get:Rule
