@@ -106,6 +106,7 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             _isLoading.value = true
             try {
                 val bitmap = ImageEditorUtils.decodeSampledBitmapFromUri(context, imageUri)
+                    ?: throw IllegalStateException("Image could not be decoded")
                 originalBitmap = bitmap
                 currentPreviewBitmap = null
                 _previewBitmap.value = bitmap
