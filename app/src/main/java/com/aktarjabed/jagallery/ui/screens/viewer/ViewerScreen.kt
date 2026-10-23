@@ -284,7 +284,6 @@ fun ViewerScreen(
                         )
                         if (result.cancelled) {
                             viewModel.rollbackVault(
-                                context,
                                 if (sourceDeleteConfirmed) setOf(requestedItem.id) else emptySet()
                             )
                         }
