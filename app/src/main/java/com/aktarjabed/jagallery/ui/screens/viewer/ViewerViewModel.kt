@@ -65,6 +65,9 @@ class ViewerViewModel @Inject constructor(
 
     private var lastValidIndex: Int = 0
 
+    private var currentVaultDestinationMapping: Map<String, String>? = null
+    private var requestedVaultSourceIds: List<String> = emptyList()
+
     val currentMediaId: String?
         get() = savedStateHandle.get<String>("mediaId")?.let { com.aktarjabed.jagallery.util.NavCodec.decode(it) }
 
@@ -180,6 +183,65 @@ class ViewerViewModel @Inject constructor(
         if (index in items.indices) {
             lastValidIndex = index
             setCurrentMediaId(items[index].id)
+        }
+    }
+
+    
+    /**
+     * Handles the MediaStore delete request result for the currently viewed item.
+     * Only removes the item from the UI/repository after Android confirms deletion.
+     */
+    fun storeVaultContext(sourceIds: List<String>, mapping: Map<String, String>) {
+        requestedVaultSourceIds = sourceIds
+        currentVaultDestinationMapping = mapping
+    }
+
+    fun rollbackVault(deletedSourceIds: Set<String>) {
+        val mapping = currentVaultDestinationMapping ?: return
+        val unconfirmedSourceIds = requestedVaultSourceIds.filterNot { it in deletedSourceIds }
+        if (unconfirmedSourceIds.isNotEmpty()) {
+            viewModelScope.launch {
+                try {
+                    mediaOperations.rollbackVaultDestinationEntries(unconfirmedSourceIds, mapping)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _operationEvent.emit(
+                        com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Vault rollback failed: ${e.message}")
+                    )
+                }
+            }
+        }
+    }
+
+
+
+    fun onVaultSourceDeleteResult(item: MediaItem, deleteConfirmed: Boolean) {
+        viewModelScope.launch {
+            if (deleteConfirmed) {
+                when (mediaOperations.removeDeletedItems(listOf(item.id))) {
+                    is OperationResult.Success -> {
+                        val remaining = mediaItems.value.filterNot { it.id == item.id }
+                        if (remaining.isEmpty()) {
+                            _navigationEvent.emit(ViewerNavigationEvent.PopBack)
+                        } else {
+                            val targetIndex = lastValidIndex.coerceIn(0, remaining.lastIndex)
+                            setCurrentMediaId(remaining[targetIndex].id)
+                        }
+                    }
+                    is OperationResult.Error -> _operationEvent.emit(
+                        com.aktarjabed.jagallery.ui.common.OperationEvent.Error(
+                            "The original item was deleted, but the gallery could not refresh."
+                        )
+                    )
+                }
+            } else {
+                _operationEvent.emit(
+                    com.aktarjabed.jagallery.ui.common.OperationEvent.Error(
+                        "Vault copy retained; original media was not deleted."
+                    )
+                )
+            }
         }
     }
 

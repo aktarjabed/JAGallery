@@ -258,16 +258,42 @@ fun ViewerScreen(
     }
 
 
+    var pendingVaultDeleteItem by remember { mutableStateOf<com.aktarjabed.jagallery.data.model.MediaItem?>(null) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
     com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
         batchState = batchState,
         onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
-            if (result.tag == "VIEWER_DELETE" && result.succeededIds.isNotEmpty()) {
-                viewModel.removeDeletedItem(result.succeededIds.first())
+            when (result.tag) {
+                "VIEWER_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItem(result.succeededIds.first())
+                    }
+                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+                }
+                "VIEWER_VAULT_DELETE" -> {
+                    val requestedItem = pendingVaultDeleteItem
+                    if (requestedItem != null) {
+                        val sourceDeleteConfirmed = result.succeededIds.any { rawId ->
+                            rawId == requestedItem.mediaStoreId.toString() ||
+                                rawId == requestedItem.id
+                        }
+                        viewModel.onVaultSourceDeleteResult(
+                            requestedItem,
+                            deleteConfirmed = !result.cancelled && sourceDeleteConfirmed
+                        )
+                        if (result.cancelled) {
+                            // Confirmed deleted originals keep their encrypted Vault copy;
+                            // unconfirmed originals have their staged Vault copy rolled back.
+                            viewModel.rollbackVault(
+                                if (sourceDeleteConfirmed) setOf(requestedItem.id) else emptySet()
+                            )
+                        }
+                    }
+                    pendingVaultDeleteItem = null
+                }
             }
-            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
             viewModel.batchManager.clearState()
         }
     )
@@ -571,16 +597,34 @@ fun ViewerScreen(
                             )
                             if (!currentItem.isTrashed) {
                                 DropdownMenuItem(
-                                    text = { Text("Move to Vault") },
+                                    text = { Text(stringResource(R.string.vault_move_action)) },
                                     onClick = {
                                         showMenu = false
                                         coroutineScope.launch {
-                                            when (viewModel.moveToVault(context, listOf(currentItem))) {
+                                            when (val result = viewModel.moveToVault(context, listOf(currentItem))) {
                                                 is com.aktarjabed.jagallery.domain.MoveOperationResult.Error -> {
-                                                    android.widget.Toast.makeText(context, "Failed to move to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RequestSourceDelete -> {
+                                                    if (result.pendingIntents.isEmpty()) {
+                                                        android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
+                                                    } else {
+                                                        pendingVaultDeleteItem = currentItem
+                                                        viewModel.storeVaultContext(
+                                                            sourceIds = result.successfulCopies.map { it.first.id },
+                                                            mapping = result.successfulCopies.mapNotNull { (item, uri) ->
+                                                                uri.host?.let { item.id to it }
+                                                            }.toMap()
+                                                        )
+                                                        viewModel.batchManager.startBatch(result.pendingIntents, "VIEWER_VAULT_DELETE")
+                                                    }
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.CopiedSourceRetained,
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RollbackFailed -> {
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
                                                 }
                                                 else -> {
-                                                    android.widget.Toast.makeText(context, "Moved to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), android.widget.Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }

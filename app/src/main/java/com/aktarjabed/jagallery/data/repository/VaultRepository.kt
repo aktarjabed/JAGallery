@@ -155,16 +155,20 @@ class VaultRepository @Inject constructor(
     }
 
     suspend fun deleteVaultItem(entity: VaultMediaEntity): VaultDeleteResult = withContext(Dispatchers.IO) {
-        val encryptedFile = File(entity.encryptedFilePath)
-        var fileWasDeleted = false
-        if (encryptedFile.exists()) {
-            fileWasDeleted = encryptedFile.delete()
-            if (!fileWasDeleted) {
-                return@withContext VaultDeleteResult.FileDeletionFailed
-            }
+        // Rollback paths may only know the vault ID and intentionally carry a blank path.
+        // Resolve blank paths within the private vault directory; never interpret File("") as
+        // a vault object or attempt to delete a directory outside vaultDir.
+        val encryptedFile = if (entity.encryptedFilePath.isBlank()) {
+            File(vaultDir, entity.id)
         } else {
-            // The file is already absent, reconcile that state explicitly
-            fileWasDeleted = true
+            File(entity.encryptedFilePath).canonicalFile
+        }
+        val canonicalVaultDir = vaultDir.canonicalFile
+        if (encryptedFile.canonicalFile.parentFile != canonicalVaultDir) {
+            return@withContext VaultDeleteResult.FileDeletionFailed
+        }
+        if (encryptedFile.exists() && !encryptedFile.delete()) {
+            return@withContext VaultDeleteResult.FileDeletionFailed
         }
         val tempFile = File(tempDir, entity.id)
         if (tempFile.exists()) {
