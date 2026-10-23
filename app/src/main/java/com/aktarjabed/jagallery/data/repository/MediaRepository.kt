@@ -85,6 +85,22 @@ class MediaRepository @Inject constructor(
 
     suspend fun loadTrashedMedia(context: Context) = withContext(ioDispatcher) {
         val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context, includeTrashed = true)
+        if (result is MediaLoadResult.Success) {
+            val now = System.currentTimeMillis()
+            val trackedUris = mediaDao.getAllTrashMediaSync().mapTo(mutableSetOf()) { it.uri }
+            val newRecords = result.items
+                .asSequence()
+                .filterNot { it.id in trackedUris }
+                .map { com.aktarjabed.jagallery.data.local.TrashMediaEntity(uri = it.id, dateTrashed = it.dateTrashed.takeIf { date -> date > 0L } ?: now) }
+                .toList()
+            if (newRecords.isNotEmpty()) {
+                mediaDao.insertTrashMediaBatch(newRecords)
+            }
+            // Reconcile only records confirmed visible in the complete trashed snapshot.
+            val visibleUris = result.items.mapTo(mutableSetOf()) { it.id }
+            val staleUris = trackedUris.filterNot { it in visibleUris }
+            if (staleUris.isNotEmpty()) mediaDao.removeTrashMediaBatch(staleUris)
+        }
         _trashedMediaLoadResult.value = result
     }
 
