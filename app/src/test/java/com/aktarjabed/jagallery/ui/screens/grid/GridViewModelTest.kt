@@ -69,7 +69,7 @@ class GridViewModelTest {
     fun removeDeletedItems_removesFromFavorites() = runTest {
         val fav = MediaTestData.favorite(uriString = "content://media/external/images/media/100")
         fakeDao.insert(fav)
-        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle())
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
 
         viewModel.removeDeletedItems(listOf("content://media/external/images/media/100"))
 
