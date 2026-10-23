@@ -258,6 +258,7 @@ fun ViewerScreen(
     }
 
 
+    var pendingVaultDeleteItem by remember { mutableStateOf<com.aktarjabed.jagallery.data.model.MediaItem?>(null) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
     com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
@@ -272,10 +273,17 @@ fun ViewerScreen(
                     deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
                 }
                 "VIEWER_VAULT_DELETE" -> {
-                    viewModel.onVaultSourceDeleteResult(currentItem, !result.cancelled && result.succeededIds.isNotEmpty())
-                    if (result.cancelled) {
-                        viewModel.rollbackVault(context, result.succeededIds)
+                    val requestedItem = pendingVaultDeleteItem
+                    if (requestedItem != null) {
+                        viewModel.onVaultSourceDeleteResult(
+                            requestedItem,
+                            deleteConfirmed = !result.cancelled && result.succeededIds.contains(requestedItem.id)
+                        )
+                        if (result.cancelled) {
+                            viewModel.rollbackVault(context, result.succeededIds)
+                        }
                     }
+                    pendingVaultDeleteItem = null
                 }
             }
             viewModel.batchManager.clearState()
@@ -593,6 +601,7 @@ fun ViewerScreen(
                                                     if (result.pendingIntents.isEmpty()) {
                                                         android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
                                                     } else {
+                                                        pendingVaultDeleteItem = currentItem
                                                         viewModel.storeVaultContext(
                                                             sourceIds = result.successfulCopies.map { it.first.id },
                                                             mapping = result.successfulCopies.mapNotNull { (item, uri) ->
