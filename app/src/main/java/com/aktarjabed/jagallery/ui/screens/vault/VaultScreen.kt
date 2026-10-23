@@ -49,15 +49,6 @@ fun VaultScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Enforce FLAG_SECURE on the Vault screen to protect against screenshots and screen recorders
-    DisposableEffect(Unit) {
-        val window = (context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
