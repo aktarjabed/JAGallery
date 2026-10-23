@@ -284,6 +284,8 @@ fun ViewerScreen(
                             deleteConfirmed = !result.cancelled && sourceDeleteConfirmed
                         )
                         if (result.cancelled) {
+                            // Confirmed deleted originals keep their encrypted Vault copy;
+                            // unconfirmed originals have their staged Vault copy rolled back.
                             viewModel.rollbackVault(
                                 if (sourceDeleteConfirmed) setOf(requestedItem.id) else emptySet()
                             )
