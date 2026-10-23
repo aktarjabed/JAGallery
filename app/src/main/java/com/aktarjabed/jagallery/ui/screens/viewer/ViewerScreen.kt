@@ -276,7 +276,8 @@ fun ViewerScreen(
                     val requestedItem = pendingVaultDeleteItem
                     if (requestedItem != null) {
                         val sourceDeleteConfirmed = result.succeededIds.any { rawId ->
-                            rawId == requestedItem.mediaStoreId.toString()
+                            rawId == requestedItem.mediaStoreId.toString() ||
+                                rawId == requestedItem.id
                         }
                         viewModel.onVaultSourceDeleteResult(
                             requestedItem,
