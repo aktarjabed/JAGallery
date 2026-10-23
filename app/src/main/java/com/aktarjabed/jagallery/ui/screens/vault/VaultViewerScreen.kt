@@ -40,8 +40,8 @@ fun VaultViewerScreen(
         val window = (context as? android.app.Activity)?.window
         window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         onDispose {
-            // Keep FLAG_SECURE enabled; the central activity/navigation destination may
-            // still be displaying Vault content during transitions.
+            // Do not clear FLAG_SECURE here. MainActivity owns clearing it when leaving
+            // all protected Vault destinations.
         }
     }
 
