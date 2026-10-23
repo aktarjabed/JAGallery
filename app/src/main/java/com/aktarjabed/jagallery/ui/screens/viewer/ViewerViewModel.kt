@@ -196,7 +196,7 @@ class ViewerViewModel @Inject constructor(
         currentVaultDestinationMapping = mapping
     }
 
-    fun rollbackVault(context: Context, deletedSourceIds: Set<String>) {
+    fun rollbackVault(deletedSourceIds: Set<String>) {
         val mapping = currentVaultDestinationMapping ?: return
         val unconfirmedSourceIds = requestedVaultSourceIds.filterNot { it in deletedSourceIds }
         if (unconfirmedSourceIds.isNotEmpty()) {
@@ -213,6 +213,8 @@ class ViewerViewModel @Inject constructor(
             }
         }
     }
+
+
 
     fun onVaultSourceDeleteResult(item: MediaItem, deleteConfirmed: Boolean) {
         viewModelScope.launch {
