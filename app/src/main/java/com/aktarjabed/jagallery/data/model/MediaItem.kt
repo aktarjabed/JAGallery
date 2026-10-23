@@ -16,7 +16,8 @@ data class MediaItem(
     val volumeName: String = "",
     val size: Long = 0L,
     val isTrashed: Boolean = false,
-    val dateTrashed: Long = 0L
+    val dateTrashed: Long = 0L,
+    val dateModified: Long = dateAdded
 ) {
     val id: String
         get() = uri.toString()
