@@ -56,6 +56,11 @@ class GridViewModel @Inject constructor(
     private val _gridColumns = MutableStateFlow(0)
     val gridColumns: StateFlow<Int> = _gridColumns.asStateFlow()
 
+    init {
+        _gridColumns.value = com.aktarjabed.jagallery.domain.SettingsRepository::class.java
+            .let { 0 }
+    }
+
     fun setGridColumns(value: Int) {
         _gridColumns.value = value.coerceIn(0, 8)
     }
