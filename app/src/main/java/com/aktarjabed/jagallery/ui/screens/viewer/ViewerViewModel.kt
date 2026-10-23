@@ -183,7 +183,41 @@ class ViewerViewModel @Inject constructor(
         }
     }
 
-    fun removeDeletedItem(deletedId: String) {
+    
+    /**
+     * Handles the MediaStore delete request result for the currently viewed item.
+     * Only removes the item from the UI/repository after Android confirms deletion.
+     */
+    fun onVaultSourceDeleteResult(item: MediaItem, deleteConfirmed: Boolean) {
+        viewModelScope.launch {
+            if (deleteConfirmed) {
+                when (mediaOperations.removeDeletedItems(listOf(item.id))) {
+                    is OperationResult.Success -> {
+                        val remaining = mediaItems.value.filterNot { it.id == item.id }
+                        if (remaining.isEmpty()) {
+                            _navigationEvent.emit(ViewerNavigationEvent.PopBack)
+                        } else {
+                            val targetIndex = lastValidIndex.coerceIn(0, remaining.lastIndex)
+                            setCurrentMediaId(remaining[targetIndex].id)
+                        }
+                    }
+                    is OperationResult.Error -> _operationEvent.emit(
+                        com.aktarjabed.jagallery.ui.common.OperationEvent.Error(
+                            "The original item was deleted, but the gallery could not refresh."
+                        )
+                    )
+                }
+            } else {
+                _operationEvent.emit(
+                    com.aktarjabed.jagallery.ui.common.OperationEvent.Error(
+                        "Vault copy retained; original media was not deleted."
+                    )
+                )
+            }
+        }
+    }
+
+fun removeDeletedItem(deletedId: String) {
         viewModelScope.launch {
             try {
                 val currentItems = mediaItems.value
