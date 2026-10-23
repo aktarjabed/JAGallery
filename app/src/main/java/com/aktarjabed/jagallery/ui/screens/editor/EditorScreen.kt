@@ -59,11 +59,20 @@ fun EditorScreen(
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
     val flipHorizontal by viewModel.flipHorizontal.collectAsStateWithLifecycle()
     val flipVertical by viewModel.flipVertical.collectAsStateWithLifecycle()
+    val rotationDegrees by viewModel.rotationDegrees.collectAsStateWithLifecycle()
+    val cropRect by viewModel.cropRect.collectAsStateWithLifecycle()
 
     var activeTab by rememberSaveable { mutableIntStateOf(0) }
     var showDiscardDialog by remember { mutableStateOf(false) }
 
-    val hasEdits = brightness != 0f || contrast != 1f || saturation != 1f || exposure != 0f || flipHorizontal || flipVertical || viewModel.cropRect.value != null
+    val hasEdits = rotationDegrees != 0f ||
+        brightness != 0f ||
+        contrast != 1f ||
+        saturation != 1f ||
+        exposure != 0f ||
+        flipHorizontal ||
+        flipVertical ||
+        cropRect != null
 
     BackHandler(enabled = hasEdits) {
         showDiscardDialog = true
