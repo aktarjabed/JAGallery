@@ -1,6 +1,19 @@
 # JAGallery - Advanced Android Gallery Application
 
+<p align="center">
+  <img src="logo.png" alt="JAGallery Logo" width="120"/>
+</p>
+
+<p align="center">
+  <a href="https://github.com/aktarjabed/JAGallery/releases/latest"><img src="https://img.shields.io/github/v/release/aktarjabed/JAGallery?label=Download%20APK&logo=android&style=for-the-badge" alt="Download APK"/></a>
+  <img src="https://img.shields.io/badge/Min%20SDK-31%20(Android%2012)-brightgreen?style=for-the-badge&logo=android" alt="Min SDK 31"/>
+  <img src="https://img.shields.io/badge/Target%20SDK-36-blue?style=for-the-badge&logo=android" alt="Target SDK 36"/>
+  <img src="https://img.shields.io/badge/Language-Kotlin-purple?style=for-the-badge&logo=kotlin" alt="Kotlin"/>
+</p>
+
 JAGallery is a modern, high-performance Android gallery application built with Jetpack Compose, Kotlin Coroutines & Flow, Material 3, Room, and Hilt.
+
+> **📦 [Download the latest APK →](https://github.com/aktarjabed/JAGallery/releases/latest)**
 
 [Implementation Status → IMPLEMENTATION_MATRIX.md](IMPLEMENTATION_MATRIX.md)
 
@@ -38,6 +51,23 @@ JAGallery is a modern, high-performance Android gallery application built with J
   - **Smart Albums:** Automatically groups photos by semantic labels or detected text.
 - **Natural Language Search**: Intent-based search to quickly query images by semantics or source.
 - **Configurable Trash Retention**: Policy-driven cleanup (7, 30, 60 days, or Never) executed via resilient idempotent `WorkManager` tasks.
+
+## Tech Stack
+
+| Category | Technology |
+|---|---|
+| **Language** | Kotlin 2.0 |
+| **UI** | Jetpack Compose + Material 3 (Material You) |
+| **Architecture** | MVVM (ViewModel + StateFlow) |
+| **DI** | Hilt / Dagger |
+| **Database** | Room |
+| **Image Loading** | Coil (with `VideoFrameDecoder`) |
+| **Video Player** | Media3 ExoPlayer |
+| **Maps** | OsmDroid |
+| **ML / AI** | Google ML Kit (Image Labeling, Text Recognition) |
+| **Security** | Android Keystore + AES-256-GCM, BiometricPrompt |
+| **Background** | WorkManager |
+| **Build** | Gradle (Kotlin DSL), KSP |
 
 ## Threat Model (Secure Vault)
 
@@ -85,13 +115,26 @@ Once the build completes, the APK will be available at:
 
 Transfer this file to your Android device to install and test the app.
 
+### Building a Release APK
+```bash
+./gradlew assembleRelease
+```
+The signed release APK (with ProGuard/R8 minification) will be at:
+`app/build/outputs/apk/release/app-release.apk`
+
 ### Running Unit Tests
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
-## Releases
+## Download
 
-JAGallery is distributed exclusively via GitHub Releases. The application is designed to be a personal, high-performance gallery app without Google Play Services bloat or analytics.
+JAGallery is distributed exclusively via GitHub Releases. No Google Play Services, no analytics, no bloat.
 
-You can download the latest APK from the [Releases page](https://github.com/aktarjabed/jagallery/releases).
+**📦 [Download the latest APK from Releases →](https://github.com/aktarjabed/JAGallery/releases/latest)**
+
+You can also browse [all releases](https://github.com/aktarjabed/JAGallery/releases).
+
+## License
+
+This project is proprietary software. All rights reserved.
