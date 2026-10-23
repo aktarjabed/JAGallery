@@ -56,6 +56,9 @@ fun EditorScreen(
     val contrast by viewModel.contrast.collectAsStateWithLifecycle()
     val saturation by viewModel.saturation.collectAsStateWithLifecycle()
     val exposure by viewModel.exposure.collectAsStateWithLifecycle()
+    val shadows by viewModel.shadows.collectAsStateWithLifecycle()
+    val highlights by viewModel.highlights.collectAsStateWithLifecycle()
+    val sharpness by viewModel.sharpness.collectAsStateWithLifecycle()
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
     val flipHorizontal by viewModel.flipHorizontal.collectAsStateWithLifecycle()
     val flipVertical by viewModel.flipVertical.collectAsStateWithLifecycle()
@@ -70,6 +73,9 @@ fun EditorScreen(
         contrast != 1f ||
         saturation != 1f ||
         exposure != 0f ||
+        shadows != 0f ||
+        highlights != 0f ||
+        sharpness != 0f ||
         flipHorizontal ||
         flipVertical ||
         cropRect != null
@@ -244,6 +250,24 @@ fun EditorScreen(
                                 value = exposure,
                                 onValueChange = { viewModel.updateExposure(it) },
                                 valueRange = -2.0f..2.0f
+                            )
+                            Text(stringResource(R.string.shadows), style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = shadows,
+                                onValueChange = { viewModel.updateShadows(it) },
+                                valueRange = -1f..1f
+                            )
+                            Text(stringResource(R.string.highlights), style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = highlights,
+                                onValueChange = { viewModel.updateHighlights(it) },
+                                valueRange = -1f..1f
+                            )
+                            Text(stringResource(R.string.sharpness), style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = sharpness,
+                                onValueChange = { viewModel.updateSharpness(it) },
+                                valueRange = 0f..1f
                             )
                         }
                     }
