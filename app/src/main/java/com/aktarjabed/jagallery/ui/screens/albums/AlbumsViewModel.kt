@@ -51,8 +51,14 @@ class AlbumsViewModel @Inject constructor(
     val uiState: StateFlow<AlbumsUiState> = combine(
         repository.mediaLoadResult,
         repository.mediaDao.getVaultMedia(),
-        repository.mediaDao.getTrashMedia()
-    ) { result, vaultItems, trashItems ->
+        repository.mediaDao.getTrashMedia(),
+        repository.trashedMediaLoadResult
+    ) { result, vaultItems, trashItems, trashLoadResult ->
+        val visibleTrashCount = when (trashLoadResult) {
+            is MediaLoadResult.Success -> trashLoadResult.items.size
+            is MediaLoadResult.Empty -> 0
+            else -> trashItems.size
+        }
         when (result) {
             is MediaLoadResult.Loading -> AlbumsUiState.Loading
             is MediaLoadResult.Error -> AlbumsUiState.Error(result.cause)
@@ -82,7 +88,7 @@ class AlbumsViewModel @Inject constructor(
                         totalCount = items.size,
                         coverUri = items.firstOrNull()?.uri,
                         rawItems = items,
-                        trashCount = trashItems.size,
+                        trashCount = visibleTrashCount,
                         vaultCount = vaultItems.size
                     )
                 }
