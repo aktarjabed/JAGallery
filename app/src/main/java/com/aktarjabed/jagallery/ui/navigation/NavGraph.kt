@@ -4,7 +4,7 @@ import android.app.Activity
 import android.view.WindowManager
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.collectAsState
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,16 +66,16 @@ fun parseMediaSource(
 fun NavGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val destinationRoute = currentBackStackEntry?.destination?.route
+    val visibleEntries by navController.visibleEntries.collectAsState()
+    val vaultVisible = visibleEntries.any { entry ->
+        val route = entry.destination.route
+        route == Screen.Vault.route || route?.startsWith("vault_viewer") == true
+    }
 
-    // FLAG_SECURE is owned by the active navigation destination, not individual
-    // screens. This keeps Vault list -> Vault viewer protected and clears protection
-    // only after leaving both destinations.
-    DisposableEffect(context, destinationRoute) {
+    // Keep FLAG_SECURE enabled for every Vault destination still visible during
+    // enter/exit transitions, not only the newly selected back-stack entry.
+    DisposableEffect(context, vaultVisible) {
         val window = (context as? Activity)?.window
-        val vaultVisible = destinationRoute == Screen.Vault.route ||
-            destinationRoute?.startsWith("vault_viewer") == true
         if (vaultVisible) {
             window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         } else {
