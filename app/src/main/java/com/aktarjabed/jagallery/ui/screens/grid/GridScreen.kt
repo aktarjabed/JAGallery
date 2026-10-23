@@ -82,12 +82,12 @@ fun GridScreen(
                     // DeleteRequestChunk.ids are MediaStore IDs, not necessarily the
                     // app's stable MediaItem.id values, so do not pass them to Room cleanup.
                     val requestedSourceIds = viewModel.currentVaultSourceIds()
-                    // Request chunk IDs may be MediaStore row IDs; stable app IDs are
-                    // captured before the prompt and must be reconciled through their URI.
+                    // DeleteRequestChunk.ids are MediaStore row IDs. Map them back to
+                    // stable MediaItem IDs before updating repository state or rolling back.
                     val currentItems = (loadResult as? MediaLoadResult.Success)?.items.orEmpty()
                     val successfulSourceIds = requestedSourceIds.filter { id ->
                         val item = currentItems.firstOrNull { it.id == id } ?: return@filter false
-                        result.succeededIds.any { rawId -> rawId == item.id || rawId == item.mediaStoreId.toString() }
+                        result.succeededIds.any { rawId -> rawId == item.mediaStoreId.toString() }
                     }
                     if (result.cancelled) {
                         viewModel.rollbackVault(context, successfulSourceIds.toSet())
