@@ -89,19 +89,18 @@ fun GridScreen(
                         val item = currentItems.firstOrNull { it.id == id } ?: return@filter false
                         result.succeededIds.any { rawId -> rawId == item.mediaStoreId.toString() }
                     }
-                    val allSourcesConfirmed = !result.cancelled &&
-                        successfulSourceIds.size == requestedSourceIds.size
                     if (result.cancelled) {
                         viewModel.rollbackVault(successfulSourceIds.toSet())
                         viewModel.removeDeletedItems(successfulSourceIds)
                         Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-                    } else if (allSourcesConfirmed) {
+                    } else if (successfulSourceIds.size == requestedSourceIds.size) {
                         viewModel.removeDeletedItems(successfulSourceIds)
                         Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
                     } else {
-                        // Do not report success or discard the encrypted copy when the
-                        // platform result does not confirm every selected source item.
-                        viewModel.rollbackVault(successfulSourceIds.toSet())
+                        // A missing chunk ID means the platform did not confirm deletion
+                        // for every source. Retain the encrypted copies and report partial
+                        // completion; never discard data because the result was incomplete.
+                        viewModel.removeDeletedItems(successfulSourceIds)
                         Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
                     }
                 }
