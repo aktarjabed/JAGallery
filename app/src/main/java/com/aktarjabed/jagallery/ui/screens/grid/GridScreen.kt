@@ -121,6 +121,9 @@ fun GridScreen(
                 val items = (loadResult as? MediaLoadResult.Success)?.items
                 items?.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
             }
+            is MediaSource.TypeFiltered -> context.getString(
+                if (source.isVideo) R.string.tab_videos else R.string.tab_photos
+            )
             else -> null
         }
     }
