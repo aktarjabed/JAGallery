@@ -52,6 +52,15 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private val _exposure = MutableStateFlow(0f)
     val exposure: StateFlow<Float> = _exposure.asStateFlow()
 
+    private val _shadows = MutableStateFlow(0f)
+    val shadows: StateFlow<Float> = _shadows.asStateFlow()
+
+    private val _highlights = MutableStateFlow(0f)
+    val highlights: StateFlow<Float> = _highlights.asStateFlow()
+
+    private val _sharpness = MutableStateFlow(0f)
+    val sharpness: StateFlow<Float> = _sharpness.asStateFlow()
+
     private val _cropRect = MutableStateFlow<RectF?>(null)
     val cropRect: StateFlow<RectF?> = _cropRect.asStateFlow()
     private val _flipHorizontal = MutableStateFlow(false)
@@ -137,7 +146,22 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     }
 
     fun updateExposure(value: Float) {
-        _exposure.value = value
+        _exposure.value = value.coerceIn(-2f, 2f)
+        updatePreview()
+    }
+
+    fun updateShadows(value: Float) {
+        _shadows.value = value.coerceIn(-1f, 1f)
+        updatePreview()
+    }
+
+    fun updateHighlights(value: Float) {
+        _highlights.value = value.coerceIn(-1f, 1f)
+        updatePreview()
+    }
+
+    fun updateSharpness(value: Float) {
+        _sharpness.value = value.coerceIn(0f, 1f)
         updatePreview()
     }
 
@@ -154,6 +178,9 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _contrast.value = 1f
         _saturation.value = 1f
         _exposure.value = 0f
+        _shadows.value = 0f
+        _highlights.value = 0f
+        _sharpness.value = 0f
         _cropRect.value = null
         _flipHorizontal.value = false
         _flipVertical.value = false
@@ -238,7 +265,10 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             exposure = _exposure.value,
             cropRect = _cropRect.value,
             flipHorizontal = _flipHorizontal.value,
-            flipVertical = _flipVertical.value
+            flipVertical = _flipVertical.value,
+            shadows = _shadows.value,
+            highlights = _highlights.value,
+            sharpness = _sharpness.value
         )
     }
 
