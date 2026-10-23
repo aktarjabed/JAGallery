@@ -196,13 +196,13 @@ class ViewerViewModel @Inject constructor(
         currentVaultDestinationMapping = mapping
     }
 
-    fun rollbackVault(context: Context, confirmedDeletedIds: List<String>) {
+    fun rollbackVault(context: Context, deletedSourceIds: Set<String>) {
         val mapping = currentVaultDestinationMapping ?: return
-        val unconfirmed = requestedVaultSourceIds.filterNot { it in confirmedDeletedIds }
-        if (unconfirmed.isNotEmpty()) {
+        val unconfirmedSourceIds = requestedVaultSourceIds.filterNot { it in deletedSourceIds }
+        if (unconfirmedSourceIds.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    mediaOperations.rollbackVaultDestinationEntries(unconfirmed, mapping)
+                    mediaOperations.rollbackVaultDestinationEntries(unconfirmedSourceIds, mapping)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
