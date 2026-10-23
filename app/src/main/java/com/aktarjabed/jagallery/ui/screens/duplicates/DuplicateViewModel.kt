@@ -73,7 +73,8 @@ class DuplicateViewModel @Inject constructor(
 
         // Cache hit: return if the file hasn't been modified
         if (existing != null && existing.lastModifiedTime == item.dateAdded &&
-            (existing.sha256Hash != null || existing.perceptualHash != null)
+            existing.sha256Hash != null &&
+            (!item.mimeType.startsWith("image/") || existing.perceptualHash != null)
         ) {
             return existing
         }
