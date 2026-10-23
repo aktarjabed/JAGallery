@@ -132,6 +132,12 @@ fun GridScreen(
         loadResult = loadResult,
         allAlbums = allAlbums,
         columnsCount = gridColumns,
+        emptyMessage = when (source) {
+            is MediaSource.TypeFiltered -> stringResource(
+                if (source.isVideo) R.string.no_videos_found else R.string.no_photos_found
+            )
+            else -> stringResource(R.string.no_media_found)
+        },
         batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onHideSelected = { items -> viewModel.hideMediaBatch(items) },
