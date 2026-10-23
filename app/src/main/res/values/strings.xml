@@ -86,6 +86,9 @@
     <string name="wallpaper_failed">Failed to set wallpaper</string>
 
     <string name="exposure">Exposure</string>
+    <string name="shadows">Shadows</string>
+    <string name="highlights">Highlights</string>
+    <string name="sharpness">Sharpness</string>
 
     <string name="rename_media">Rename Media</string>
     <string name="rename_album">Rename Album</string>
