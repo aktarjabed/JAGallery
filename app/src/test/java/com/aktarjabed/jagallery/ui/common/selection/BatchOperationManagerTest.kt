@@ -97,6 +97,26 @@ class BatchOperationManagerTest {
     }
 
     @Test
+    fun `same numeric row ID in different collections remains distinct`() = runTest {
+        val imageUri = "content://media/external/images/media/123"
+        val videoUri = "content://media/external/video/media/123"
+        val chunk = DeleteRequestChunk(
+            ids = listOf("123", "123"),
+            uris = listOf(
+                android.net.Uri.parse(imageUri),
+                android.net.Uri.parse(videoUri)
+            ),
+            pendingIntent = mock()
+        )
+
+        manager.startBatch(listOf(chunk), "COLLISION_TEST")
+        manager.onBatchChunkResult(Activity.RESULT_OK)
+
+        val state = manager.batchState.value as BatchProcessorState.Completed
+        assertEquals(listOf(imageUri, videoUri), state.succeededIds)
+    }
+
+    @Test
     fun `test manager clearState resets to Idle`() = runTest {
         val chunk1 = createDummyChunk(listOf("id1"))
         manager.startBatch(listOf(chunk1), "TEST_TAG")
