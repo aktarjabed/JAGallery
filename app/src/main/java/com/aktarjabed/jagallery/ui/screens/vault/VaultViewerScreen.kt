@@ -34,15 +34,13 @@ fun VaultViewerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // The Vault list screen clears this flag when it leaves composition. Re-assert it
-    // in the viewer so decrypted media remains protected throughout navigation.
+    // Re-assert protection in the Viewer because VaultScreen clears FLAG_SECURE
+    // while navigating away to this destination. Do not clear it on disposal here:
+    // the user may be returning to the still-protected Vault screen.
     DisposableEffect(context) {
         val window = (context as? android.app.Activity)?.window
         window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose {
-            // Do not clear FLAG_SECURE here. MainActivity owns clearing it when leaving
-            // all protected Vault destinations.
-        }
+        onDispose { }
     }
 
     LaunchedEffect(isUnlocked) {
