@@ -58,6 +58,7 @@ fun GridScreen(
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val mediaFilter by viewModel.mediaFilter.collectAsStateWithLifecycle()
+    val gridColumns by viewModel.gridColumns.collectAsStateWithLifecycle()
 
     var showSortFilterSheet by rememberSaveable { mutableStateOf(false) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
@@ -126,6 +127,7 @@ fun GridScreen(
     MediaCollectionContent(
         loadResult = loadResult,
         allAlbums = allAlbums,
+        columnsCount = gridColumns,
         batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onHideSelected = { items -> viewModel.hideMediaBatch(items) },
