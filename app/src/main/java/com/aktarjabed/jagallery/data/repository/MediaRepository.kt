@@ -227,6 +227,12 @@ class MediaRepository @Inject constructor(
         mediaDao.unhideMediaBatch(mediaItems.map { it.id })
     }
 
+    suspend fun removeTrashTracking(uris: List<String>) = withContext(ioDispatcher) {
+        if (uris.isNotEmpty()) {
+            mediaDao.removeTrashMediaBatch(uris.distinct())
+        }
+    }
+
     suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
         mediaDao.removeFavorites(deletedIds)
         mediaDao.unhideMediaBatch(deletedIds)
