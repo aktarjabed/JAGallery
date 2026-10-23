@@ -86,25 +86,22 @@ class MediaRepository @Inject constructor(
     suspend fun loadTrashedMedia(context: Context) = withContext(ioDispatcher) {
         val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context, includeTrashed = true)
         if (result is MediaLoadResult.Success || result is MediaLoadResult.Empty) {
-            // Empty is a valid complete snapshot (the provider found no trashed media).
-            // Error is not: never clear metadata based on an incomplete/failed query.
+            // Persist newly observed trashed items, but do not delete records merely
+            // because a snapshot omits them: scoped/selected-media permissions can make
+            // MediaStore queries incomplete without raising an error. Explicit restore,
+            // successful permanent deletion, and confirmed cleanup remove tracking rows.
             val trashedItems = (result as? MediaLoadResult.Success)?.items.orEmpty()
-            val now = System.currentTimeMillis()
             val trackedUris = mediaDao.getAllTrashMediaSync().mapTo(mutableSetOf()) { it.uri }
+            val now = System.currentTimeMillis()
             val newRecords = trashedItems
                 .asSequence()
                 .filterNot { it.id in trackedUris }
-                // DATE_EXPIRES is an expiration timestamp, not the time the item
-                // entered Trash. The true trash time is unavailable in this snapshot.
+                // DATE_EXPIRES is not the time the item entered Trash.
                 .map { com.aktarjabed.jagallery.data.local.TrashMediaEntity(uri = it.id, dateTrashed = now) }
                 .toList()
             if (newRecords.isNotEmpty()) {
                 mediaDao.insertTrashMediaBatch(newRecords)
             }
-            // Reconcile only against a successful or valid empty full MediaStore snapshot.
-            val visibleUris = trashedItems.mapTo(mutableSetOf()) { it.id }
-            val staleUris = trackedUris.filterNot { it in visibleUris }
-            if (staleUris.isNotEmpty()) mediaDao.removeTrashMediaBatch(staleUris)
         }
         _trashedMediaLoadResult.value = result
     }
