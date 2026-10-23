@@ -4,6 +4,8 @@
     <string name="tab_albums">Albums</string>
     <string name="tab_videos">Videos</string>
     <string name="tab_photos">Photos</string>
+    <string name="no_photos_found">No photos found</string>
+    <string name="no_videos_found">No videos found</string>
     <string name="tab_favorites">Favorites</string>
     <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
