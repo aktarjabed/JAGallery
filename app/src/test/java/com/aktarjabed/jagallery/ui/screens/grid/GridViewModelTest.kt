@@ -68,6 +68,21 @@ class GridViewModelTest {
     }
 
     @Test
+    fun typeFilteredSource_canSelectPhotosOnly() = runTest {
+        val images = listOf(MediaTestData.image(id = 31L), MediaTestData.image(id = 32L))
+        val videos = listOf(MediaTestData.video(id = 41L))
+        repository.scanOperation = { MediaLoadResult.Success(images + videos) }
+
+        val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
+        viewModel.loadMedia(context = context)
+        viewModel.setSource(MediaSource.TypeFiltered(isVideo = false))
+
+        val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
+        assertTrue(loaded.items.isNotEmpty())
+        assertTrue(loaded.items.none { it.isVideo })
+    }
+
+    @Test
     fun removeDeletedItems_removesFromFavorites() = runTest {
         val fav = MediaTestData.favorite(uriString = "content://media/external/images/media/100")
         fakeDao.insert(fav)
