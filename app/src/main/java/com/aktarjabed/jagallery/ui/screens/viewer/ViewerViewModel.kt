@@ -243,7 +243,7 @@ class ViewerViewModel @Inject constructor(
         }
     }
 
-fun removeDeletedItem(deletedId: String) {
+    fun removeDeletedItem(deletedId: String) {
         viewModelScope.launch {
             try {
                 val currentItems = mediaItems.value
