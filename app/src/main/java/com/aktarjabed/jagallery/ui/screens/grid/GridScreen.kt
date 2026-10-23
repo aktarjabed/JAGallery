@@ -85,10 +85,12 @@ fun GridScreen(
                     val requestedSourceIds = viewModel.currentVaultSourceIds()
                     // DeleteRequestChunk.ids are MediaStore row IDs. Map them back to
                     // stable MediaItem IDs before updating repository state or rolling back.
-                    val currentItems = (loadResult as? MediaLoadResult.Success)?.items.orEmpty()
                     val successfulSourceIds = requestedSourceIds.filter { id ->
-                        val item = currentItems.firstOrNull { it.id == id } ?: return@filter false
-                        result.succeededIds.any { rawId -> rawId == item.mediaStoreId.toString() }
+                        // DeleteRequestChunk.ids is generated from ContentUris.parseId(uri),
+                        // so match against the MediaStore numeric ID directly; UI filters
+                        // may hide items from the current loadResult during the dialog.
+                        val rawMediaStoreId = id.substringAfterLast('/').substringBefore('?')
+                        result.succeededIds.contains(rawMediaStoreId)
                     }
                     val allSelectedSourcesConfirmed =
                         successfulSourceIds.size == requestedSourceIds.size && !result.cancelled
