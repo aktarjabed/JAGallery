@@ -94,7 +94,9 @@ class MediaRepository @Inject constructor(
             val newRecords = trashedItems
                 .asSequence()
                 .filterNot { it.id in trackedUris }
-                .map { com.aktarjabed.jagallery.data.local.TrashMediaEntity(uri = it.id, dateTrashed = it.dateTrashed.takeIf { date -> date > 0L } ?: now) }
+                // DATE_EXPIRES is an expiration timestamp, not the time the item
+                // entered Trash. The true trash time is unavailable in this snapshot.
+                .map { com.aktarjabed.jagallery.data.local.TrashMediaEntity(uri = it.id, dateTrashed = now) }
                 .toList()
             if (newRecords.isNotEmpty()) {
                 mediaDao.insertTrashMediaBatch(newRecords)
