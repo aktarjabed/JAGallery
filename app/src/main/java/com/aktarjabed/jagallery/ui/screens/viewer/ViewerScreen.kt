@@ -571,16 +571,33 @@ fun ViewerScreen(
                             )
                             if (!currentItem.isTrashed) {
                                 DropdownMenuItem(
-                                    text = { Text("Move to Vault") },
+                                    text = { Text(stringResource(R.string.vault_move_action)) },
                                     onClick = {
                                         showMenu = false
                                         coroutineScope.launch {
-                                            when (viewModel.moveToVault(context, listOf(currentItem))) {
+                                            when (val result = viewModel.moveToVault(context, listOf(currentItem))) {
                                                 is com.aktarjabed.jagallery.domain.MoveOperationResult.Error -> {
-                                                    android.widget.Toast.makeText(context, "Failed to move to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RequestSourceDelete -> {
+                                                    if (result.pendingIntents.isEmpty()) {
+                                                        android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
+                                                    } else {
+                                                        viewModel.storeVaultContext(
+                                                            sourceIds = result.successfulCopies.map { it.first.id },
+                                                            mapping = result.successfulCopies.mapNotNull { (item, uri) ->
+                                                                uri.host?.let { item.id to it }
+                                                            }.toMap()
+                                                        )
+                                                        viewModel.batchManager.startBatch(result.pendingIntents, "VIEWER_VAULT_DELETE")
+                                                    }
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.CopiedSourceRetained,
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RollbackFailed -> {
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
                                                 }
                                                 else -> {
-                                                    android.widget.Toast.makeText(context, "Moved to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), android.widget.Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }
