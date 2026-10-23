@@ -225,6 +225,7 @@ class MediaRepository @Inject constructor(
     suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
         mediaDao.removeFavorites(deletedIds)
         mediaDao.unhideMediaBatch(deletedIds)
+        mediaDao.removeTrashMediaBatch(deletedIds)
         val updateResult: (MediaLoadResult) -> MediaLoadResult = { current ->
             if (current is MediaLoadResult.Success) {
                 val filtered = current.items.filterNot { deletedIds.contains(it.id) }
