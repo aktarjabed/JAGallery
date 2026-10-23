@@ -45,7 +45,7 @@ fun FilterChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterTabChip(
-            label = stringResource(R.string.settings_category_appearance).let { "Albums" },
+            label = stringResource(R.string.tab_albums),
             icon = Icons.Default.Folder,
             selected = selectedTab == GalleryFilterTab.ALBUMS,
             onClick = { onTabSelected(GalleryFilterTab.ALBUMS) }
