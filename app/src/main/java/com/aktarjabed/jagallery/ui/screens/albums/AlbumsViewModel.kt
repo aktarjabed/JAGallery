@@ -21,7 +21,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -59,6 +61,7 @@ class AlbumsViewModel @Inject constructor(
                 if (items.isEmpty()) {
                     AlbumsUiState.Empty
                 } else {
+                    // This combine transform reads Room synchronously; keep it off Main.
                     val trashItems = runCatching { repository.mediaDao.getAllTrashMediaSync() }.getOrDefault(emptyList())
                     val albumsList = items.groupBy { it.albumKey }
                         .map { (albumKey, bucketItems) ->
@@ -86,7 +89,7 @@ class AlbumsViewModel @Inject constructor(
                 }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
+    }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
 
     private val _albumRenameDeleteEvent = MutableSharedFlow<Pair<List<String>, List<DeleteRequestChunk>>>()
     val albumRenameDeleteEvent = _albumRenameDeleteEvent.asSharedFlow()
