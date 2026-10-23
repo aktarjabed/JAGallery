@@ -78,21 +78,35 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadImage(context: Context, imageUri: Uri) {
-        if (_isLoading.value || originalBitmap != null) return
-        sourceUri = imageUri
+        // Navigation can reuse a Hilt ViewModel for another URI. Reload instead of
+        // silently keeping the previous photo; do not skip just because a load is active.
+        if (sourceUri == imageUri && (originalBitmap != null || _isLoading.value)) return
         loadJob?.cancel()
+        previewJob?.cancel()
+        currentRenderId++
+
+        currentPreviewBitmap?.takeIf { it !== originalBitmap && !it.isRecycled }?.recycle()
+        originalBitmap?.takeIf { !it.isRecycled }?.recycle()
+        currentPreviewBitmap = null
+        originalBitmap = null
+        _previewBitmap.value = null
+        _saveState.value = SaveState.Idle
+        sourceUri = imageUri
+
         loadJob = viewModelScope.launch {
+            _isLoading.value = true
             try {
-                _isLoading.value = true
                 val bitmap = ImageEditorUtils.decodeSampledBitmapFromUri(context, imageUri)
                 originalBitmap = bitmap
+                currentPreviewBitmap = null
                 _previewBitmap.value = bitmap
-                _isLoading.value = false
+                _saveState.value = SaveState.Idle
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _isLoading.value = false
                 _saveState.value = SaveState.Error(R.string.failed_to_save_image)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
