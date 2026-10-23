@@ -48,6 +48,8 @@ fun parseMediaSource(
         }
         "TRASH" -> MediaSource.Trash
         "HIDDEN" -> MediaSource.Hidden
+        "VIDEOS" -> MediaSource.TypeFiltered(isVideo = true)
+        "PHOTOS" -> MediaSource.TypeFiltered(isVideo = false)
         "ALL" -> MediaSource.All
         null -> MediaSource.All
         else -> null
