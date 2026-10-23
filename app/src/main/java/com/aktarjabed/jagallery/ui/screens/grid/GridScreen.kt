@@ -80,11 +80,10 @@ fun GridScreen(
                     }
                 }
                 "GRID_VAULT_DELETE" -> {
-                    // DeleteRequestChunk.ids are MediaStore IDs, not necessarily the
-                    // app's stable MediaItem.id values, so do not pass them to Room cleanup.
+                    // DeleteRequestChunk.ids are MediaStore row IDs. Convert their
+                    // successful results back to the app's URI-based source IDs before
+                    // cleaning up repository state or deciding which Vault copies to retain.
                     val requestedSourceIds = viewModel.currentVaultSourceIds()
-                    // DeleteRequestChunk.ids are MediaStore row IDs. Map them back to
-                    // stable MediaItem IDs before updating repository state or rolling back.
                     val successfulSourceIds = requestedSourceIds.filter { id ->
                         // DeleteRequestChunk.ids is generated from ContentUris.parseId(uri),
                         // so match against the MediaStore numeric ID directly; UI filters
