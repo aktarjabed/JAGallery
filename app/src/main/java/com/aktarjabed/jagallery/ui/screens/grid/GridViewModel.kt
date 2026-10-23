@@ -26,7 +26,8 @@ import javax.inject.Inject
 class GridViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val settingsRepository: com.aktarjabed.jagallery.domain.SettingsRepository
 ) : BaseMediaViewModel(mediaOperations, repository) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
@@ -57,8 +58,12 @@ class GridViewModel @Inject constructor(
     val gridColumns: StateFlow<Int> = _gridColumns.asStateFlow()
 
     init {
-        _gridColumns.value = com.aktarjabed.jagallery.domain.SettingsRepository::class.java
-            .let { 0 }
+        _gridColumns.value = settingsRepository.gridColumns.value
+        viewModelScope.launch {
+            settingsRepository.gridColumns.collect { columns ->
+                _gridColumns.value = columns.coerceIn(0, 8)
+            }
+        }
     }
 
     fun setGridColumns(value: Int) {
