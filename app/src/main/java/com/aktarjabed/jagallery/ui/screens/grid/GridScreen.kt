@@ -81,16 +81,21 @@ fun GridScreen(
                 "GRID_VAULT_DELETE" -> {
                     // DeleteRequestChunk.ids are MediaStore IDs, not necessarily the
                     // app's stable MediaItem.id values, so do not pass them to Room cleanup.
+                    val requestedSourceIds = viewModel.currentVaultSourceIds()
+                    // Request chunk IDs may be MediaStore row IDs; stable app IDs are
+                    // captured before the prompt and must be reconciled through their URI.
+                    val currentItems = (loadResult as? MediaLoadResult.Success)?.items.orEmpty()
+                    val successfulSourceIds = requestedSourceIds.filter { id ->
+                        val item = currentItems.firstOrNull { it.id == id } ?: return@filter false
+                        result.succeededIds.any { rawId -> rawId == item.id || rawId == item.mediaStoreId.toString() }
+                    }
                     if (result.cancelled) {
-                        viewModel.rollbackVault(context, emptyList())
+                        viewModel.rollbackVault(context, successfulSourceIds.toSet())
                         Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
                     } else {
-                        viewModel.removeDeletedItems(
-                            (loadResult as? MediaLoadResult.Success)?.items
-                                ?.filter { item -> viewModel.currentVaultSourceIds().contains(item.id) }
-                                ?.map { it.id }
-                                .orEmpty()
-                        )
+                        // A full success deletes all source items in the batch. Use the
+                        // captured source IDs, not the raw chunk IDs, for repository cleanup.
+                        viewModel.removeDeletedItems(requestedSourceIds)
                         Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
                     }
                 }
