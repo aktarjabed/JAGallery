@@ -264,10 +264,20 @@ fun ViewerScreen(
         batchState = batchState,
         onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
-            if (result.tag == "VIEWER_DELETE" && result.succeededIds.isNotEmpty()) {
-                viewModel.removeDeletedItem(result.succeededIds.first())
+            when (result.tag) {
+                "VIEWER_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItem(result.succeededIds.first())
+                    }
+                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+                }
+                "VIEWER_VAULT_DELETE" -> {
+                    viewModel.onVaultSourceDeleteResult(currentItem, !result.cancelled && result.succeededIds.isNotEmpty())
+                    if (result.cancelled) {
+                        viewModel.rollbackVault(context, result.succeededIds)
+                    }
+                }
             }
-            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
             viewModel.batchManager.clearState()
         }
     )
