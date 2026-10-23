@@ -80,17 +80,10 @@ fun GridScreen(
                     }
                 }
                 "GRID_VAULT_DELETE" -> {
-                    // DeleteRequestChunk.ids are MediaStore row IDs. Convert their
-                    // successful results back to the app's URI-based source IDs before
-                    // cleaning up repository state or deciding which Vault copies to retain.
+                    // Batch results use full content URIs, so image/video row-ID
+                    // collisions and the current UI filter cannot misidentify a source.
                     val requestedSourceIds = viewModel.currentVaultSourceIds()
-                    val successfulSourceIds = requestedSourceIds.filter { id ->
-                        // DeleteRequestChunk.ids is generated from ContentUris.parseId(uri),
-                        // so match against the MediaStore numeric ID directly; UI filters
-                        // may hide items from the current loadResult during the dialog.
-                        val rawMediaStoreId = id.substringAfterLast('/').substringBefore('?')
-                        result.succeededIds.contains(rawMediaStoreId)
-                    }
+                    val successfulSourceIds = requestedSourceIds.filter { it in result.succeededIds }
                     val allSelectedSourcesConfirmed =
                         successfulSourceIds.size == requestedSourceIds.size && !result.cancelled
                     if (result.cancelled) {
