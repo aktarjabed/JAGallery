@@ -79,13 +79,18 @@ fun GridScreen(
                     }
                 }
                 "GRID_VAULT_DELETE" -> {
-                    if (result.succeededIds.isNotEmpty()) {
-                        viewModel.removeDeletedItems(result.succeededIds)
-                    }
+                    // DeleteRequestChunk.ids are MediaStore IDs, not necessarily the
+                    // app's stable MediaItem.id values, so do not pass them to Room cleanup.
                     if (result.cancelled) {
-                        viewModel.rollbackVault(context, result.succeededIds)
+                        viewModel.rollbackVault(context, emptyList())
                         Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
                     } else {
+                        viewModel.removeDeletedItems(
+                            (loadResult as? MediaLoadResult.Success)?.items
+                                ?.filter { item -> viewModel.currentVaultSourceIds().contains(item.id) }
+                                ?.map { it.id }
+                                .orEmpty()
+                        )
                         Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
                     }
                 }
