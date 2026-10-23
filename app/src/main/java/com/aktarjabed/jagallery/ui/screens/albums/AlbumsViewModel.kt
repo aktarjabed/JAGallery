@@ -43,7 +43,7 @@ sealed interface AlbumsUiState {
 
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
-    private val repository: MediaRepository,
+    repository: MediaRepository,
     mediaOperations: MediaOperations,
     @ApplicationContext private val context: Context
 ) : BaseMediaViewModel(mediaOperations, repository) {
