@@ -19,15 +19,21 @@ object VaultDecryptedStreamHelper {
         val readSide = pipe[0]
         val writeSide = pipe[1]
 
-        scope.launch(Dispatchers.IO) {
-            ParcelFileDescriptor.AutoCloseOutputStream(writeSide).use { output ->
-                FileInputStream(encryptedFile).use { input ->
+        try {
+            scope.launch(Dispatchers.IO) {
+                ParcelFileDescriptor.AutoCloseOutputStream(writeSide).use { output ->
                     runCatching {
-                        decryptBlock(input, output)
-                        output.flush()
+                        FileInputStream(encryptedFile).use { input ->
+                            decryptBlock(input, output)
+                            output.flush()
+                        }
                     }
                 }
             }
+        } catch (e: Throwable) {
+            runCatching { writeSide.close() }
+            runCatching { readSide.close() }
+            throw e
         }
         return readSide
     }

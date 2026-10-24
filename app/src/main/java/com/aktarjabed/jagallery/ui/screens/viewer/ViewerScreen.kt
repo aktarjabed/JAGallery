@@ -209,6 +209,7 @@ fun ViewerScreen(
     var trimStartMs by remember { mutableFloatStateOf(0f) }
     var trimEndMs by remember { mutableFloatStateOf(10000f) }
     var videoDurationMs by remember { mutableFloatStateOf(0f) }
+    var muteAudioOnTrim by rememberSaveable { mutableStateOf(false) }
     var trimJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
@@ -388,18 +389,34 @@ fun ViewerScreen(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                         Text(stringResource(R.string.trim_video_trimming), modifier = Modifier.padding(top = 8.dp))
                     } else {
-                        Text("Start: ${trimStartMs.toInt()} ms")
+                        Text("Start: ${String.format(Locale.US, "%.1f s", trimStartMs / 1000f)}")
                         Slider(
                             value = trimStartMs,
                             onValueChange = { if (it < trimEndMs) trimStartMs = it },
                             valueRange = 0f..videoDurationMs
                         )
-                        Text("End: ${trimEndMs.toInt()} ms")
+                        Text("End: ${String.format(Locale.US, "%.1f s", trimEndMs / 1000f)}")
                         Slider(
                             value = trimEndMs,
                             onValueChange = { if (it > trimStartMs) trimEndMs = it },
                             valueRange = 0f..videoDurationMs
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.video_mute_export_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = muteAudioOnTrim,
+                                onCheckedChange = { muteAudioOnTrim = it }
+                            )
+                        }
                     }
                 }
             },
@@ -412,7 +429,8 @@ fun ViewerScreen(
                                 context = context,
                                 sourceUri = currentItem.uri,
                                 startMs = trimStartMs.toLong(),
-                                endMs = trimEndMs.toLong()
+                                endMs = trimEndMs.toLong(),
+                                muteAudio = muteAudioOnTrim
                             )
                             isTrimming = false
                             showVideoTrimSheet = false

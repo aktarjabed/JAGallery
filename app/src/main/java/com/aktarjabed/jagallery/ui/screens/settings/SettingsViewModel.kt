@@ -30,6 +30,10 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.setThemeMode(mode)
     }
 
+    fun toggleExplicitDarkMode(enableDark: Boolean) {
+        settingsRepository.toggleExplicitDarkMode(enableDark)
+    }
+
     fun setDynamicColor(enabled: Boolean) {
         settingsRepository.setDynamicColor(enabled)
     }

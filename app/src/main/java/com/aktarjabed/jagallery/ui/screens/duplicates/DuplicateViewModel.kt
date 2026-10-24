@@ -95,8 +95,11 @@ class DuplicateViewModel @Inject constructor(
         return entity
     }
 
+    private var scanJob: kotlinx.coroutines.Job? = null
+
     fun loadDuplicates() {
-        viewModelScope.launch {
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
             _uiState.value = UiState.Loading
             _scanProgress.value = 0f
             try {
@@ -124,7 +127,9 @@ class DuplicateViewModel @Inject constructor(
                     
                     val candidateUrisPhase1 = sizeGroups.values.flatten().map { it.uri.toString() }
                     val existingHashesPhase1 = if (candidateUrisPhase1.isNotEmpty()) {
-                        fileHashDao.getHashesForUris(candidateUrisPhase1).associateBy { it.uriStr }
+                        candidateUrisPhase1.chunked(500)
+                            .flatMap { chunk -> fileHashDao.getHashesForUris(chunk) }
+                            .associateBy { it.uriStr }
                     } else emptyMap()
                     val newHashesPhase1 = mutableListOf<FileHashEntity>()
 
@@ -172,7 +177,9 @@ class DuplicateViewModel @Inject constructor(
                     
                     val candidateUrisPhase2 = imageItems.map { it.uri.toString() }
                     val existingHashesPhase2 = if (candidateUrisPhase2.isNotEmpty()) {
-                        fileHashDao.getHashesForUris(candidateUrisPhase2).associateBy { it.uriStr }
+                        candidateUrisPhase2.chunked(500)
+                            .flatMap { chunk -> fileHashDao.getHashesForUris(chunk) }
+                            .associateBy { it.uriStr }
                     } else emptyMap()
                     val newHashesPhase2 = mutableListOf<FileHashEntity>()
                     

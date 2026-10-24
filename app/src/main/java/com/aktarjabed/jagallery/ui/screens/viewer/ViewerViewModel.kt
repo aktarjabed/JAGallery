@@ -98,8 +98,26 @@ class ViewerViewModel @Inject constructor(
                 val filtered = when (currentSource) {
                     is MediaSource.Favorites -> items.filter { it.isFavorite }
                     is MediaSource.Search -> {
-                        if (currentSource.query.isNotBlank()) {
-                            items.filter { it.name.contains(currentSource.query, ignoreCase = true) }
+                        val q = currentSource.query
+                        if (q.isNotBlank()) {
+                            val intent = com.aktarjabed.jagallery.domain.NaturalLanguageSearchParser.parse(q)
+                            val matched = items.filter { item ->
+                                val matchesName = item.name.contains(q, ignoreCase = true) ||
+                                    item.bucketName.contains(q, ignoreCase = true)
+                                val categoryMatches = intent.category != null &&
+                                    com.aktarjabed.jagallery.domain.SmartAlbumClassifier.classifyCategory(item) == intent.category
+                                val docMatches = intent.isDocument &&
+                                    com.aktarjabed.jagallery.domain.SmartAlbumClassifier.isReceiptOrDocument(item)
+                                val receiptMatches = intent.isReceipt &&
+                                    com.aktarjabed.jagallery.domain.SmartAlbumClassifier.isReceiptOrDocument(item)
+                                val peopleMatches = intent.isPeople &&
+                                    com.aktarjabed.jagallery.domain.SmartAlbumClassifier.isPeopleOrPortrait(item)
+                                val favoriteMatches = intent.isFavorite && item.isFavorite
+                                val videoMatches = intent.isVideo && item.isVideo
+                                matchesName || categoryMatches || docMatches || receiptMatches ||
+                                    peopleMatches || favoriteMatches || videoMatches
+                            }
+                            matched.ifEmpty { items }
                         } else {
                             items
                         }

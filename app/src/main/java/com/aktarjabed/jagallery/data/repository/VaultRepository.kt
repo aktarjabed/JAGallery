@@ -174,15 +174,20 @@ class VaultRepository @Inject constructor(
 
     suspend fun decryptToTemp(entity: VaultMediaEntity): File = withContext(Dispatchers.IO) {
         val tempFile = File(tempDir, entity.id)
-        if (tempFile.exists()) return@withContext tempFile
+        if (tempFile.exists() && tempFile.length() > 0L) return@withContext tempFile
 
         val encryptedFile = File(entity.encryptedFilePath)
-        FileInputStream(encryptedFile).use { input ->
-            FileOutputStream(tempFile).use { output ->
-                vaultCryptoManager.decrypt(input, output)
+        try {
+            FileInputStream(encryptedFile).use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    vaultCryptoManager.decrypt(input, output)
+                }
             }
+            tempFile
+        } catch (e: Exception) {
+            runCatching { tempFile.delete() }
+            throw e
         }
-        tempFile
     }
 
     suspend fun clearTemp() = withContext(Dispatchers.IO) {
