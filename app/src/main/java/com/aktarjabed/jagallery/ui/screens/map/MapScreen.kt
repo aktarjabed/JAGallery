@@ -163,11 +163,20 @@ private fun OsmMap(
         }
     )
 
-    DisposableEffect(Unit) {
-        mapView.onResume()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, mapView) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onPause()
-            mapView.onDetach() // OsmDroid MapView doesn't have onDestroy(), it has onDetach()
+            mapView.onDetach()
         }
     }
 }

@@ -31,8 +31,16 @@ class SmartAnalyzer(
             val labels = labeler.process(inputImage).await()
             val textResult = textRecognizer.process(inputImage).await()
 
-            val bestLabel = labels.maxByOrNull { it.confidence }
-            val labelName = bestLabel?.text
+            val sortedLabels = labels
+                .filter { it.confidence >= 0.55f }
+                .sortedByDescending { it.confidence }
+
+            val bestLabel = sortedLabels.firstOrNull() ?: labels.maxByOrNull { it.confidence }
+            val combinedLabels = if (sortedLabels.isNotEmpty()) {
+                sortedLabels.take(4).joinToString(", ") { it.text }
+            } else {
+                bestLabel?.text
+            }
             val confidenceScore = bestLabel?.confidence
 
             val extractedText = textResult.text.takeIf { it.isNotBlank() }
@@ -40,7 +48,7 @@ class SmartAnalyzer(
 
             val entity = SmartTagEntity(
                 uriStr = uri.toString(),
-                primaryLabel = labelName,
+                primaryLabel = combinedLabels,
                 confidence = confidenceScore,
                 locationName = locationName,
                 extractedText = extractedText
