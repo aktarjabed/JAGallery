@@ -62,8 +62,10 @@ class SettingsRepository @Inject constructor(
     }
 
     fun setGridColumns(columns: Int) {
-        prefs.edit { putInt("grid_columns", columns) }
-        _gridColumns.value = columns
+        // 0 is adaptive; fixed columns are intentionally bounded for phone/tablet layouts.
+        val normalized = columns.coerceIn(0, 8)
+        prefs.edit { putInt("grid_columns", normalized) }
+        _gridColumns.value = normalized
     }
 
     private fun readVaultTimeoutMinutes(): Int {

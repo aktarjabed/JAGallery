@@ -26,7 +26,8 @@ import javax.inject.Inject
 class GridViewModel @Inject constructor(
     repository: MediaRepository,
     mediaOperations: MediaOperations,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val settingsRepository: com.aktarjabed.jagallery.domain.SettingsRepository
 ) : BaseMediaViewModel(mediaOperations, repository) {
 
     private val bucketId: Long? = savedStateHandle.get<String>("bucketId")?.toLongOrNull()
@@ -53,6 +54,18 @@ class GridViewModel @Inject constructor(
     private val _mediaFilter = MutableStateFlow(MediaTypeFilter.ALL)
     val mediaFilter: StateFlow<MediaTypeFilter> = _mediaFilter.asStateFlow()
 
+    private val _gridColumns = MutableStateFlow(0)
+    val gridColumns: StateFlow<Int> = _gridColumns.asStateFlow()
+
+    init {
+        _gridColumns.value = settingsRepository.gridColumns.value
+        viewModelScope.launch {
+            settingsRepository.gridColumns.collect { columns ->
+                _gridColumns.value = columns.coerceIn(0, 8)
+            }
+        }
+    }
+
     fun setSortAndFilter(option: SortOption, order: SortOrder, filter: MediaTypeFilter) {
         _sortOption.value = option
         _sortOrder.value = order
@@ -72,6 +85,7 @@ class GridViewModel @Inject constructor(
             is MediaLoadResult.Success -> {
                 var filtered = when (currentSource) {
                     is MediaSource.Album -> result.items.filter { it.albumKey == currentSource.albumKey }
+                    is MediaSource.TypeFiltered -> result.items.filter { it.isVideo == currentSource.isVideo }
                     else -> result.items
                 }
 

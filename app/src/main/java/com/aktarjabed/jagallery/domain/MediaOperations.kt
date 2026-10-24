@@ -224,9 +224,27 @@ class MediaOperationsImpl @Inject constructor(
     }
 
     override suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult {
+        if (items.isEmpty()) return MoveOperationResult.Error("No media selected")
         return try {
             val triples = items.map { Triple(it.uri, it.mimeType, it.name) }
             val movedEntities = vaultRepository.batchMoveToVault(triples)
+            if (movedEntities.size != items.size) {
+                // Partial batch staging can leave encrypted files and DB rows behind.
+                // Roll back every successfully staged item and never delete originals.
+                val stagedByUri = movedEntities.associateBy { it.originalUriStr }
+                val stagedSourceIds = items
+                    .filter { it.uri.toString() in stagedByUri }
+                    .map { it.id }
+                val vaultMapping = items.mapNotNull { item ->
+                    stagedByUri[item.uri.toString()]?.let { item.id to it.id }
+                }.toMap()
+                if (stagedSourceIds.isNotEmpty()) {
+                    rollbackVaultDestinationEntries(stagedSourceIds, vaultMapping)
+                }
+                return MoveOperationResult.Error(
+                    "Vault encryption failed for ${items.size - movedEntities.size} item(s); originals were retained"
+                )
+            }
             val movedMap = movedEntities.associateBy { it.originalUriStr }
 
             val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()

@@ -42,6 +42,10 @@ fun AlbumsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    LaunchedEffect(viewModel) {
+        viewModel.refreshTrashCount()
+    }
+
     var albumToRename by remember { mutableStateOf<Album?>(null) }
     var showMoreMenu by rememberSaveable { mutableStateOf(false) }
 
@@ -88,8 +92,8 @@ fun AlbumsScreen(
                     onTabSelected = { tab ->
                         when (tab) {
                             GalleryFilterTab.ALBUMS -> {}
-                            GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.All)
-                            GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.All)
+                            GalleryFilterTab.PHOTOS -> onNavigateToGrid(MediaSource.TypeFiltered(isVideo = false))
+                            GalleryFilterTab.VIDEOS -> onNavigateToGrid(MediaSource.TypeFiltered(isVideo = true))
                             GalleryFilterTab.FAVORITES -> onNavigateToFavorites()
                         }
                     }

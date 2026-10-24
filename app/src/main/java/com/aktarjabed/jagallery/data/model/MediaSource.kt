@@ -2,6 +2,7 @@ package com.aktarjabed.jagallery.data.model
 
 sealed interface MediaSource {
     object All : MediaSource
+    data class TypeFiltered(val isVideo: Boolean) : MediaSource
     object Favorites : MediaSource
     data class Album(val albumKey: AlbumKey) : MediaSource {
         constructor(volumeName: String, bucketId: Long, relativePath: String) : this(AlbumKey(volumeName, bucketId, relativePath))

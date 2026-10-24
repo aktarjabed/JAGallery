@@ -141,7 +141,7 @@ fun TrashScreen(
             // No refreshAll here -- observer handles post-delete rescan
         },
         onRestoreSelected = { restoredItems ->
-            viewModel.refreshAll(context) // refresh needed on restore path
+            viewModel.onItemsRestored(restoredItems, context)
         },
         emptyIcon = Icons.Default.Delete,
         emptyMessage = stringResource(R.string.no_trash_found),

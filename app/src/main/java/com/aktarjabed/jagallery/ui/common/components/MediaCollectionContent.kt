@@ -35,7 +35,8 @@ fun MediaCollectionContent(
     onCopySelected: ((List<MediaItem>, com.aktarjabed.jagallery.data.model.AlbumDestination) -> Unit)? = null,
     onMoveToVaultSelected: ((List<MediaItem>) -> Unit)? = null,
     onRetry: () -> Unit = {},
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    columnsCount: Int = 0
 ) {
     val selectionState = rememberSelectionState()
     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()
@@ -79,6 +80,7 @@ fun MediaCollectionContent(
             }
             is MediaLoadResult.Empty -> {
                 MediaGrid(
+                    columnsCount = columnsCount,
                     items = emptyList(),
                     selectedIds = emptySet(),
                     selectionMode = false,
@@ -93,6 +95,7 @@ fun MediaCollectionContent(
             }
             is MediaLoadResult.Success -> {
                 MediaGrid(
+                    columnsCount = columnsCount,
                     items = loadResult.items,
                     selectedIds = selectionState.selectedIds,
                     selectionMode = selectionState.selectionMode,

@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">J.A Gallery</string>
     <string name="tab_all_media">All Media</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_videos">Videos</string>
+    <string name="tab_photos">Photos</string>
+    <string name="no_photos_found">No photos found</string>
+    <string name="no_videos_found">No videos found</string>
     <string name="tab_favorites">Favorites</string>
     <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
@@ -83,6 +88,9 @@
     <string name="wallpaper_failed">Failed to set wallpaper</string>
 
     <string name="exposure">Exposure</string>
+    <string name="shadows">Shadows</string>
+    <string name="highlights">Highlights</string>
+    <string name="sharpness">Sharpness</string>
 
     <string name="rename_media">Rename Media</string>
     <string name="rename_album">Rename Album</string>

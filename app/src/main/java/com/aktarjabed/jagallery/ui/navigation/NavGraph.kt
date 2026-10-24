@@ -1,5 +1,11 @@
 package com.aktarjabed.jagallery.ui.navigation
 
+import android.app.Activity
+import android.view.WindowManager
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
@@ -48,6 +54,8 @@ fun parseMediaSource(
         }
         "TRASH" -> MediaSource.Trash
         "HIDDEN" -> MediaSource.Hidden
+        "VIDEOS" -> MediaSource.TypeFiltered(isVideo = true)
+        "PHOTOS" -> MediaSource.TypeFiltered(isVideo = false)
         "ALL" -> MediaSource.All
         null -> MediaSource.All
         else -> null
@@ -57,6 +65,24 @@ fun parseMediaSource(
 @Composable
 fun NavGraph() {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val visibleEntries by navController.visibleEntries.collectAsState()
+    val vaultVisible = visibleEntries.any { entry ->
+        val route = entry.destination.route
+        route == Screen.Vault.route || route?.startsWith("vault_viewer") == true
+    }
+
+    // Keep FLAG_SECURE enabled for every Vault destination still visible during
+    // enter/exit transitions, not only the newly selected back-stack entry.
+    DisposableEffect(context, vaultVisible) {
+        val window = (context as? Activity)?.window
+        if (vaultVisible) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        onDispose { }
+    }
 
     NavHost(
         navController = navController,

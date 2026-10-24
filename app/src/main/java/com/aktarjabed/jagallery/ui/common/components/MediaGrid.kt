@@ -108,7 +108,10 @@ fun MediaGrid(
             }
         }
 
-        val gridCells = if (columnsCount > 0) GridCells.Fixed(columnsCount) else GridCells.Adaptive(minSize = 120.dp)
+        // Use adaptive cells by default; clamp externally supplied values as well,
+        // so malformed settings cannot create zero or excessive grid columns.
+        val effectiveColumns = columnsCount.coerceIn(0, 8)
+        val gridCells = if (effectiveColumns > 0) GridCells.Fixed(effectiveColumns) else GridCells.Adaptive(minSize = 120.dp)
 
         LazyVerticalGrid(
             columns = gridCells,

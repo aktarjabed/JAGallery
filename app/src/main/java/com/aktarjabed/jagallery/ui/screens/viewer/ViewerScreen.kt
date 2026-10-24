@@ -275,10 +275,8 @@ fun ViewerScreen(
                 "VIEWER_VAULT_DELETE" -> {
                     val requestedItem = pendingVaultDeleteItem
                     if (requestedItem != null) {
-                        val sourceDeleteConfirmed = result.succeededIds.any { rawId ->
-                            rawId == requestedItem.mediaStoreId.toString() ||
-                                rawId == requestedItem.id
-                        }
+                        // Batch results use full content URIs to avoid cross-collection row-ID collisions.
+                        val sourceDeleteConfirmed = result.succeededIds.contains(requestedItem.id)
                         viewModel.onVaultSourceDeleteResult(
                             requestedItem,
                             deleteConfirmed = !result.cancelled && sourceDeleteConfirmed

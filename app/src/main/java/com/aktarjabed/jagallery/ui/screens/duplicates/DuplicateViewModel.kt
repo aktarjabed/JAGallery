@@ -72,7 +72,10 @@ class DuplicateViewModel @Inject constructor(
         val existing = existingHashes[uriStr]
 
         // Cache hit: return if the file hasn't been modified
-        if (existing != null && existing.lastModifiedTime == item.dateAdded) {
+        if (existing != null && existing.lastModifiedTime == item.dateModified &&
+            existing.sha256Hash != null &&
+            (!item.mimeType.startsWith("image/") || existing.perceptualHash != null)
+        ) {
             return existing
         }
 
@@ -86,7 +89,7 @@ class DuplicateViewModel @Inject constructor(
             uriStr = uriStr,
             sha256Hash = sha256,
             perceptualHash = pHash,
-            lastModifiedTime = item.dateAdded
+            lastModifiedTime = item.dateModified
         )
         newHashes.add(entity)
         return entity
@@ -134,7 +137,9 @@ class DuplicateViewModel @Inject constructor(
                             val hashRecord = getOrComputeHash(item, existingHashesPhase1, newHashesPhase1)
 
                             if (hashRecord != null) {
-                                hashGroups.getOrPut(hashRecord.sha256Hash!!) { mutableListOf() }.add(item)
+                                hashRecord.sha256Hash?.let { sha256 ->
+                                    hashGroups.getOrPut(sha256) { mutableListOf() }.add(item)
+                                }
 
                                 // Collect pHash for Phase 2
                                 if (hashRecord.perceptualHash != null) {

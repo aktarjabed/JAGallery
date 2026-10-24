@@ -107,6 +107,7 @@ class ViewerViewModel @Inject constructor(
                     is MediaSource.Album -> {
                         items.filter { it.albumKey == currentSource.albumKey }
                     }
+                    is MediaSource.TypeFiltered -> items.filter { it.isVideo == currentSource.isVideo }
                     is MediaSource.All -> items
                     is MediaSource.Trash -> items
                     is MediaSource.Hidden -> items

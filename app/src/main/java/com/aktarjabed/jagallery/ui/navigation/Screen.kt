@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
                 is MediaSource.Album -> "grid?source=ALBUM&volumeName=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.volumeName)}&bucketId=${source.albumKey.bucketId}&relativePath=${com.aktarjabed.jagallery.util.NavCodec.encode(source.albumKey.relativePath)}"
                 is MediaSource.Search -> "grid?source=SEARCH"
                 is MediaSource.Favorites -> "grid?source=FAVORITES"
+                is MediaSource.TypeFiltered -> "grid?source=${if (source.isVideo) "VIDEOS" else "PHOTOS"}"
                 else -> "grid?source=ALL"
             }
         }
@@ -40,6 +41,7 @@ sealed class Screen(val route: String) {
                 is MediaSource.Search -> "SEARCH"
                 is MediaSource.Trash -> "TRASH"
                 is MediaSource.Hidden -> "HIDDEN"
+                is MediaSource.TypeFiltered -> if (source.isVideo) "VIDEOS" else "PHOTOS"
             }
             val builder = StringBuilder("viewer?mediaId=$encodedMediaId&source=$sourceName")
             when (source) {

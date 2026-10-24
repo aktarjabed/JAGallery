@@ -43,7 +43,9 @@ class BatchOperationManager {
             if (currentState !is BatchProcessorState.Running) return@update currentState
 
             if (resultCode == Activity.RESULT_OK) {
-                val confirmedIds = currentState.chunks[currentState.currentIndex].ids
+                // Expose stable app identifiers to callers. Numeric MediaStore IDs
+                // can collide across image/video collections; full URIs cannot.
+                val confirmedIds = currentState.chunks[currentState.currentIndex].uris.map { it.toString() }
                 val newProcessed = currentState.processedIds + confirmedIds
                 val nextIndex = currentState.currentIndex + 1
 
@@ -61,7 +63,9 @@ class BatchOperationManager {
                     )
                 }
             } else {
-                val failedIds = currentState.chunks.subList(currentState.currentIndex, currentState.chunks.size).flatMap { it.ids }
+                val failedIds = currentState.chunks
+                    .subList(currentState.currentIndex, currentState.chunks.size)
+                    .flatMap { chunk -> chunk.uris.map { it.toString() } }
                 BatchProcessorState.Completed(
                     succeededIds = currentState.processedIds,
                     failedIds = failedIds,

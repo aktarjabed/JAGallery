@@ -58,6 +58,7 @@ fun GridScreen(
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val mediaFilter by viewModel.mediaFilter.collectAsStateWithLifecycle()
+    val gridColumns by viewModel.gridColumns.collectAsStateWithLifecycle()
 
     var showSortFilterSheet by rememberSaveable { mutableStateOf(false) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
@@ -79,16 +80,10 @@ fun GridScreen(
                     }
                 }
                 "GRID_VAULT_DELETE" -> {
-                    // DeleteRequestChunk.ids are MediaStore IDs, not necessarily the
-                    // app's stable MediaItem.id values, so do not pass them to Room cleanup.
+                    // Batch results use full content URIs, so image/video row-ID
+                    // collisions and the current UI filter cannot misidentify a source.
                     val requestedSourceIds = viewModel.currentVaultSourceIds()
-                    // DeleteRequestChunk.ids are MediaStore row IDs. Map them back to
-                    // stable MediaItem IDs before updating repository state or rolling back.
-                    val currentItems = (loadResult as? MediaLoadResult.Success)?.items.orEmpty()
-                    val successfulSourceIds = requestedSourceIds.filter { id ->
-                        val item = currentItems.firstOrNull { it.id == id } ?: return@filter false
-                        result.succeededIds.any { rawId -> rawId == item.mediaStoreId.toString() }
-                    }
+                    val successfulSourceIds = requestedSourceIds.filter { it in result.succeededIds }
                     val allSelectedSourcesConfirmed =
                         successfulSourceIds.size == requestedSourceIds.size && !result.cancelled
                     if (result.cancelled) {
@@ -119,6 +114,9 @@ fun GridScreen(
                 val items = (loadResult as? MediaLoadResult.Success)?.items
                 items?.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
             }
+            is MediaSource.TypeFiltered -> context.getString(
+                if (source.isVideo) R.string.tab_videos else R.string.tab_photos
+            )
             else -> null
         }
     }
@@ -126,6 +124,13 @@ fun GridScreen(
     MediaCollectionContent(
         loadResult = loadResult,
         allAlbums = allAlbums,
+        columnsCount = gridColumns,
+        emptyMessage = when (source) {
+            is MediaSource.TypeFiltered -> stringResource(
+                if (source.isVideo) R.string.no_videos_found else R.string.no_photos_found
+            )
+            else -> stringResource(R.string.no_media_found)
+        },
         batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onHideSelected = { items -> viewModel.hideMediaBatch(items) },
