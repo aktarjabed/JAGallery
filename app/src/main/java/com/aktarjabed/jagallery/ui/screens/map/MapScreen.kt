@@ -66,7 +66,7 @@ fun MapScreen(
         when {
             errorMessage != null -> {
                 com.aktarjabed.jagallery.ui.common.components.FullScreenError(
-                    message = errorMessage!!,
+                    message = errorMessage ?: stringResource(R.string.error_unknown),
                     modifier = Modifier.padding(padding),
                     action = {
                         androidx.compose.material3.OutlinedButton(onClick = { viewModel.retryLoad() }) {
