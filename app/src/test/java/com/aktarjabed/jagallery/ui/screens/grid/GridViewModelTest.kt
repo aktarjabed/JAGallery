@@ -62,7 +62,7 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = true))
-        viewModel.loadMedia(context = context)
+        repository.loadMedia(force = true, context = context)
 
         // StateFlow's current value is the deterministic assertion point after the scan.
         val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
@@ -78,7 +78,7 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = false))
-        viewModel.loadMedia(context = context)
+        repository.loadMedia(force = true, context = context)
 
         val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
         assertTrue(loaded.items.isNotEmpty())
