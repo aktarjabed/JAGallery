@@ -42,19 +42,32 @@ class VaultRepository @Inject constructor(
         items: List<T>,
         block: suspend (T) -> R?
     ): List<R> = coroutineScope {
-        items.map { item ->
-            async {
-                batchVaultSemaphore.withPermit {
-                    try {
-                        block(item)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        null
+        val completed = java.util.concurrent.ConcurrentLinkedQueue<R>()
+        try {
+            items.map { item ->
+                async {
+                    batchVaultSemaphore.withPermit {
+                        try {
+                            block(item)?.also(completed::add)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            null
+                        }
                     }
                 }
+            }.awaitAll().filterNotNull()
+        } catch (e: CancellationException) {
+            // Best-effort cleanup for completed staged entities. The caller may use
+            // Vault IDs as filenames because staged entity IDs are random private names.
+            completed.forEach { value ->
+                if (value is VaultMediaEntity) {
+                    runCatching { File(vaultDir, value.id).delete() }
+                    runCatching { mediaDao.deleteVaultMedia(value) }
+                }
             }
-        }.awaitAll().filterNotNull()
+            throw e
+        }
     }
 
     suspend fun moveToVault(originalUri: Uri, mimeType: String, originalName: String): VaultMediaEntity = withContext(Dispatchers.IO) {
