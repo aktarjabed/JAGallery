@@ -62,7 +62,7 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = true))
-        val collected = kotlinx.coroutines.async {
+        val collected = backgroundScope.async {
             viewModel.mediaLoadResult.first { it is MediaLoadResult.Success }
         }
         repository.loadMedia(force = true, context = context)
