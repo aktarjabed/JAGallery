@@ -204,6 +204,7 @@
     <string name="vault_cannot_share_locked">Cannot share locked media</string>
     <string name="vault_no_share_app">No app to handle share</string>
     <string name="vault_moved_to_vault">Moved to vault</string>
+    <string name="vault_move_action">Move to Vault</string>
     <string name="vault_move_failed">Failed to move to vault</string>
 
     <!-- Settings Screen -->

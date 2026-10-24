@@ -5,6 +5,7 @@ import android.net.Uri
 import com.aktarjabed.jagallery.data.local.MediaDao
 import com.aktarjabed.jagallery.data.local.VaultMediaEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -41,13 +42,32 @@ class VaultRepository @Inject constructor(
         items: List<T>,
         block: suspend (T) -> R?
     ): List<R> = coroutineScope {
-        items.map { item ->
-            async {
-                batchVaultSemaphore.withPermit {
-                    runCatching { block(item) }.getOrNull()
+        val completed = java.util.concurrent.ConcurrentLinkedQueue<R>()
+        try {
+            items.map { item ->
+                async {
+                    batchVaultSemaphore.withPermit {
+                        try {
+                            block(item)?.also(completed::add)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        } catch (e: CancellationException) {
+            // Best-effort cleanup for completed staged entities. The caller may use
+            // Vault IDs as filenames because staged entity IDs are random private names.
+            completed.forEach { value ->
+                if (value is VaultMediaEntity) {
+                    runCatching { File(vaultDir, value.id).delete() }
+                    runCatching { mediaDao.deleteVaultMedia(value) }
                 }
             }
-        }.awaitAll().filterNotNull()
+            throw e
+        }
     }
 
     suspend fun moveToVault(originalUri: Uri, mimeType: String, originalName: String): VaultMediaEntity = withContext(Dispatchers.IO) {
@@ -91,37 +111,52 @@ class VaultRepository @Inject constructor(
         // Stage encrypted files concurrently with bounded parallelism
         data class StagedItem(val entity: VaultMediaEntity, val encryptedFile: File)
 
-        val staged: List<StagedItem> = coroutineScope {
-            items.map { (uri, mimeType, originalName) ->
-                async {
-                    batchVaultSemaphore.withPermit {
-                        val id = UUID.randomUUID().toString()
-                        val encryptedFile = File(vaultDir, id)
-                        try {
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                FileOutputStream(encryptedFile).use { output ->
-                                    vaultCryptoManager.encrypt(input, output)
-                                }
-                            } ?: throw IllegalStateException("Could not open input stream for $uri")
+        val stagedFiles = java.util.concurrent.ConcurrentLinkedQueue<File>()
+        val staged: List<StagedItem> = try {
+            coroutineScope {
+                items.map { (uri, mimeType, originalName) ->
+                    async {
+                        batchVaultSemaphore.withPermit {
+                            val id = UUID.randomUUID().toString()
+                            val encryptedFile = File(vaultDir, id)
+                            // Register before IO starts so parent cancellation can remove
+                            // partial files and files completed by sibling tasks.
+                            stagedFiles.add(encryptedFile)
+                            try {
+                                context.contentResolver.openInputStream(uri)?.use { input ->
+                                    FileOutputStream(encryptedFile).use { output ->
+                                        vaultCryptoManager.encrypt(input, output)
+                                    }
+                                } ?: throw IllegalStateException("Could not open input stream for $uri")
 
-                            StagedItem(
-                                VaultMediaEntity(
-                                    id = id,
-                                    originalUriStr = uri.toString(),
-                                    mimeType = mimeType,
-                                    encryptedFilePath = encryptedFile.absolutePath,
-                                    dateAdded = System.currentTimeMillis(),
-                                    originalName = originalName
-                                ),
-                                encryptedFile
-                            )
-                        } catch (e: Exception) {
-                            if (encryptedFile.exists()) encryptedFile.delete()
-                            null
+                                StagedItem(
+                                    VaultMediaEntity(
+                                        id = id,
+                                        originalUriStr = uri.toString(),
+                                        mimeType = mimeType,
+                                        encryptedFilePath = encryptedFile.absolutePath,
+                                        dateAdded = System.currentTimeMillis(),
+                                        originalName = originalName
+                                    ),
+                                    encryptedFile
+                                )
+                            } catch (e: CancellationException) {
+                                encryptedFile.delete()
+                                throw e
+                            } catch (_: Exception) {
+                                encryptedFile.delete()
+                                null
+                            }
                         }
                     }
-                }
-            }.awaitAll().filterNotNull()
+                }.awaitAll().filterNotNull()
+            }
+        } catch (e: CancellationException) {
+            stagedFiles.forEach { it.delete() }
+            throw e
+        } catch (e: Exception) {
+            stagedFiles.forEach { it.delete() }
+            throw e
         }
 
         if (staged.isEmpty()) return@withContext emptyList()

@@ -132,13 +132,14 @@ class MediaRepository @Inject constructor(
 
     suspend fun loadMedia(force: Boolean = false, context: Context) {
         val jobToAwait = loadMutex.withLock {
-            if (currentScanJob != null) {
+            val activeScanJob = currentScanJob
+            if (activeScanJob != null) {
                 if (force) {
                     pendingRequest = ScanRequest(force = true, context = context)
                 } else if (pendingRequest == null) {
                     pendingRequest = ScanRequest(force = false, context = context)
                 }
-                currentScanJob!!
+                activeScanJob
             } else {
                 val newJob = repositoryScope.async {
                     executeScanLoop(ScanRequest(force, context))

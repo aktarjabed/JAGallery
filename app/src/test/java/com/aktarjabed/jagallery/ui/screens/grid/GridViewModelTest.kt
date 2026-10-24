@@ -13,6 +13,7 @@ import com.aktarjabed.jagallery.fakes.FakeMediaDao
 import com.aktarjabed.jagallery.fixtures.MediaTestData
 import com.aktarjabed.jagallery.rules.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -20,6 +21,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -60,11 +63,19 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = true))
-        viewModel.loadMedia(context = context)
+        val collected = backgroundScope.async {
+            viewModel.mediaLoadResult.first { it is MediaLoadResult.Success }
+        }
+        repository.loadMedia(force = true, context = context)
 
-        // StateFlow's current value is the deterministic assertion point after the scan.
-        val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
-        assertEquals(listOf("content://media/external/video/media/21", "content://media/external/video/media/22"), loaded.items.map { it.id })
+        val loaded = collected.await() as MediaLoadResult.Success
+        assertEquals(
+            listOf(
+                "content://media/external/video/media/22",
+                "content://media/external/video/media/21"
+            ),
+            loaded.items.map { it.id }
+        )
         assertTrue(loaded.items.all { it.isVideo })
     }
 
@@ -76,7 +87,7 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = false))
-        viewModel.loadMedia(context = context)
+        repository.loadMedia(force = true, context = context)
 
         val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
         assertTrue(loaded.items.isNotEmpty())
