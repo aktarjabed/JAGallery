@@ -21,7 +21,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -48,8 +50,15 @@ class AlbumsViewModel @Inject constructor(
 
     val uiState: StateFlow<AlbumsUiState> = combine(
         repository.mediaLoadResult,
-        repository.mediaDao.getVaultMedia()
-    ) { result, vaultItems ->
+        repository.mediaDao.getVaultMedia(),
+        repository.mediaDao.getTrashMedia(),
+        repository.trashedMediaLoadResult
+    ) { result, vaultItems, trashItems, trashLoadResult ->
+        val visibleTrashCount = when (trashLoadResult) {
+            is MediaLoadResult.Success -> trashLoadResult.items.size
+            is MediaLoadResult.Empty -> 0
+            else -> trashItems.size
+        }
         when (result) {
             is MediaLoadResult.Loading -> AlbumsUiState.Loading
             is MediaLoadResult.Error -> AlbumsUiState.Error(result.cause)
@@ -59,7 +68,6 @@ class AlbumsViewModel @Inject constructor(
                 if (items.isEmpty()) {
                     AlbumsUiState.Empty
                 } else {
-                    val trashItems = runCatching { repository.mediaDao.getAllTrashMediaSync() }.getOrDefault(emptyList())
                     val albumsList = items.groupBy { it.albumKey }
                         .map { (albumKey, bucketItems) ->
                             val firstItem = bucketItems.first()
@@ -80,13 +88,27 @@ class AlbumsViewModel @Inject constructor(
                         totalCount = items.size,
                         coverUri = items.firstOrNull()?.uri,
                         rawItems = items,
-                        trashCount = trashItems.size,
+                        trashCount = visibleTrashCount,
                         vaultCount = vaultItems.size
                     )
                 }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
+    }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumsUiState.Loading)
+
+    fun refreshTrashCount() {
+        viewModelScope.launch {
+            try {
+                repository.loadTrashedMedia(context)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _operationEvent.emit(
+                    OperationEvent.Error("Failed to refresh Trash count: ${e.message}")
+                )
+            }
+        }
+    }
 
     private val _albumRenameDeleteEvent = MutableSharedFlow<Pair<List<String>, List<DeleteRequestChunk>>>()
     val albumRenameDeleteEvent = _albumRenameDeleteEvent.asSharedFlow()

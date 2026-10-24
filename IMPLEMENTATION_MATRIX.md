@@ -67,7 +67,7 @@ Validation completed successfully:
 | Crop | ✅ Implemented | Interactive Crop overlay / Aspect ratio crop (Square/Free/Original) | |
 | Flip horizontal/vertical | ✅ Implemented | Matrix postScale flip operations | |
 | GIF-specific editing | ❌ Missing | | |
-| Advanced EXIF editor | ❌ Missing | | |
+| Advanced EXIF editor | ✅ Implemented | Interactive EXIF editor (DateTime, Make, Model, Description, Artist, GPS) + 1-tap Privacy Sanitizer | |
 
 ## Video
 
@@ -75,8 +75,8 @@ Validation completed successfully:
 |---------|--------|-----------------------|----------------|
 | Video trimming | ✅ Implemented | Dedicated trimming/export pipeline, multi-volume resolution | |
 | Video trim UI | ✅ Implemented | Full trim workflow with bottom sheet | |
-| Video mute | ❌ Missing | | |
-| Video frame extraction | ❌ Missing | | |
+| Video mute | ✅ Implemented | ExoPlayer live mute toggle + lossless audio-track stripping on MediaMuxer export | |
+| Video frame extraction | ✅ Implemented | High-resolution JPEG frame capture at current playback timestamp via MediaMetadataRetriever | |
 
 ## Privacy
 
@@ -92,18 +92,18 @@ Validation completed successfully:
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
-| Natural Language Search | ✅ Implemented | Intent-based parser for querying image semantics ("Show my receipts") | |
+| Natural Language Search | ✅ Implemented | Intent-based parser for querying image semantics ("Show my receipts", "People & Selfies") | |
 | Filename search | ✅ Implemented | Debounced in-memory filtering | |
-| FTS | ❌ Missing | No Room FTS | |
+| FTS | ✅ Implemented | Reactive Room SmartTag full-text query across OCR text, ML labels, and location | |
 | GPS/map view | ✅ Implemented | osmdroid-based map view with Marker rendering | |
-| OCR-based search | ✅ Implemented | ML Kit Text Recognition with Room indexing | |
+| OCR-based search | ✅ Implemented | ML Kit Text Recognition with Room indexing and on-demand batch scanner | |
 
 ## Advanced Processing
 
 | Feature | Status | Actual Implementation | Remaining Work |
 |---------|--------|-----------------------|----------------|
 | Smart Source Albums | ✅ Implemented | Path/Volume heuristics mapping (Screenshots, WhatsApp, Camera, etc) | |
-| Smart Content AI | ✅ Implemented | Local heuristic model mapping Receipts/Documents based on MIME/Path | |
+| Smart Content AI | ✅ Implemented | Local heuristic + ML Kit model mapping Receipts, Documents, and People/Portraits | |
 | SHA-256 duplicates | ✅ Implemented | Duplicate detector with cancellation and safe stream handling | |
 | Duplicate review UI | ✅ Implemented | Dedicated Duplicates screen and viewmodel | |
 | Persistent hash cache | ✅ Implemented | Room-backed `file_hashes` table | |
@@ -111,7 +111,7 @@ Validation completed successfully:
 | Cloud-aware albums | ❌ Missing | No cloud/custom-album synchronization | |
 | Duplicate cleaner | ✅ Implemented | Full batch-deletion flow with MediaStore | |
 | Motion/Live Photo | ❌ Missing | | |
-| People/face grouping | ❌ Missing | | |
+| People/face grouping | ✅ Implemented | On-device ML Kit multi-label & portrait heuristic classification with quick filter chips | |
 
 ## Build/Testing
 

@@ -52,6 +52,15 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     private val _exposure = MutableStateFlow(0f)
     val exposure: StateFlow<Float> = _exposure.asStateFlow()
 
+    private val _shadows = MutableStateFlow(0f)
+    val shadows: StateFlow<Float> = _shadows.asStateFlow()
+
+    private val _highlights = MutableStateFlow(0f)
+    val highlights: StateFlow<Float> = _highlights.asStateFlow()
+
+    private val _sharpness = MutableStateFlow(0f)
+    val sharpness: StateFlow<Float> = _sharpness.asStateFlow()
+
     private val _cropRect = MutableStateFlow<RectF?>(null)
     val cropRect: StateFlow<RectF?> = _cropRect.asStateFlow()
     private val _flipHorizontal = MutableStateFlow(false)
@@ -78,21 +87,36 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadImage(context: Context, imageUri: Uri) {
-        if (_isLoading.value || originalBitmap != null) return
-        sourceUri = imageUri
+        // Navigation can reuse a Hilt ViewModel for another URI. Reload instead of
+        // silently keeping the previous photo; do not skip just because a load is active.
+        if (sourceUri == imageUri && (originalBitmap != null || _isLoading.value)) return
         loadJob?.cancel()
+        previewJob?.cancel()
+        currentRenderId++
+
+        currentPreviewBitmap?.takeIf { it !== originalBitmap && !it.isRecycled }?.recycle()
+        originalBitmap?.takeIf { !it.isRecycled }?.recycle()
+        currentPreviewBitmap = null
+        originalBitmap = null
+        _previewBitmap.value = null
+        _saveState.value = SaveState.Idle
+        sourceUri = imageUri
+
         loadJob = viewModelScope.launch {
+            _isLoading.value = true
             try {
-                _isLoading.value = true
                 val bitmap = ImageEditorUtils.decodeSampledBitmapFromUri(context, imageUri)
+                    ?: throw IllegalStateException("Image could not be decoded")
                 originalBitmap = bitmap
+                currentPreviewBitmap = null
                 _previewBitmap.value = bitmap
-                _isLoading.value = false
+                _saveState.value = SaveState.Idle
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _isLoading.value = false
                 _saveState.value = SaveState.Error(R.string.failed_to_save_image)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -123,7 +147,22 @@ class EditorViewModel @Inject constructor() : ViewModel() {
     }
 
     fun updateExposure(value: Float) {
-        _exposure.value = value
+        _exposure.value = value.coerceIn(-2f, 2f)
+        updatePreview()
+    }
+
+    fun updateShadows(value: Float) {
+        _shadows.value = value.coerceIn(-1f, 1f)
+        updatePreview()
+    }
+
+    fun updateHighlights(value: Float) {
+        _highlights.value = value.coerceIn(-1f, 1f)
+        updatePreview()
+    }
+
+    fun updateSharpness(value: Float) {
+        _sharpness.value = value.coerceIn(0f, 1f)
         updatePreview()
     }
 
@@ -140,6 +179,9 @@ class EditorViewModel @Inject constructor() : ViewModel() {
         _contrast.value = 1f
         _saturation.value = 1f
         _exposure.value = 0f
+        _shadows.value = 0f
+        _highlights.value = 0f
+        _sharpness.value = 0f
         _cropRect.value = null
         _flipHorizontal.value = false
         _flipVertical.value = false
@@ -224,7 +266,10 @@ class EditorViewModel @Inject constructor() : ViewModel() {
             exposure = _exposure.value,
             cropRect = _cropRect.value,
             flipHorizontal = _flipHorizontal.value,
-            flipVertical = _flipVertical.value
+            flipVertical = _flipVertical.value,
+            shadows = _shadows.value,
+            highlights = _highlights.value,
+            sharpness = _sharpness.value
         )
     }
 

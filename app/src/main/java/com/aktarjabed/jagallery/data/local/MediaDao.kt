@@ -49,6 +49,9 @@ interface MediaDao {
     suspend fun removeTrashMediaBatch(uris: List<String>)
 
     @Query("SELECT * FROM trash_media")
+    fun getTrashMedia(): Flow<List<TrashMediaEntity>>
+
+    @Query("SELECT * FROM trash_media")
     suspend fun getAllTrashMediaSync(): List<TrashMediaEntity>
 
     @Query("SELECT * FROM vault_media")

@@ -79,11 +79,13 @@ class VaultViewerViewModel @Inject constructor(
 
     suspend fun restoreItem(context: Context, entity: VaultMediaEntity): Boolean {
         if (!isUnlocked.value) return false
-        val dest = com.aktarjabed.jagallery.data.model.AlbumDestination.ExistingAlbum(
-            com.aktarjabed.jagallery.data.model.Album(
-                com.aktarjabed.jagallery.data.model.AlbumKey(android.provider.MediaStore.VOLUME_EXTERNAL, 0L, "Restored/"),
-                "Restored", 0, android.net.Uri.EMPTY
-            )
+        // ExistingAlbum paths must correspond to an actual MediaStore album. Use a
+        // new album destination so FileUtils selects Pictures/Restored or Movies/Restored
+        // based on the media MIME type instead of attempting an invalid top-level path.
+        val dest = com.aktarjabed.jagallery.data.model.AlbumDestination.NewAlbum(
+            name = "Restored",
+            volumeName = android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY,
+            relativePath = ""
         )
         val result = mediaOperations.restoreFromVault(context, listOf(entity), dest)
         return result is com.aktarjabed.jagallery.domain.MoveOperationResult.Success

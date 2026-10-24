@@ -46,6 +46,22 @@ class SettingsRepository @Inject constructor(
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit { putString("theme_mode", mode.name) }
         _themeMode.value = mode
+        applyAppCompatNightMode(mode)
+    }
+
+    fun toggleExplicitDarkMode(enableDark: Boolean) {
+        setThemeMode(if (enableDark) ThemeMode.DARK else ThemeMode.LIGHT)
+    }
+
+    private fun applyAppCompatNightMode(mode: ThemeMode) {
+        runCatching {
+            val nightMode = when (mode) {
+                ThemeMode.SYSTEM -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+                ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            }
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode)
+        }
     }
 
     private fun readDynamicColor(): Boolean {
@@ -62,8 +78,10 @@ class SettingsRepository @Inject constructor(
     }
 
     fun setGridColumns(columns: Int) {
-        prefs.edit { putInt("grid_columns", columns) }
-        _gridColumns.value = columns
+        // 0 is adaptive; fixed columns are intentionally bounded for phone/tablet layouts.
+        val normalized = columns.coerceIn(0, 8)
+        prefs.edit { putInt("grid_columns", normalized) }
+        _gridColumns.value = normalized
     }
 
     private fun readVaultTimeoutMinutes(): Int {

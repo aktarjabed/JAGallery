@@ -58,6 +58,7 @@ fun GridScreen(
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val mediaFilter by viewModel.mediaFilter.collectAsStateWithLifecycle()
+    val gridColumns by viewModel.gridColumns.collectAsStateWithLifecycle()
 
     var showSortFilterSheet by rememberSaveable { mutableStateOf(false) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
@@ -66,15 +67,40 @@ fun GridScreen(
         batchState = batchState,
         onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
-            if (result.tag == "GRID_MOVE_DELETE") {
-                if (result.succeededIds.isNotEmpty()) {
-                    viewModel.removeDeletedItems(result.succeededIds)
+            when (result.tag) {
+                "GRID_MOVE_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItems(result.succeededIds)
+                    }
+                    if (result.cancelled) {
+                        viewModel.rollbackMove(context, result.succeededIds)
+                        Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                    }
                 }
-                if (result.cancelled) {
-                    viewModel.rollbackMove(context, result.succeededIds)
-                    Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(context, context.getString(R.string.move_completed), Toast.LENGTH_SHORT).show()
+                "GRID_VAULT_DELETE" -> {
+                    // Batch results use full content URIs, so image/video row-ID
+                    // collisions and the current UI filter cannot misidentify a source.
+                    val requestedSourceIds = viewModel.currentVaultSourceIds()
+                    val successfulSourceIds = requestedSourceIds.filter { it in result.succeededIds }
+                    val allSelectedSourcesConfirmed =
+                        successfulSourceIds.size == requestedSourceIds.size && !result.cancelled
+                    if (result.cancelled) {
+                        // Only sources whose original files were confirmed deleted should
+                        // retain Vault copies. Roll back every unconfirmed staged Vault copy.
+                        viewModel.rollbackVault(successfulSourceIds.toSet())
+                        viewModel.removeDeletedItems(successfulSourceIds)
+                        Toast.makeText(context, context.getString(R.string.move_partial_copied), Toast.LENGTH_LONG).show()
+                    } else if (allSelectedSourcesConfirmed) {
+                        viewModel.removeDeletedItems(successfulSourceIds)
+                        Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Incomplete success without a cancellation result is ambiguous:
+                        // preserve the encrypted copies and surface the failure for manual review.
+                        viewModel.removeDeletedItems(successfulSourceIds)
+                        Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
+                    }
                 }
             }
             viewModel.batchManager.clearState()
@@ -88,6 +114,9 @@ fun GridScreen(
                 val items = (loadResult as? MediaLoadResult.Success)?.items
                 items?.firstOrNull()?.bucketName?.ifBlank { albumTitle } ?: albumTitle
             }
+            is MediaSource.TypeFiltered -> context.getString(
+                if (source.isVideo) R.string.tab_videos else R.string.tab_photos
+            )
             else -> null
         }
     }
@@ -95,6 +124,13 @@ fun GridScreen(
     MediaCollectionContent(
         loadResult = loadResult,
         allAlbums = allAlbums,
+        columnsCount = gridColumns,
+        emptyMessage = when (source) {
+            is MediaSource.TypeFiltered -> stringResource(
+                if (source.isVideo) R.string.no_videos_found else R.string.no_photos_found
+            )
+            else -> stringResource(R.string.no_media_found)
+        },
         batchManager = viewModel.batchManager,
         onRemoveDeletedItems = { viewModel.removeDeletedItems(it) },
         onHideSelected = { items -> viewModel.hideMediaBatch(items) },
@@ -108,6 +144,10 @@ fun GridScreen(
                             Toast.makeText(context, context.resources.getQuantityString(R.plurals.move_partial_n_failed, count, count), Toast.LENGTH_LONG).show()
                         }
                         if (moveResult.pendingIntents.isNotEmpty()) {
+                            viewModel.storeMoveContext(
+                                sourceIds = moveResult.successfulCopies.map { it.first.id },
+                                mapping = moveResult.successfulCopies.associate { it.first.id to it.second }
+                            )
                             viewModel.batchManager.startBatch(moveResult.pendingIntents, "GRID_MOVE_DELETE")
                         } else {
                             viewModel.removeDeletedItems(moveResult.successfulCopies.map { it.first.id })
@@ -147,6 +187,32 @@ fun GridScreen(
                     is MoveOperationResult.Error -> {
                         Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_SHORT).show()
                     }
+                    is MoveOperationResult.RequestSourceDelete -> {
+                        if (result.failedItems.isNotEmpty()) {
+                            val count = result.failedItems.size
+                            Toast.makeText(
+                                context,
+                                context.resources.getQuantityString(R.plurals.move_partial_n_failed, count, count),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        if (result.pendingIntents.isNotEmpty()) {
+                            val vaultMapping = result.successfulCopies.mapNotNull { (item, uri) ->
+                                uri.host?.let { item.id to it }
+                            }.toMap()
+                            viewModel.storeVaultContext(
+                                sourceIds = result.successfulCopies.map { it.first.id },
+                                mapping = vaultMapping
+                            )
+                            viewModel.batchManager.startBatch(result.pendingIntents, "GRID_VAULT_DELETE")
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    is MoveOperationResult.CopiedSourceRetained,
+                    is MoveOperationResult.RollbackFailed -> {
+                        Toast.makeText(context, context.getString(R.string.vault_move_failed), Toast.LENGTH_LONG).show()
+                    }
                     else -> {
                         Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), Toast.LENGTH_SHORT).show()
                     }
@@ -154,7 +220,6 @@ fun GridScreen(
             }
         },
         emptyIcon = Icons.Default.PhotoLibrary,
-        emptyMessage = stringResource(R.string.no_media_found),
         topBar = {
             androidx.compose.foundation.layout.Column {
                 TopAppBar(

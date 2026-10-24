@@ -25,7 +25,8 @@ object VideoTrimmer {
         context: Context,
         sourceUri: Uri,
         startMs: Long,
-        endMs: Long
+        endMs: Long,
+        muteAudio: Boolean = false
     ): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         var newUri: Uri? = null
@@ -55,7 +56,7 @@ object VideoTrimmer {
             for (i in 0 until trackCountInit) {
                 val format = extractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime.startsWith("video/") || mime.startsWith("audio/")) {
+                if (mime.startsWith("video/") || (!muteAudio && mime.startsWith("audio/"))) {
                     if (format.containsKey(MediaFormat.KEY_DURATION)) {
                         val duration = format.getLong(MediaFormat.KEY_DURATION)
                         if (duration > actualDurationUs) {
@@ -73,8 +74,9 @@ object VideoTrimmer {
             }
 
             // Insert into MediaStore first
+            val prefix = if (muteAudio) "TRIM_MUTE" else "TRIM"
             val contentValues = android.content.ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, "TRIM_${System.currentTimeMillis()}.mp4")
+                put(MediaStore.Video.Media.DISPLAY_NAME, "${prefix}_${System.currentTimeMillis()}.mp4")
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             }
 
@@ -102,7 +104,7 @@ object VideoTrimmer {
             for (i in 0 until trackCount) {
                 val format = extractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime.startsWith("video/") || mime.startsWith("audio/")) {
+                if (mime.startsWith("video/") || (!muteAudio && mime.startsWith("audio/"))) {
                     extractor.selectTrack(i)
                     val dstIndex = muxer.addTrack(format)
                     trackMap[i] = dstIndex
@@ -227,5 +229,63 @@ object VideoTrimmer {
         }
 
         newUri
+    }
+
+    suspend fun extractVideoFrame(
+        context: Context,
+        sourceUri: Uri,
+        positionMs: Long
+    ): Uri? = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val retriever = android.media.MediaMetadataRetriever()
+        var newUri: Uri? = null
+        try {
+            retriever.setDataSource(context, sourceUri)
+            val timeUs = maxOf(0L, positionMs) * 1000L
+            val bitmap = retriever.getFrameAtTime(timeUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                ?: retriever.getFrameAtTime(timeUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: return@withContext null
+
+            val contentValues = android.content.ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "FRAME_${System.currentTimeMillis()}.jpg")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+
+            val targetVolume = com.aktarjabed.jagallery.domain.MediaOperations.resolveTargetVolumeName(context, sourceUri)
+            val collection = MediaStore.Images.Media.getContentUri(targetVolume)
+
+            newUri = FileUtils.insertPendingMediaEntry(resolver, collection, contentValues)
+                ?: return@withContext null
+
+            val written = resolver.openOutputStream(newUri)?.use { out ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
+            } ?: false
+
+            bitmap.recycle()
+
+            if (!written) {
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
+            }
+
+            val published = FileUtils.publishPendingEntry(resolver, newUri, android.content.ContentValues())
+            if (!published) {
+                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+                return@withContext null
+            }
+
+            newUri
+        } catch (e: CancellationException) {
+            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract video frame", e)
+            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (ignored: Exception) {}
+        }
     }
 }

@@ -1,0 +1,6 @@
+{
+  "name": "J.A Gallery",
+  "description": "Smart, Fast & Secure Media Gallery for Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

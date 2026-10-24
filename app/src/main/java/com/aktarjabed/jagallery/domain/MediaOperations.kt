@@ -217,16 +217,40 @@ class MediaOperationsImpl @Inject constructor(
         items.map { item ->
             async {
                 vaultIoSemaphore.withPermit {
-                    runCatching { stageBlock(item) }.getOrNull()
+                    try {
+                        stageBlock(item)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
             }
         }.awaitAll().filterNotNull()
     }
 
     override suspend fun moveToVault(context: android.content.Context, items: List<MediaItem>): MoveOperationResult {
+        if (items.isEmpty()) return MoveOperationResult.Error("No media selected")
         return try {
             val triples = items.map { Triple(it.uri, it.mimeType, it.name) }
             val movedEntities = vaultRepository.batchMoveToVault(triples)
+            if (movedEntities.size != items.size) {
+                // Partial batch staging can leave encrypted files and DB rows behind.
+                // Roll back every successfully staged item and never delete originals.
+                val stagedByUri = movedEntities.associateBy { it.originalUriStr }
+                val stagedSourceIds = items
+                    .filter { it.uri.toString() in stagedByUri }
+                    .map { it.id }
+                val vaultMapping = items.mapNotNull { item ->
+                    stagedByUri[item.uri.toString()]?.let { item.id to it.id }
+                }.toMap()
+                if (stagedSourceIds.isNotEmpty()) {
+                    rollbackVaultDestinationEntries(stagedSourceIds, vaultMapping)
+                }
+                return MoveOperationResult.Error(
+                    "Vault encryption failed for ${items.size - movedEntities.size} item(s); originals were retained"
+                )
+            }
             val movedMap = movedEntities.associateBy { it.originalUriStr }
 
             val successfulCopies = mutableListOf<Pair<MediaItem, android.net.Uri>>()
@@ -276,9 +300,23 @@ class MediaOperationsImpl @Inject constructor(
                         failedItems.add(item)
                         // Perform rollback of destination copy if source deletion failed
                         if (newUri.toString().startsWith("vault://")) {
-                             val entity = com.aktarjabed.jagallery.data.local.VaultMediaEntity(id = newUri.host!!, originalUriStr = item.uri.toString(), encryptedFilePath = "", originalName = "", mimeType = "", dateAdded = 0L)
-                             val del = vaultRepository.deleteVaultItem(entity)
-                             if (del != com.aktarjabed.jagallery.data.repository.VaultDeleteResult.Success) rollbackFailedItems.add(Pair(item, newUri))
+                            val vaultId = newUri.host
+                            if (vaultId.isNullOrBlank()) {
+                                rollbackFailedItems.add(Pair(item, newUri))
+                            } else {
+                                val entity = com.aktarjabed.jagallery.data.local.VaultMediaEntity(
+                                    id = vaultId,
+                                    originalUriStr = item.uri.toString(),
+                                    encryptedFilePath = "",
+                                    originalName = "",
+                                    mimeType = "",
+                                    dateAdded = 0L
+                                )
+                                val del = vaultRepository.deleteVaultItem(entity)
+                                if (del != com.aktarjabed.jagallery.data.repository.VaultDeleteResult.Success) {
+                                    rollbackFailedItems.add(Pair(item, newUri))
+                                }
+                            }
                         } else {
                             val rollbackResult = com.aktarjabed.jagallery.util.FileUtils.deleteMediaItems(context.contentResolver, listOf(newUri))
                             if (!rollbackResult.isFullySuccessful) {

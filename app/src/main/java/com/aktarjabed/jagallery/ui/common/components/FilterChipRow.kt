@@ -45,19 +45,19 @@ fun FilterChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterTabChip(
-            label = stringResource(R.string.settings_category_appearance).let { "Albums" },
+            label = stringResource(R.string.tab_albums),
             icon = Icons.Default.Folder,
             selected = selectedTab == GalleryFilterTab.ALBUMS,
             onClick = { onTabSelected(GalleryFilterTab.ALBUMS) }
         )
         FilterTabChip(
-            label = stringResource(R.string.tab_all_media).let { "Photos" },
+            label = stringResource(R.string.tab_photos),
             icon = Icons.Default.Photo,
             selected = selectedTab == GalleryFilterTab.PHOTOS,
             onClick = { onTabSelected(GalleryFilterTab.PHOTOS) }
         )
         FilterTabChip(
-            label = "Videos",
+            label = stringResource(R.string.tab_videos),
             icon = Icons.Default.PlayCircle,
             selected = selectedTab == GalleryFilterTab.VIDEOS,
             onClick = { onTabSelected(GalleryFilterTab.VIDEOS) }

@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">J.A Gallery</string>
     <string name="tab_all_media">All Media</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_videos">Videos</string>
+    <string name="tab_photos">Photos</string>
+    <string name="no_photos_found">No photos found</string>
+    <string name="no_videos_found">No videos found</string>
     <string name="tab_favorites">Favorites</string>
     <string name="search_hint">Search media…</string>
     <string name="delete_media_title">Delete Media</string>
@@ -83,6 +88,9 @@
     <string name="wallpaper_failed">Failed to set wallpaper</string>
 
     <string name="exposure">Exposure</string>
+    <string name="shadows">Shadows</string>
+    <string name="highlights">Highlights</string>
+    <string name="sharpness">Sharpness</string>
 
     <string name="rename_media">Rename Media</string>
     <string name="rename_album">Rename Album</string>
@@ -196,6 +204,7 @@
     <string name="vault_cannot_share_locked">Cannot share locked media</string>
     <string name="vault_no_share_app">No app to handle share</string>
     <string name="vault_moved_to_vault">Moved to vault</string>
+    <string name="vault_move_action">Move to Vault</string>
     <string name="vault_move_failed">Failed to move to vault</string>
 
     <!-- Settings Screen -->
@@ -205,6 +214,10 @@
     <string name="theme_mode_system">System Default</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
+    <string name="dark_mode_toggle_title">Dark Mode</string>
+    <string name="dark_mode_toggle_desc_dark">Explicit Dark mode active (tap switch for Light mode)</string>
+    <string name="dark_mode_toggle_desc_light">Explicit Light mode active (tap switch for Dark mode)</string>
+    <string name="dark_mode_toggle_desc_system">Following system default — toggle to override explicitly</string>
     <string name="dynamic_colors_title">Material You Dynamic Colors</string>
     <string name="dynamic_colors_desc">Use wallpaper color palette on supported devices</string>
     <string name="grid_columns_title">Grid Layout</string>
@@ -292,4 +305,39 @@
         <item quantity="one">Are you sure you want to delete %1$d selected duplicate?</item>
         <item quantity="other">Are you sure you want to delete %1$d selected duplicates?</item>
     </plurals>
+
+    <!-- Video Mute & Frame Extraction -->
+    <string name="video_mute_export_label">Mute audio track in exported video</string>
+    <string name="video_extract_frame">Extract Frame</string>
+    <string name="video_frame_saved">Video frame saved to gallery</string>
+    <string name="video_frame_failed">Failed to extract video frame</string>
+    <string name="video_mute">Mute video</string>
+    <string name="video_unmute">Unmute video</string>
+
+    <!-- Advanced EXIF Editor -->
+    <string name="exif_edit_title">Edit EXIF Metadata</string>
+    <string name="exif_edit_action">Edit EXIF</string>
+    <string name="exif_save_action">Save EXIF</string>
+    <string name="exif_strip_privacy">Strip GPS &amp; Private EXIF</string>
+    <string name="exif_saved_success">EXIF metadata updated</string>
+    <string name="exif_saved_failed">Failed to update EXIF metadata</string>
+    <string name="exif_stripped_success">Private EXIF tags removed</string>
+    <string name="exif_field_make">Camera Make</string>
+    <string name="exif_field_model">Camera Model</string>
+    <string name="exif_field_datetime">Capture Date/Time (YYYY:MM:DD HH:MM:SS)</string>
+    <string name="exif_field_description">Description / Caption</string>
+    <string name="exif_field_artist">Artist / Author</string>
+    <string name="exif_field_gps">GPS Coordinates (lat, lon)</string>
+    <string name="exif_camera_specs">Camera Parameters</string>
+
+    <!-- Smart Search & People/OCR -->
+    <string name="search_chip_people">People &amp; Selfies</string>
+    <string name="search_chip_ocr">Documents &amp; OCR</string>
+    <string name="search_chip_receipts">Receipts</string>
+    <string name="search_chip_screenshots">Screenshots</string>
+    <string name="search_chip_favorites">Favorites</string>
+    <string name="search_chip_videos">Videos</string>
+    <string name="smart_index_action">Scan &amp; Index Smart Tags (OCR / ML)</string>
+    <string name="smart_indexing_progress">Indexing gallery with on-device ML (%1$d/%2$d)…</string>
+    <string name="smart_index_complete">Smart indexing complete (%1$d indexed)</string>
 </resources>

@@ -209,6 +209,7 @@ fun ViewerScreen(
     var trimStartMs by remember { mutableFloatStateOf(0f) }
     var trimEndMs by remember { mutableFloatStateOf(10000f) }
     var videoDurationMs by remember { mutableFloatStateOf(0f) }
+    var muteAudioOnTrim by rememberSaveable { mutableStateOf(false) }
     var trimJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(showVideoTrimSheet, currentItem, context) {
@@ -258,16 +259,40 @@ fun ViewerScreen(
     }
 
 
+    var pendingVaultDeleteItem by remember { mutableStateOf<com.aktarjabed.jagallery.data.model.MediaItem?>(null) }
     val batchState by viewModel.batchManager.batchState.collectAsStateWithLifecycle()
 
     com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver(
         batchState = batchState,
         onChunkResult = { resultCode -> viewModel.batchManager.onBatchChunkResult(resultCode) },
         onComplete = { result ->
-            if (result.tag == "VIEWER_DELETE" && result.succeededIds.isNotEmpty()) {
-                viewModel.removeDeletedItem(result.succeededIds.first())
+            when (result.tag) {
+                "VIEWER_DELETE" -> {
+                    if (result.succeededIds.isNotEmpty()) {
+                        viewModel.removeDeletedItem(result.succeededIds.first())
+                    }
+                    deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
+                }
+                "VIEWER_VAULT_DELETE" -> {
+                    val requestedItem = pendingVaultDeleteItem
+                    if (requestedItem != null) {
+                        // Batch results use full content URIs to avoid cross-collection row-ID collisions.
+                        val sourceDeleteConfirmed = result.succeededIds.contains(requestedItem.id)
+                        viewModel.onVaultSourceDeleteResult(
+                            requestedItem,
+                            deleteConfirmed = !result.cancelled && sourceDeleteConfirmed
+                        )
+                        if (result.cancelled) {
+                            // Confirmed deleted originals keep their encrypted Vault copy;
+                            // unconfirmed originals have their staged Vault copy rolled back.
+                            viewModel.rollbackVault(
+                                if (sourceDeleteConfirmed) setOf(requestedItem.id) else emptySet()
+                            )
+                        }
+                    }
+                    pendingVaultDeleteItem = null
+                }
             }
-            deleteState = com.aktarjabed.jagallery.ui.common.selection.DeleteOperationState.Idle
             viewModel.batchManager.clearState()
         }
     )
@@ -364,18 +389,34 @@ fun ViewerScreen(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                         Text(stringResource(R.string.trim_video_trimming), modifier = Modifier.padding(top = 8.dp))
                     } else {
-                        Text("Start: ${trimStartMs.toInt()} ms")
+                        Text("Start: ${String.format(Locale.US, "%.1f s", trimStartMs / 1000f)}")
                         Slider(
                             value = trimStartMs,
                             onValueChange = { if (it < trimEndMs) trimStartMs = it },
                             valueRange = 0f..videoDurationMs
                         )
-                        Text("End: ${trimEndMs.toInt()} ms")
+                        Text("End: ${String.format(Locale.US, "%.1f s", trimEndMs / 1000f)}")
                         Slider(
                             value = trimEndMs,
                             onValueChange = { if (it > trimStartMs) trimEndMs = it },
                             valueRange = 0f..videoDurationMs
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.video_mute_export_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = muteAudioOnTrim,
+                                onCheckedChange = { muteAudioOnTrim = it }
+                            )
+                        }
                     }
                 }
             },
@@ -388,7 +429,8 @@ fun ViewerScreen(
                                 context = context,
                                 sourceUri = currentItem.uri,
                                 startMs = trimStartMs.toLong(),
-                                endMs = trimEndMs.toLong()
+                                endMs = trimEndMs.toLong(),
+                                muteAudio = muteAudioOnTrim
                             )
                             isTrimming = false
                             showVideoTrimSheet = false
@@ -571,16 +613,34 @@ fun ViewerScreen(
                             )
                             if (!currentItem.isTrashed) {
                                 DropdownMenuItem(
-                                    text = { Text("Move to Vault") },
+                                    text = { Text(stringResource(R.string.vault_move_action)) },
                                     onClick = {
                                         showMenu = false
                                         coroutineScope.launch {
-                                            when (viewModel.moveToVault(context, listOf(currentItem))) {
+                                            when (val result = viewModel.moveToVault(context, listOf(currentItem))) {
                                                 is com.aktarjabed.jagallery.domain.MoveOperationResult.Error -> {
-                                                    android.widget.Toast.makeText(context, "Failed to move to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RequestSourceDelete -> {
+                                                    if (result.pendingIntents.isEmpty()) {
+                                                        android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
+                                                    } else {
+                                                        pendingVaultDeleteItem = currentItem
+                                                        viewModel.storeVaultContext(
+                                                            sourceIds = result.successfulCopies.map { it.first.id },
+                                                            mapping = result.successfulCopies.mapNotNull { (item, uri) ->
+                                                                uri.host?.let { item.id to it }
+                                                            }.toMap()
+                                                        )
+                                                        viewModel.batchManager.startBatch(result.pendingIntents, "VIEWER_VAULT_DELETE")
+                                                    }
+                                                }
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.CopiedSourceRetained,
+                                                is com.aktarjabed.jagallery.domain.MoveOperationResult.RollbackFailed -> {
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_move_failed), android.widget.Toast.LENGTH_LONG).show()
                                                 }
                                                 else -> {
-                                                    android.widget.Toast.makeText(context, "Moved to vault", android.widget.Toast.LENGTH_SHORT).show()
+                                                    android.widget.Toast.makeText(context, context.getString(R.string.vault_moved_to_vault), android.widget.Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }

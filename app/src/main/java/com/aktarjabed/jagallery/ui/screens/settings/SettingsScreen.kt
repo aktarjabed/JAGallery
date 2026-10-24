@@ -1,16 +1,20 @@
 package com.aktarjabed.jagallery.ui.screens.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -19,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +50,13 @@ fun SettingsScreen(
     val gridColumns by viewModel.gridColumns.collectAsStateWithLifecycle()
     val vaultTimeoutMinutes by viewModel.vaultTimeoutMinutes.collectAsStateWithLifecycle()
     val retentionPolicy by viewModel.retentionPolicy.collectAsStateWithLifecycle()
+
+    val systemInDark = isSystemInDarkTheme()
+    val isDarkActive = when (themeMode) {
+        ThemeMode.SYSTEM -> systemInDark
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showGridDialog by remember { mutableStateOf(false) }
@@ -79,20 +91,95 @@ fun SettingsScreen(
             SettingsCategoryHeader(title = stringResource(R.string.settings_category_appearance))
             OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
-                    // App Theme
+                    // App Theme Mode + Inline Segmented Control
                     ListItem(
                         headlineContent = { Text(stringResource(R.string.theme_mode_title)) },
                         supportingContent = {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    when (themeMode) {
+                                        ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                                        ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                                        ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                                    }
+                                )
+                                SingleChoiceSegmentedButtonRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("theme_mode_segmented_row")
+                                ) {
+                                    val modes = ThemeMode.entries
+                                    modes.forEachIndexed { index, mode ->
+                                        SegmentedButton(
+                                            selected = themeMode == mode,
+                                            onClick = { viewModel.setThemeMode(mode) },
+                                            shape = SegmentedButtonDefaults.itemShape(
+                                                index = index,
+                                                count = modes.size
+                                            ),
+                                            icon = {
+                                                Icon(
+                                                    imageVector = when (mode) {
+                                                        ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                                        ThemeMode.LIGHT -> Icons.Default.LightMode
+                                                        ThemeMode.DARK -> Icons.Default.DarkMode
+                                                    },
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            },
+                                            modifier = Modifier.testTag("theme_segment_${mode.name.lowercase()}")
+                                        ) {
+                                            Text(
+                                                text = when (mode) {
+                                                    ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                                                    ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                                                    ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                                                },
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
+                        modifier = Modifier
+                            .clickable { showThemeDialog = true }
+                            .testTag("theme_mode_item")
+                    )
+                    HorizontalDivider()
+
+                    // Explicit Light / Dark Mode Switch Toggle
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.dark_mode_toggle_title)) },
+                        supportingContent = {
                             Text(
                                 when (themeMode) {
-                                    ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
-                                    ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
-                                    ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                                    ThemeMode.DARK -> stringResource(R.string.dark_mode_toggle_desc_dark)
+                                    ThemeMode.LIGHT -> stringResource(R.string.dark_mode_toggle_desc_light)
+                                    ThemeMode.SYSTEM -> stringResource(R.string.dark_mode_toggle_desc_system)
                                 }
                             )
                         },
-                        leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
-                        modifier = Modifier.clickable { showThemeDialog = true }
+                        leadingContent = {
+                            Icon(
+                                imageVector = if (isDarkActive) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = null
+                            )
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = isDarkActive,
+                                onCheckedChange = { enableDark ->
+                                    viewModel.toggleExplicitDarkMode(enableDark)
+                                },
+                                modifier = Modifier.testTag("explicit_dark_mode_switch")
+                            )
+                        },
+                        modifier = Modifier.clickable {
+                            viewModel.toggleExplicitDarkMode(!isDarkActive)
+                        }
                     )
                     HorizontalDivider()
 

@@ -19,13 +19,22 @@ class BatchOperationManagerTest {
         manager = BatchOperationManager()
     }
 
+    private fun mediaUri(value: String): android.net.Uri {
+        val uri = mock(android.net.Uri::class.java)
+        org.mockito.Mockito.`when`(uri.toString()).thenReturn(value)
+        return uri
+    }
+
     private fun createDummyChunk(ids: List<String>): DeleteRequestChunk {
         return DeleteRequestChunk(
             ids = ids,
-            uris = emptyList(), // URI list doesn't matter for state testing
+            uris = ids.map { mediaUri("content://media/test/$it") },
             pendingIntent = mock()
         )
     }
+
+    private fun resultUris(ids: List<String>): List<String> =
+        ids.map { "content://media/test/$it" }
 
     @Test
     fun `test empty selection creates Completed state`() = runTest {
@@ -46,7 +55,7 @@ class BatchOperationManagerTest {
         manager.onBatchChunkResult(Activity.RESULT_OK)
 
         val state = manager.batchState.value as BatchProcessorState.Completed
-        assertEquals(listOf("id1", "id2"), state.succeededIds)
+        assertEquals(resultUris(listOf("id1", "id2")), state.succeededIds)
         assertTrue(state.failedIds.isEmpty())
         assertFalse(state.cancelled)
         assertEquals("TEST_TAG", state.tag)
@@ -63,13 +72,13 @@ class BatchOperationManagerTest {
         manager.onBatchChunkResult(Activity.RESULT_OK)
         val runningState = manager.batchState.value as BatchProcessorState.Running
         assertEquals(1, runningState.currentIndex)
-        assertEquals(listOf("id1", "id2"), runningState.processedIds)
+        assertEquals(resultUris(listOf("id1", "id2")), runningState.processedIds)
 
         manager.onBatchChunkResult(Activity.RESULT_OK)
         manager.onBatchChunkResult(Activity.RESULT_OK)
 
         val completedState = manager.batchState.value as BatchProcessorState.Completed
-        assertEquals(listOf("id1", "id2", "id3", "id4", "id5", "id6"), completedState.succeededIds)
+        assertEquals(resultUris(listOf("id1", "id2", "id3", "id4", "id5", "id6")), completedState.succeededIds)
         assertTrue(completedState.failedIds.isEmpty())
         assertFalse(completedState.cancelled)
     }
@@ -86,11 +95,31 @@ class BatchOperationManagerTest {
         manager.onBatchChunkResult(Activity.RESULT_CANCELED) // Chunk 2 cancelled
 
         val completedState = manager.batchState.value as BatchProcessorState.Completed
-        assertEquals(listOf("id1", "id2"), completedState.succeededIds)
+        assertEquals(resultUris(listOf("id1", "id2")), completedState.succeededIds)
 
         // Chunk 2 and Chunk 3 are considered failed since the batch was aborted midway
-        assertEquals(listOf("id3", "id4", "id5", "id6"), completedState.failedIds)
+        assertEquals(resultUris(listOf("id3", "id4", "id5", "id6")), completedState.failedIds)
         assertTrue(completedState.cancelled)
+    }
+
+    @Test
+    fun `same numeric row ID in different collections remains distinct`() = runTest {
+        val imageUri = "content://media/external/images/media/123"
+        val videoUri = "content://media/external/video/media/123"
+        val chunk = DeleteRequestChunk(
+            ids = listOf("123", "123"),
+            uris = listOf(
+                mediaUri(imageUri),
+                mediaUri(videoUri)
+            ),
+            pendingIntent = mock()
+        )
+
+        manager.startBatch(listOf(chunk), "COLLISION_TEST")
+        manager.onBatchChunkResult(Activity.RESULT_OK)
+
+        val state = manager.batchState.value as BatchProcessorState.Completed
+        assertEquals(listOf(imageUri, videoUri), state.succeededIds)
     }
 
     @Test

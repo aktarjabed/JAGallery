@@ -85,6 +85,24 @@ class MediaRepository @Inject constructor(
 
     suspend fun loadTrashedMedia(context: Context) = withContext(ioDispatcher) {
         val result = MediaStoreHelper.getMediaItemsResult(contentResolver, ioDispatcher, context, includeTrashed = true)
+        if (result is MediaLoadResult.Success || result is MediaLoadResult.Empty) {
+            // Persist newly observed trashed items, but do not delete records merely
+            // because a snapshot omits them: scoped/selected-media permissions can make
+            // MediaStore queries incomplete without raising an error. Explicit restore,
+            // successful permanent deletion, and confirmed cleanup remove tracking rows.
+            val trashedItems = (result as? MediaLoadResult.Success)?.items.orEmpty()
+            val trackedUris = mediaDao.getAllTrashMediaSync().mapTo(mutableSetOf()) { it.uri }
+            val now = System.currentTimeMillis()
+            val newRecords = trashedItems
+                .asSequence()
+                .filterNot { it.id in trackedUris }
+                // DATE_EXPIRES is not the time the item entered Trash.
+                .map { com.aktarjabed.jagallery.data.local.TrashMediaEntity(uri = it.id, dateTrashed = now) }
+                .toList()
+            if (newRecords.isNotEmpty()) {
+                mediaDao.insertTrashMediaBatch(newRecords)
+            }
+        }
         _trashedMediaLoadResult.value = result
     }
 
@@ -113,17 +131,19 @@ class MediaRepository @Inject constructor(
     }
 
     suspend fun loadMedia(force: Boolean = false, context: Context) {
+        val appContext = context.applicationContext ?: context
         val jobToAwait = loadMutex.withLock {
-            if (currentScanJob != null) {
+            val activeScanJob = currentScanJob
+            if (activeScanJob != null) {
                 if (force) {
-                    pendingRequest = ScanRequest(force = true, context = context)
+                    pendingRequest = ScanRequest(force = true, context = appContext)
                 } else if (pendingRequest == null) {
-                    pendingRequest = ScanRequest(force = false, context = context)
+                    pendingRequest = ScanRequest(force = false, context = appContext)
                 }
-                currentScanJob!!
+                activeScanJob
             } else {
                 val newJob = repositoryScope.async {
-                    executeScanLoop(ScanRequest(force, context))
+                    executeScanLoop(ScanRequest(force, appContext))
                 }
                 currentScanJob = newJob
                 newJob
@@ -206,9 +226,16 @@ class MediaRepository @Inject constructor(
         mediaDao.unhideMediaBatch(mediaItems.map { it.id })
     }
 
+    suspend fun removeTrashTracking(uris: List<String>) = withContext(ioDispatcher) {
+        if (uris.isNotEmpty()) {
+            mediaDao.removeTrashMediaBatch(uris.distinct())
+        }
+    }
+
     suspend fun removeDeletedItems(deletedIds: List<String>) = withContext(ioDispatcher) {
         mediaDao.removeFavorites(deletedIds)
         mediaDao.unhideMediaBatch(deletedIds)
+        mediaDao.removeTrashMediaBatch(deletedIds)
         val updateResult: (MediaLoadResult) -> MediaLoadResult = { current ->
             if (current is MediaLoadResult.Success) {
                 val filtered = current.items.filterNot { deletedIds.contains(it.id) }

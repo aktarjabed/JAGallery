@@ -72,7 +72,10 @@ class DuplicateViewModel @Inject constructor(
         val existing = existingHashes[uriStr]
 
         // Cache hit: return if the file hasn't been modified
-        if (existing != null && existing.lastModifiedTime == item.dateAdded) {
+        if (existing != null && existing.lastModifiedTime == item.dateModified &&
+            existing.sha256Hash != null &&
+            (!item.mimeType.startsWith("image/") || existing.perceptualHash != null)
+        ) {
             return existing
         }
 
@@ -86,14 +89,17 @@ class DuplicateViewModel @Inject constructor(
             uriStr = uriStr,
             sha256Hash = sha256,
             perceptualHash = pHash,
-            lastModifiedTime = item.dateAdded
+            lastModifiedTime = item.dateModified
         )
         newHashes.add(entity)
         return entity
     }
 
+    private var scanJob: kotlinx.coroutines.Job? = null
+
     fun loadDuplicates() {
-        viewModelScope.launch {
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
             _uiState.value = UiState.Loading
             _scanProgress.value = 0f
             try {
@@ -121,7 +127,9 @@ class DuplicateViewModel @Inject constructor(
                     
                     val candidateUrisPhase1 = sizeGroups.values.flatten().map { it.uri.toString() }
                     val existingHashesPhase1 = if (candidateUrisPhase1.isNotEmpty()) {
-                        fileHashDao.getHashesForUris(candidateUrisPhase1).associateBy { it.uriStr }
+                        candidateUrisPhase1.chunked(500)
+                            .flatMap { chunk -> fileHashDao.getHashesForUris(chunk) }
+                            .associateBy { it.uriStr }
                     } else emptyMap()
                     val newHashesPhase1 = mutableListOf<FileHashEntity>()
 
@@ -134,7 +142,9 @@ class DuplicateViewModel @Inject constructor(
                             val hashRecord = getOrComputeHash(item, existingHashesPhase1, newHashesPhase1)
 
                             if (hashRecord != null) {
-                                hashGroups.getOrPut(hashRecord.sha256Hash!!) { mutableListOf() }.add(item)
+                                hashRecord.sha256Hash?.let { sha256 ->
+                                    hashGroups.getOrPut(sha256) { mutableListOf() }.add(item)
+                                }
 
                                 // Collect pHash for Phase 2
                                 if (hashRecord.perceptualHash != null) {
@@ -167,7 +177,9 @@ class DuplicateViewModel @Inject constructor(
                     
                     val candidateUrisPhase2 = imageItems.map { it.uri.toString() }
                     val existingHashesPhase2 = if (candidateUrisPhase2.isNotEmpty()) {
-                        fileHashDao.getHashesForUris(candidateUrisPhase2).associateBy { it.uriStr }
+                        candidateUrisPhase2.chunked(500)
+                            .flatMap { chunk -> fileHashDao.getHashesForUris(chunk) }
+                            .associateBy { it.uriStr }
                     } else emptyMap()
                     val newHashesPhase2 = mutableListOf<FileHashEntity>()
                     

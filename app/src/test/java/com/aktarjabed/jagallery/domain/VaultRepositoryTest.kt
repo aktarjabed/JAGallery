@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.aktarjabed.jagallery.data.local.MediaDao
 import com.aktarjabed.jagallery.data.local.VaultMediaEntity
 import com.aktarjabed.jagallery.data.repository.VaultRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,6 +33,19 @@ class VaultRepositoryTest {
         cryptoManager = VaultCryptoManager()
         mediaDao = mock(MediaDao::class.java)
         repository = VaultRepository(context, cryptoManager, mediaDao)
+    }
+
+    @Test
+    fun runBoundedBatchIo_rethrowsCancellationInsteadOfSwallowingIt() = runBlocking {
+        try {
+            repository.runBoundedBatchIo(listOf(1, 2, 3)) { value ->
+                if (value == 2) throw CancellationException("cancel batch")
+                value
+            }
+            fail("CancellationException must propagate to the caller")
+        } catch (expected: CancellationException) {
+            assertTrue(expected.message.orEmpty().contains("cancel batch"))
+        }
     }
 
     @Test

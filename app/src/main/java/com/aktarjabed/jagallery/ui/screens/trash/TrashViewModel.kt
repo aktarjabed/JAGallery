@@ -37,6 +37,24 @@ class TrashViewModel @Inject constructor(
         }
     }
 
+    fun onItemsRestored(items: List<com.aktarjabed.jagallery.data.model.MediaItem>, context: Context) {
+        viewModelScope.launch {
+            try {
+                if (items.isNotEmpty()) {
+                    repository.removeTrashTracking(items.map { it.id })
+                }
+                repository.loadTrashedMedia(context)
+                repository.loadMedia(force = true, context = context)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _operationEvent.emit(
+                    com.aktarjabed.jagallery.ui.common.OperationEvent.Error("Failed to refresh Trash after restore: ${e.message}")
+                )
+            }
+        }
+    }
+
     fun refreshAll(context: Context) {
         viewModelScope.launch {
             try {
