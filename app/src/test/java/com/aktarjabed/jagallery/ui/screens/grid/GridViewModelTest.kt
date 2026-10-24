@@ -69,7 +69,13 @@ class GridViewModelTest {
         repository.loadMedia(force = true, context = context)
 
         val loaded = collected.await() as MediaLoadResult.Success
-        assertEquals(listOf("content://media/external/video/media/21", "content://media/external/video/media/22"), loaded.items.map { it.id })
+        assertEquals(
+            listOf(
+                "content://media/external/video/media/22",
+                "content://media/external/video/media/21"
+            ),
+            loaded.items.map { it.id }
+        )
         assertTrue(loaded.items.all { it.isVideo })
     }
 
