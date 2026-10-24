@@ -220,7 +220,6 @@ fun GridScreen(
             }
         },
         emptyIcon = Icons.Default.PhotoLibrary,
-        emptyMessage = stringResource(R.string.no_media_found),
         topBar = {
             androidx.compose.foundation.layout.Column {
                 TopAppBar(
