@@ -62,10 +62,12 @@ class GridViewModelTest {
 
         val viewModel = GridViewModel(repository, mediaOperations, SavedStateHandle(), settingsRepository)
         viewModel.setSource(MediaSource.TypeFiltered(isVideo = true))
+        val collected = kotlinx.coroutines.async {
+            viewModel.mediaLoadResult.first { it is MediaLoadResult.Success }
+        }
         repository.loadMedia(force = true, context = context)
 
-        // StateFlow's current value is the deterministic assertion point after the scan.
-        val loaded = viewModel.mediaLoadResult.first { it is MediaLoadResult.Success } as MediaLoadResult.Success
+        val loaded = collected.await() as MediaLoadResult.Success
         assertEquals(listOf("content://media/external/video/media/21", "content://media/external/video/media/22"), loaded.items.map { it.id })
         assertTrue(loaded.items.all { it.isVideo })
     }
