@@ -38,7 +38,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run unit tests, lint, and assemble debug APK
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+        run: sh ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
 
       - name: Upload debug APK
         if: success()
@@ -78,4 +78,4 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest --stacktrace
+          script: sh ./gradlew connectedDebugAndroidTest --stacktrace
