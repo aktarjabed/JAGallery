@@ -158,7 +158,7 @@ class MediaRepository @Inject constructor(
         try {
             while (true) {
                 val current = _mediaLoadResult.value
-                val skip = !currentRequest.force && currentRequest.context != null && current is MediaLoadResult.Success && current.items.isNotEmpty() && versionCheckOperation(currentRequest.context)
+                val skip = !currentRequest.force && current is MediaLoadResult.Success && current.items.isNotEmpty() && versionCheckOperation(currentRequest.context)
 
                 if (!skip) {
                     val result = scanOperation(currentRequest.context)

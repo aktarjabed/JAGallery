@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /**
  * JUnit rule that provides a [TestDispatcher] and installs it as `Dispatchers.Main`
@@ -22,6 +23,7 @@ import org.junit.runner.Description
  * The rule exposes the dispatcher via [testDispatcher] so tests can pass it to
  * repository constructors or manually advance time.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(
     private val dispatcher: TestDispatcher = UnconfinedTestDispatcher()
 ) : TestWatcher() {
