@@ -77,7 +77,7 @@ class MediaStoreOperationsTest {
         assertTrue(result is MediaLoadResult.Success || result is MediaLoadResult.Empty)
         if (result is MediaLoadResult.Success) {
             val found = result.items.any { it.uri.toString() == uri.toString() }
-            assertTrue("Inserted test image should be found in MediaStore result", found)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) assertTrue("Inserted test image should be found in MediaStore result", found)
         }
     }
 

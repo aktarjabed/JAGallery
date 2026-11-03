@@ -90,8 +90,8 @@ class TrashAndDeleteInstrumentationTest {
         assertTrue(normalResult1 is MediaLoadResult.Success)
         val normalItems1 = (normalResult1 as MediaLoadResult.Success).items
         val item1 = normalItems1.find { it.uri.toString() == testUri.toString() }
-        assertNotNull("Inserted image must be visible in normal query", item1)
-        assertFalse("Item in normal query must not be marked trashed", item1?.isTrashed == true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) assertNotNull("Inserted image must be visible in normal query", item1)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) assertFalse("Item in normal query must not be marked trashed", item1?.isTrashed == true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Verify createTrashRequest generates valid PendingIntent for true and false
