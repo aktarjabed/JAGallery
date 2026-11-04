@@ -279,7 +279,7 @@ class KiloViewModel @Inject constructor() : ViewModel() {
         insertText(spaces)
     }
 
-    fun deleteCharBackward() {
+    private fun handleSelectionDeletion(): Boolean {
         if (hasSelection()) {
             pushUndo()
             val currentLines = _lines.value.toMutableList()
@@ -287,8 +287,13 @@ class KiloViewModel @Inject constructor() : ViewModel() {
             _lines.value = currentLines
             _isDirty.value = true
             clearSelection()
-            return
+            return true
         }
+        return false
+    }
+
+    fun deleteCharBackward() {
+        if (handleSelectionDeletion()) return
 
         pushUndo()
         val currentLines = _lines.value.toMutableList()
@@ -310,15 +315,7 @@ class KiloViewModel @Inject constructor() : ViewModel() {
     }
 
     fun deleteCharForward() {
-        if (hasSelection()) {
-            pushUndo()
-            val currentLines = _lines.value.toMutableList()
-            deleteSelection(currentLines)
-            _lines.value = currentLines
-            _isDirty.value = true
-            clearSelection()
-            return
-        }
+        if (handleSelectionDeletion()) return
 
         pushUndo()
         val currentLines = _lines.value.toMutableList()

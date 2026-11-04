@@ -44,18 +44,7 @@ object DuplicateDetector {
 
     private suspend fun computeSha256(context: Context, item: MediaItem): String? = withContext(Dispatchers.IO) {
         return@withContext try {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val inputStream = context.contentResolver.openInputStream(item.uri) ?: return@withContext null
-            inputStream.use { input ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    ensureActive()
-                    digest.update(buffer, 0, bytesRead)
-                }
-            }
-            val hashBytes = digest.digest()
-            hashBytes.joinToString("") { "%02x".format(it) }
+            ImageHashUtils.calculateSha256(item.uri, context)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: SecurityException) {

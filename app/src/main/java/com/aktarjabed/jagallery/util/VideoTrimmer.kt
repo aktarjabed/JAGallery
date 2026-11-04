@@ -181,23 +181,20 @@ object VideoTrimmer {
 
             if (samplesWritten == 0) {
                 Log.w(TAG, "Zero samples written. Returning null to avoid corrupt media.")
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                return@withContext null
+                return@withContext cleanupAndReturnNull(resolver, newUri)
             }
 
             val published = FileUtils.publishPendingEntry(resolver, newUri, android.content.ContentValues())
             if (!published) {
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                return@withContext null
+                return@withContext cleanupAndReturnNull(resolver, newUri)
             }
 
         } catch (e: CancellationException) {
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+            cleanupAndReturnNull(resolver, newUri)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed during video trimming pipeline", e)
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-            return@withContext null
+            return@withContext cleanupAndReturnNull(resolver, newUri)
         } finally {
             if (isMuxerStarted) {
                 try {
@@ -229,6 +226,16 @@ object VideoTrimmer {
         }
 
         newUri
+    }
+
+    private fun cleanupAndReturnNull(resolver: android.content.ContentResolver, uri: Uri?): Uri? {
+        if (uri != null) {
+            try {
+                resolver.delete(uri, null, null)
+            } catch (ignored: Exception) {
+            }
+        }
+        return null
     }
 
     suspend fun extractVideoFrame(
@@ -264,24 +271,21 @@ object VideoTrimmer {
             bitmap.recycle()
 
             if (!written) {
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                return@withContext null
+                return@withContext cleanupAndReturnNull(resolver, newUri)
             }
 
             val published = FileUtils.publishPendingEntry(resolver, newUri, android.content.ContentValues())
             if (!published) {
-                try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-                return@withContext null
+                return@withContext cleanupAndReturnNull(resolver, newUri)
             }
 
             newUri
         } catch (e: CancellationException) {
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
+            cleanupAndReturnNull(resolver, newUri)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract video frame", e)
-            if (newUri != null) try { resolver.delete(newUri, null, null) } catch (ignored: Exception) {}
-            null
+            cleanupAndReturnNull(resolver, newUri)
         } finally {
             try {
                 retriever.release()
