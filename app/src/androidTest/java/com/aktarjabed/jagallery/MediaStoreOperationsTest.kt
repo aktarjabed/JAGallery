@@ -73,12 +73,16 @@ class MediaStoreOperationsTest {
         }
 
         // Query media using MediaStoreHelper
-        val result = MediaStoreHelper.getMediaItemsResult(resolver, Dispatchers.IO, context)
-        assertTrue(result is MediaLoadResult.Success || result is MediaLoadResult.Empty)
-        if (result is MediaLoadResult.Success) {
-            val found = result.items.any { it.uri.toString() == uri.toString() }
-            assertTrue("Inserted test image should be found in MediaStore result", found)
+        var found = false
+        for (i in 0..5) {
+            val result = MediaStoreHelper.getMediaItemsResult(resolver, Dispatchers.IO, context)
+            if (result is MediaLoadResult.Success) {
+                found = result.items.any { it.uri.toString() == uri.toString() }
+                if (found) break
+            }
+            kotlinx.coroutines.delay(500)
         }
+        assertTrue("Inserted test image should be found in MediaStore result", found)
     }
 
     @Test
