@@ -31,6 +31,7 @@ import com.aktarjabed.jagallery.ui.common.components.MainBottomTab
 import com.aktarjabed.jagallery.ui.theme.TrashRed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import com.aktarjabed.jagallery.ui.common.components.TopBarNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,9 +155,7 @@ fun TrashScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    TopBarNavigationIcon(onBack = onBack)
                 },
                 actions = {
                     val items = (loadResult as? MediaLoadResult.Success)?.items ?: emptyList()

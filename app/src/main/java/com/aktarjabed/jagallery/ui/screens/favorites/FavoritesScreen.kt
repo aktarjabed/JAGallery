@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.aktarjabed.jagallery.ui.theme.PrimaryPurple
+import com.aktarjabed.jagallery.ui.common.components.TopBarNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,9 +46,7 @@ fun FavoritesScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    TopBarNavigationIcon(onBack = onBack)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,

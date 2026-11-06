@@ -33,6 +33,7 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import com.aktarjabed.jagallery.ui.common.components.TopBarNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,9 +57,7 @@ fun MapScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.map_view_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    TopBarNavigationIcon(onBack = onBack)
                 }
             )
         }

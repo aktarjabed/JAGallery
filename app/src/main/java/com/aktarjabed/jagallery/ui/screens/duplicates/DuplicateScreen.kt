@@ -60,6 +60,7 @@ import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.util.DuplicateGroup
 import com.aktarjabed.jagallery.util.FileUtils
 import com.aktarjabed.jagallery.ui.common.selection.BatchOperationObserver
+import com.aktarjabed.jagallery.ui.common.components.TopBarNavigationIcon
 
 private data class DeleteState(
     val pendingIntents: List<com.aktarjabed.jagallery.data.model.DeleteRequestChunk>,
@@ -146,9 +147,7 @@ fun DuplicateScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.duplicates_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    TopBarNavigationIcon(onBack = onBack)
                 },
                 actions = {
                     if (uiState is DuplicateViewModel.UiState.Success) {
