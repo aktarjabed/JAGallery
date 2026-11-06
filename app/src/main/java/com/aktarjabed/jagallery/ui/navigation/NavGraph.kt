@@ -135,21 +135,9 @@ fun NavGraph() {
                 onNavigateToVaultViewer = { vaultMediaId ->
                     navController.navigate(Screen.VaultViewer.createRoute(vaultMediaId))
                 },
-                onNavigateToPhotos = {
-                    navController.navigate(Screen.Grid.createRoute(MediaSource.All)) {
-                        popUpTo(Screen.Albums.route)
-                    }
-                },
-                onNavigateToAlbums = {
-                    navController.navigate(Screen.Albums.route) {
-                        popUpTo(Screen.Albums.route) { inclusive = true }
-                    }
-                },
-                onNavigateToTrash = {
-                    navController.navigate(Screen.Trash.route) {
-                        popUpTo(Screen.Albums.route)
-                    }
-                }
+                onNavigateToPhotos = { navController.navigateToGridAndPop() },
+                onNavigateToAlbums = { navController.navigateToAlbumsAndPop() },
+                onNavigateToTrash = { navController.navigateToTrashAndPop() }
             )
         }
         composable(
@@ -191,21 +179,9 @@ fun NavGraph() {
                     navController.navigate(Screen.Viewer.createRoute(mediaId, source))
                 },
                 onBack = { navController.popBackStack() },
-                onNavigateToPhotos = {
-                    navController.navigate(Screen.Grid.createRoute(MediaSource.All)) {
-                        popUpTo(Screen.Albums.route)
-                    }
-                },
-                onNavigateToAlbums = {
-                    navController.navigate(Screen.Albums.route) {
-                        popUpTo(Screen.Albums.route) { inclusive = true }
-                    }
-                },
-                onNavigateToVault = {
-                    navController.navigate(Screen.Vault.route) {
-                        popUpTo(Screen.Albums.route)
-                    }
-                }
+                onNavigateToPhotos = { navController.navigateToGridAndPop() },
+                onNavigateToAlbums = { navController.navigateToAlbumsAndPop() },
+                onNavigateToVault = { navController.navigateToVaultAndPop() }
             )
         }
         composable(
@@ -247,21 +223,9 @@ fun NavGraph() {
                         navController.navigate(Screen.Viewer.createRoute(mediaId, src))
                     },
                     onBack = { navController.popBackStack() },
-                    onNavigateToAlbums = {
-                        navController.navigate(Screen.Albums.route) {
-                            popUpTo(Screen.Albums.route) { inclusive = true }
-                        }
-                    },
-                    onNavigateToTrash = {
-                        navController.navigate(Screen.Trash.route) {
-                            popUpTo(Screen.Albums.route)
-                        }
-                    },
-                    onNavigateToVault = {
-                        navController.navigate(Screen.Vault.route) {
-                            popUpTo(Screen.Albums.route)
-                        }
-                    }
+                    onNavigateToAlbums = { navController.navigateToAlbumsAndPop() },
+                    onNavigateToTrash = { navController.navigateToTrashAndPop() },
+                    onNavigateToVault = { navController.navigateToVaultAndPop() }
                 )
             }
         }

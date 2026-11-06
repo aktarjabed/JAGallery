@@ -44,14 +44,14 @@ class VideoTrimmerInstrumentationTest {
     }
 
     @Test
-    fun trimVideo_withInvalidUri_returnsNullSafelyWithoutCrashing() = runBlocking {
+    fun trimVideo_withInvalidUri_returnsNullSafelyWithoutCrashing() = runBlocking<Unit> {
         val invalidUri = Uri.parse("content://media/external/video/media/999999999")
         val result = VideoTrimmer.trimVideo(context, invalidUri, 0L, 1000L)
         assertNull("Invalid source URI must return null safely without throwing unhandled exceptions", result)
     }
 
     @Test
-    fun trimVideo_withInvalidRange_returnsNullSafely() = runBlocking {
+    fun trimVideo_withInvalidRange_returnsNullSafely() = runBlocking<Unit> {
         val mockUri = Uri.parse("content://media/external/video/media/1")
         // end time <= start time
         val result = VideoTrimmer.trimVideo(context, mockUri, 5000L, 2000L)
@@ -139,7 +139,7 @@ class VideoTrimmerInstrumentationTest {
     }
 
     @Test
-    fun trimVideo_realMedia_succeeds_and_createsValidOutput() = runBlocking {
+    fun trimVideo_realMedia_succeeds_and_createsValidOutput() = runBlocking<Unit> {
         val sourceUri = createSyntheticTestVideo() ?: throw java.lang.IllegalStateException("Failed to create test video")
 
         val trimmedUri = VideoTrimmer.trimVideo(context, sourceUri, 0L, 1500L)
@@ -156,7 +156,7 @@ class VideoTrimmerInstrumentationTest {
     }
 
     @Test
-    fun trimVideo_realMedia_beyondDuration_failsSafely() = runBlocking {
+    fun trimVideo_realMedia_beyondDuration_failsSafely() = runBlocking<Unit> {
         val sourceUri = createSyntheticTestVideo() ?: throw java.lang.IllegalStateException("Failed to create test video")
 
         // 2-second video, request start at 5s

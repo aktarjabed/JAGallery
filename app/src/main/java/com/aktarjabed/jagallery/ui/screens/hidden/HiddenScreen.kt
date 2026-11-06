@@ -11,6 +11,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aktarjabed.jagallery.R
 import com.aktarjabed.jagallery.data.model.MediaSource
 import com.aktarjabed.jagallery.ui.common.components.MediaCollectionContent
+import com.aktarjabed.jagallery.ui.common.components.TopBarNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,9 +41,7 @@ fun HiddenScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_hidden_media)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    TopBarNavigationIcon(onBack = onBack)
                 }
             )
         },
